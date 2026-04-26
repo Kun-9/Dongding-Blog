@@ -9,7 +9,6 @@ import { categories } from "@/lib/categories";
 import { site } from "@/lib/site";
 import { fmtDate } from "@/lib/tokens";
 import { CTA } from "@/components/ui/CTA";
-import { HeroGlow } from "@/components/layout/HeroGlow";
 import { TagChip } from "@/components/post/TagChip";
 import { PostCard } from "@/components/post/PostCard";
 import { InlineCode } from "@/components/prose/InlineCode";
@@ -36,7 +35,6 @@ export default function Page() {
     <main>
       {/* Editorial Hero */}
       <section className="relative mx-auto max-w-[1180px] px-8 pb-8 pt-16">
-        <HeroGlow />
         <div className="relative max-w-[720px]">
           <div className="mb-3.5 inline-flex items-center gap-2 whitespace-nowrap font-sans text-xs font-semibold uppercase tracking-[0.08em] text-ink-muted">
             <span
