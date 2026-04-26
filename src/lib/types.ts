@@ -27,6 +27,7 @@ export interface PostMeta {
   readTime: number;
   featured?: boolean;
   draft?: boolean;
+  toc?: TocItem[];
 }
 
 export interface TocItem {

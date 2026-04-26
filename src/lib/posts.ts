@@ -16,6 +16,12 @@ import type { PostMeta } from "@/lib/types";
 
 const POSTS_DIR = path.join(process.cwd(), "content", "posts");
 
+const TocItemSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  level: z.union([z.literal(2), z.literal(3)]),
+});
+
 const FrontmatterSchema = z.object({
   title: z.string(),
   summary: z.string(),
@@ -25,6 +31,7 @@ const FrontmatterSchema = z.object({
   readTime: z.number().int().positive().optional(),
   featured: z.boolean().optional(),
   draft: z.boolean().optional(),
+  toc: z.array(TocItemSchema).optional(),
 });
 
 interface CachedPost {
@@ -65,6 +72,7 @@ function loadAll(): CachedPost[] {
       readTime: minutes,
       featured: fm.featured,
       draft: fm.draft,
+      toc: fm.toc,
     };
     return { meta, body: content };
   });
