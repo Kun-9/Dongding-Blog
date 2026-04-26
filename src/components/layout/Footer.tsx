@@ -2,7 +2,7 @@
  * Footer — copyright + social links.
  * Port of components.jsx#Footer.
  */
-import { site } from "@/lib/data";
+import { site } from "@/lib/site";
 
 export function Footer() {
   return (

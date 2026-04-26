@@ -2,12 +2,12 @@
 
 /**
  * CommandPalette — Cmd/Ctrl+K spotlight.
- * Port of components.jsx#CommandPalette. Searches pages, categories, posts,
- * and tags with keyboard navigation (↑↓, Enter, Esc).
+ * Receives `categories` and `posts` from a server-side parent (RootLayout)
+ * because lib/posts.ts is server-only.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { categories, posts } from "@/lib/data";
+import type { Category, PostMeta } from "@/lib/types";
 
 type ItemKind = "page" | "cat" | "post" | "tag";
 interface CmdItem {
@@ -19,6 +19,8 @@ interface CmdItem {
 
 interface Props {
   onClose: () => void;
+  categories: Category[];
+  posts: PostMeta[];
 }
 
 const KIND_GLYPH: Record<ItemKind, string> = {
@@ -28,7 +30,7 @@ const KIND_GLYPH: Record<ItemKind, string> = {
   tag: "#",
 };
 
-export function CommandPalette({ onClose }: Props) {
+export function CommandPalette({ onClose, categories, posts }: Props) {
   const router = useRouter();
   const [q, setQ] = useState("");
   const [hi, setHi] = useState(0);
@@ -102,7 +104,7 @@ export function CommandPalette({ onClose }: Props) {
     );
 
     return out;
-  }, [q]);
+  }, [q, categories, posts]);
 
   useEffect(() => {
     setHi(0);

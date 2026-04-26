@@ -6,7 +6,7 @@
  * topmost intersecting heading.
  */
 import { useEffect, useState } from "react";
-import type { TocItem } from "@/lib/data";
+import type { TocItem } from "@/lib/types";
 
 interface Props {
   items: TocItem[];

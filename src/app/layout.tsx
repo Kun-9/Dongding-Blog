@@ -4,6 +4,8 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
+import { categories } from "@/lib/categories";
+import { getAllPosts } from "@/lib/posts";
 
 const jetbrainsMono = JetBrains_Mono({
   variable: "--font-jetbrains-mono",
@@ -21,11 +23,14 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Fetched server-side so the client Header can hand them to CommandPalette.
+  const posts = getAllPosts();
+
   return (
     <html lang="ko" suppressHydrationWarning className={jetbrainsMono.variable}>
       <body className="scenic-glow min-h-screen">
         <ThemeProvider>
-          <Header />
+          <Header categories={categories} posts={posts} />
           {children}
           <Footer />
         </ThemeProvider>

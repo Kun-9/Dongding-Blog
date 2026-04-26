@@ -2,15 +2,22 @@
 
 /**
  * Header — sticky brand + minimal nav + ⌘K trigger + theme toggle.
- * Port of components.jsx#Header.
+ * Categories and posts come down as props so CommandPalette (client) can
+ * search them without importing the server-only loader.
  */
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import { CommandPalette } from "@/components/command/CommandPalette";
+import type { Category, PostMeta } from "@/lib/types";
 
-export function Header() {
+interface Props {
+  categories: Category[];
+  posts: PostMeta[];
+}
+
+export function Header({ categories, posts }: Props) {
   const pathname = usePathname();
   const { resolvedTheme, setTheme } = useTheme();
   const [openK, setOpenK] = useState(false);
@@ -38,9 +45,7 @@ export function Header() {
     <Link
       href={href}
       className={`rounded-md px-3 py-1.5 font-sans text-sm font-medium tracking-[-0.005em] no-underline transition-colors duration-[120ms] ${
-        isActive
-          ? "bg-hover text-ink"
-          : "text-ink-muted hover:text-ink"
+        isActive ? "bg-hover text-ink" : "text-ink-muted hover:text-ink"
       }`}
     >
       {label}
@@ -62,7 +67,6 @@ export function Header() {
         }}
       >
         <div className="mx-auto flex max-w-[1180px] items-center justify-between px-8 py-3.5">
-          {/* Brand */}
           <Link
             href="/"
             className="flex shrink-0 items-center gap-2.5 no-underline"
@@ -82,12 +86,10 @@ export function Header() {
             </span>
           </Link>
 
-          {/* Right cluster */}
           <div className="flex items-center gap-0.5">
             {navLink("/posts", "Posts", isPostsActive)}
             {navLink("/about", "About", isAboutActive)}
 
-            {/* Search trigger */}
             <button
               type="button"
               onClick={() => setOpenK(true)}
@@ -101,7 +103,6 @@ export function Header() {
               </kbd>
             </button>
 
-            {/* Theme toggle */}
             <button
               type="button"
               onClick={() => setTheme(isDark ? "light" : "dark")}
@@ -115,7 +116,13 @@ export function Header() {
         </div>
       </header>
 
-      {openK && <CommandPalette onClose={() => setOpenK(false)} />}
+      {openK && (
+        <CommandPalette
+          onClose={() => setOpenK(false)}
+          categories={categories}
+          posts={posts}
+        />
+      )}
     </>
   );
 }

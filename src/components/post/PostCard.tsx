@@ -3,14 +3,15 @@
  * Port of components.jsx#PostCard.
  */
 import Link from "next/link";
-import { type Post, getCategory } from "@/lib/data";
+import type { PostMeta } from "@/lib/types";
+import { getCategory } from "@/lib/categories";
 import { fmtDate } from "@/lib/tokens";
 import { TagChip } from "@/components/post/TagChip";
 
 type Layout = "card" | "list" | "magazine";
 
 interface Props {
-  post: Post;
+  post: PostMeta;
   layout?: Layout;
 }
 

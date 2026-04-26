@@ -1,12 +1,11 @@
 /**
  * CategorySidebar — collapsible category tree + tag cloud.
- * Port of components.jsx#CategorySidebar.
- *
- * Active state is decided server-side via the `filter` prop, which the
- * PostList page resolves from the route segment.
+ * Server component: reads posts/tags directly from the (server-only) loader.
+ * Active state is decided server-side via the `filter` prop.
  */
 import Link from "next/link";
-import { categories, posts, getAllTags } from "@/lib/data";
+import { categories } from "@/lib/categories";
+import { getAllPosts, getAllTags } from "@/lib/posts";
 import { TagChip } from "@/components/post/TagChip";
 
 export interface SidebarFilter {
@@ -22,6 +21,7 @@ export function CategorySidebar({ filter }: Props) {
   const isAll = !filter;
   const activeCatId = filter?.type === "category" ? filter.value : null;
   const activeTag = filter?.type === "tag" ? filter.value : null;
+  const totalPosts = getAllPosts().length;
   const allTags = getAllTags();
 
   return (
@@ -40,7 +40,7 @@ export function CategorySidebar({ filter }: Props) {
           >
             <span>전체</span>
             <span className="text-xs tabular-nums text-ink-muted">
-              {posts.length}
+              {totalPosts}
             </span>
           </Link>
         </li>
