@@ -17,6 +17,7 @@ import { TagChip } from "@/components/post/TagChip";
 import { TOC } from "@/components/prose/TOC";
 import { ReadingProgress } from "@/components/prose/ReadingProgress";
 import { mdxComponents } from "@/components/prose/MdxComponents";
+import { Comments } from "@/components/comments/Comments";
 
 const ARTICLE_ID = "article-body";
 
@@ -115,15 +116,11 @@ export default async function Page({
 
           <div>{content}</div>
 
-          {/* Comments placeholder */}
           <section className="mt-16 border-t border-border-token pt-8">
             <div className="mb-4 font-sans text-[11px] font-bold uppercase tracking-[0.1em] text-ink-muted">
               Comments
             </div>
-            <div className="rounded-xl border border-border-token bg-surface p-8 text-center text-sm text-ink-muted">
-              <div className="mb-1.5 font-mono text-xs">{"<Giscus />"}</div>
-              GitHub Discussions 기반 댓글이 이 자리에 들어갑니다.
-            </div>
+            <Comments />
           </section>
         </article>
 
