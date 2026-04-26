@@ -3,7 +3,11 @@
  * Used by `compileMDX` in PostDetail. Headings get scrollMarginTop so the
  * sticky header doesn't cover the target after a TOC click.
  */
-import type { ReactNode, AnchorHTMLAttributes } from "react";
+import type {
+  ReactNode,
+  ReactElement,
+  AnchorHTMLAttributes,
+} from "react";
 import { CodeBlock } from "@/components/prose/CodeBlock";
 import { InlineCode } from "@/components/prose/InlineCode";
 import { Callout } from "@/components/prose/Callout";
@@ -48,12 +52,52 @@ const SmartCode = ({
   children?: ReactNode;
   className?: string;
 }) => {
-  // Block-level code keeps its language class so external highlighters
-  // (or simple <pre> styling) can pick it up; inline code becomes our pill.
+  // Inside <pre>, the SmartPre wrapper handles rendering — pass through
+  // so it can read className + children. Outside, this is inline code.
   if (className?.startsWith("language-")) {
     return <code className={className}>{children}</code>;
   }
   return <InlineCode>{children}</InlineCode>;
+};
+
+interface CodeChildProps {
+  className?: string;
+  children?: ReactNode;
+}
+
+/**
+ * Map MDX code fences (` ```lang `) to our themed CodeBlock. Tistory-style
+ * filename comment as the first line is detected and lifted into the
+ * filename header (e.g. `// Order.java`).
+ */
+const SmartPre = ({ children }: { children?: ReactNode }) => {
+  const codeEl = children as ReactElement<CodeChildProps> | undefined;
+  if (!codeEl || typeof codeEl !== "object" || !("props" in codeEl)) {
+    return <pre>{children}</pre>;
+  }
+  const { className, children: codeChildren } = codeEl.props;
+  const codeStr =
+    typeof codeChildren === "string"
+      ? codeChildren
+      : Array.isArray(codeChildren)
+        ? codeChildren.filter((c) => typeof c === "string").join("")
+        : "";
+
+  const lang = className?.match(/language-([\w-]+)/)?.[1];
+
+  // Promote a leading filename comment into the header.
+  let filename: string | undefined;
+  let body = codeStr;
+  const firstLine = codeStr.split("\n", 1)[0];
+  const filenameMatch = firstLine.match(
+    /^\s*(?:\/\/|#|--)\s*([\w./-]+\.\w{1,8})\s*$/,
+  );
+  if (filenameMatch) {
+    filename = filenameMatch[1];
+    body = codeStr.slice(firstLine.length).replace(/^\n/, "");
+  }
+
+  return <CodeBlock filename={filename} lang={lang} code={body} />;
 };
 
 export const mdxComponents = {
@@ -61,6 +105,7 @@ export const mdxComponents = {
   h3: H3,
   p: P,
   a: A,
+  pre: SmartPre,
   code: SmartCode,
   Callout,
   CodeBlock,
