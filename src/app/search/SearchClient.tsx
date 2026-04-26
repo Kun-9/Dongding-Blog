@@ -107,13 +107,15 @@ export function SearchClient({ posts, categories }: Props) {
               type="button"
               onClick={() => setScope(k)}
               className={`rounded-full px-2.5 py-[5px] font-sans text-[12.5px] font-semibold tracking-[-0.01em] transition-colors ${
-                scope === k
-                  ? "text-accent-ink"
-                  : "border border-border-token text-ink-muted"
+                scope === k ? "" : "border border-border-token text-ink-muted"
               }`}
               style={
                 scope === k
-                  ? { background: "var(--accent)", border: "none" }
+                  ? {
+                      background: "var(--accent)",
+                      color: "var(--accent-ink)",
+                      border: "none",
+                    }
                   : { background: "transparent" }
               }
             >

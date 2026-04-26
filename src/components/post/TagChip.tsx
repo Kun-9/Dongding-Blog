@@ -27,8 +27,11 @@ export function TagChip({ tag, size = "md", filled = false, href }: Props) {
     return (
       <Link
         href={target}
-        className={`${baseClass} text-accent-ink`}
-        style={{ background: "var(--accent)" }}
+        className={baseClass}
+        style={{
+          background: "var(--accent)",
+          color: "var(--accent-ink)",
+        }}
       >
         <span className="opacity-70">#</span>
         {tag}
