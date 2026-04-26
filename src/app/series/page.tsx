@@ -19,7 +19,7 @@ export default function Page() {
   const series = getAllSeries();
 
   return (
-    <main className="mx-auto max-w-[880px] px-8 pt-16">
+    <main className="mx-auto max-w-[880px] px-5 pt-10 md:px-8 md:pt-16">
       <header className="mb-8">
         <div className="mb-3 font-sans text-[11px] font-bold uppercase tracking-[0.1em] text-ink-muted">
           SERIES
@@ -33,7 +33,7 @@ export default function Page() {
         </p>
       </header>
 
-      <div className="grid grid-cols-2 gap-3.5 pb-16">
+      <div className="grid grid-cols-1 gap-3.5 pb-16 sm:grid-cols-2">
         {series.map((s) => (
           <Link
             key={s.id}

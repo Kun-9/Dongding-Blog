@@ -52,7 +52,7 @@ export default function Page() {
   ];
 
   return (
-    <main className="mx-auto max-w-[1180px] px-8 pt-10">
+    <main className="mx-auto max-w-[1180px] px-5 pt-8 md:px-8 md:pt-10">
       <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
         <div>
           <div className="mb-2 font-sans text-[11px] font-bold uppercase tracking-[0.1em] text-ink-muted">
@@ -77,7 +77,7 @@ export default function Page() {
       </header>
 
       {/* Stats */}
-      <section className="mb-8 grid grid-cols-4 gap-3.5">
+      <section className="mb-8 grid grid-cols-2 gap-3.5 md:grid-cols-4">
         {stats.map((s) => (
           <div
             key={s.label}
@@ -100,7 +100,7 @@ export default function Page() {
       </section>
 
       {/* Charts row */}
-      <section className="mb-8 grid grid-cols-[1.5fr_1fr] gap-[18px]">
+      <section className="mb-8 grid grid-cols-1 gap-[18px] md:grid-cols-[1.5fr_1fr]">
         <div className="rounded-xl border border-border-token bg-surface px-[22px] py-5">
           <div className="mb-3.5 flex items-baseline justify-between gap-3">
             <div className="whitespace-nowrap font-sans text-[13px] font-semibold tracking-[-0.015em] text-ink">

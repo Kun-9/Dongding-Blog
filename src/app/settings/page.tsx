@@ -49,9 +49,9 @@ export default function Page() {
   const [danger, setDanger] = useState(false);
 
   return (
-    <main className="mx-auto grid max-w-[1080px] grid-cols-[200px_1fr] gap-8 px-8 pb-16 pt-10">
+    <main className="mx-auto grid max-w-[1080px] grid-cols-1 gap-6 px-5 pb-12 pt-8 md:grid-cols-[200px_1fr] md:gap-8 md:px-8 md:pb-16 md:pt-10">
       {/* Side nav */}
-      <aside className="sticky top-20 self-start">
+      <aside className="md:sticky md:top-20 md:self-start">
         <div className="mb-3.5 whitespace-nowrap font-sans text-[11px] font-bold uppercase tracking-[0.1em] text-ink-muted">
           SETTINGS
         </div>

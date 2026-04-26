@@ -53,9 +53,11 @@ export function PostList({ filter }: Props) {
   }
 
   return (
-    <main className="mx-auto max-w-[1180px] px-8 pt-16">
-      <div className="grid grid-cols-[240px_minmax(0,1fr)] gap-12">
-        <CategorySidebar filter={filter} />
+    <main className="mx-auto max-w-[1180px] px-5 pt-10 md:px-8 md:pt-16">
+      <div className="grid grid-cols-1 gap-8 md:grid-cols-[240px_minmax(0,1fr)] md:gap-12">
+        <div className="hidden md:block">
+          <CategorySidebar filter={filter} />
+        </div>
         <div>
           <header className="mb-7 border-b border-border-token pb-6">
             <div className="mb-2.5 font-sans text-[11px] font-bold uppercase tracking-[0.1em] text-ink-muted">
@@ -75,7 +77,7 @@ export function PostList({ filter }: Props) {
                 <div className="mb-3 font-mono text-[13px] font-semibold tabular-nums tracking-[-0.01em] text-ink-muted">
                   {y}
                 </div>
-                <div className="grid grid-cols-2 gap-3.5">
+                <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
                   {byYear[y].map((p) => (
                     <PostCard key={p.slug} post={p} layout="card" />
                   ))}

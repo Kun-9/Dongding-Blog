@@ -34,7 +34,7 @@ export default function Page() {
   return (
     <main>
       {/* Editorial Hero */}
-      <section className="relative mx-auto max-w-[1180px] px-8 pb-8 pt-16">
+      <section className="relative mx-auto max-w-[1180px] px-5 pb-8 pt-12 md:px-8 md:pt-16">
         <div className="relative max-w-[720px]">
           <div className="mb-3.5 inline-flex items-center gap-2 whitespace-nowrap font-sans text-xs font-semibold uppercase tracking-[0.08em] text-ink-muted">
             <span
@@ -63,11 +63,11 @@ export default function Page() {
       </section>
 
       {/* Featured */}
-      <section className="mx-auto mt-6 max-w-[1180px] px-8">
+      <section className="mx-auto mt-6 max-w-[1180px] px-5 md:px-8">
         <div className="mb-6 border-b border-border-token pb-3 font-sans text-[11px] font-bold uppercase tracking-[0.1em] text-ink-muted">
           Featured
         </div>
-        <article className="relative grid grid-cols-[1fr_280px] items-center gap-8 px-0 pb-8 pt-2">
+        <article className="relative grid grid-cols-1 items-center gap-6 px-0 pb-8 pt-2 md:grid-cols-[1fr_280px] md:gap-8">
           <div>
             <div className="mb-3 flex items-center gap-2 whitespace-nowrap text-xs tabular-nums text-ink-muted">
               <span>{fmtDate(featured.date)}</span>
@@ -113,7 +113,7 @@ export default function Page() {
       </section>
 
       {/* Recent grid */}
-      <section className="mx-auto mt-10 max-w-[1180px] px-8">
+      <section className="mx-auto mt-10 max-w-[1180px] px-5 md:px-8">
         <div className="mb-6 flex items-baseline justify-between border-b border-border-token pb-3">
           <div className="font-sans text-[11px] font-bold uppercase tracking-[0.1em] text-ink-muted">
             Recent
@@ -125,7 +125,7 @@ export default function Page() {
             전체 보기 →
           </Link>
         </div>
-        <div className="grid grid-cols-3 gap-[18px]">
+        <div className="grid grid-cols-1 gap-[18px] sm:grid-cols-2 lg:grid-cols-3">
           {recent.map((p) => (
             <PostCard key={p.slug} post={p} layout="card" />
           ))}
@@ -133,11 +133,11 @@ export default function Page() {
       </section>
 
       {/* Categories */}
-      <section className="mx-auto mt-16 max-w-[1180px] px-8 pb-12">
+      <section className="mx-auto mt-16 max-w-[1180px] px-5 pb-12 md:px-8">
         <div className="mb-6 border-b border-border-token pb-3 font-sans text-[11px] font-bold uppercase tracking-[0.1em] text-ink-muted">
           Categories
         </div>
-        <div className="grid grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           {categories.map((cat) => (
             <Link
               key={cat.id}

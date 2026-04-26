@@ -69,11 +69,8 @@ export default async function Page({
     <main>
       <ReadingProgress articleId={ARTICLE_ID} />
 
-      <div
-        className="mx-auto grid max-w-[1180px] justify-center gap-16 px-8"
-        style={{ gridTemplateColumns: "minmax(0, 700px) 220px" }}
-      >
-        <article id={ARTICLE_ID} className="pb-8 pt-14">
+      <div className="mx-auto grid max-w-[1180px] grid-cols-1 justify-center gap-10 px-5 md:grid-cols-[minmax(0,700px)_220px] md:gap-16 md:px-8">
+        <article id={ARTICLE_ID} className="pb-8 pt-10 md:pt-14">
           <div className="mb-5 flex items-center gap-2 font-sans text-xs text-ink-muted">
             <Link href="/" className="text-ink-muted no-underline">
               Home
@@ -96,7 +93,7 @@ export default async function Page({
             <p className="mb-5 mt-3.5 text-[17px] leading-[1.6] tracking-[-0.005em] text-ink-muted">
               {post.meta.summary}
             </p>
-            <div className="flex items-center gap-3.5 border-t border-border-token pt-4">
+            <div className="flex flex-wrap items-center gap-3.5 border-t border-border-token pt-4">
               <div className="flex h-9 w-9 items-center justify-center rounded-full border border-border-token bg-surface-alt font-sans text-[13px] font-bold text-ink">
                 동
               </div>
@@ -124,7 +121,7 @@ export default async function Page({
           </section>
         </article>
 
-        <aside className="pt-14">
+        <aside className="hidden md:block md:pt-14">
           <div className="sticky top-[90px] self-start">
             {toc.length > 0 && <TOC items={toc} sticky={false} />}
             <div className="mt-7 border-t border-border-token pt-5">
@@ -142,8 +139,8 @@ export default async function Page({
       </div>
 
       {/* Prev/Next */}
-      <section className="mx-auto mt-8 max-w-[1180px] px-8 pb-16">
-        <div className="grid grid-cols-2 gap-3">
+      <section className="mx-auto mt-8 max-w-[1180px] px-5 pb-12 md:px-8 md:pb-16">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {prev ? (
             <Link
               href={`/posts/${prev.slug}`}

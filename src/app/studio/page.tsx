@@ -160,9 +160,9 @@ export default function Page() {
         <CTA size="sm">발행하기 →</CTA>
       </div>
 
-      <div className="grid min-h-[calc(100vh-200px)] grid-cols-2 gap-0">
+      <div className="grid min-h-[calc(100vh-200px)] grid-cols-1 gap-0 md:grid-cols-2">
         {/* Editor */}
-        <section className="border-r border-border-token px-8 pb-16 pt-7">
+        <section className="border-b border-border-token px-5 pb-10 pt-6 md:border-b-0 md:border-r md:px-8 md:pb-16 md:pt-7">
           <div className="mb-3.5 font-mono text-[11px] tracking-[0.05em] text-ink-muted">
             FRONTMATTER
           </div>
@@ -247,7 +247,7 @@ export default function Page() {
         </section>
 
         {/* Preview */}
-        <section className="overflow-auto px-8 pb-16 pt-7">
+        <section className="overflow-auto px-5 pb-10 pt-6 md:px-8 md:pb-16 md:pt-7">
           <div className="mb-3.5 font-mono text-[11px] tracking-[0.05em] text-ink-muted">
             PREVIEW
           </div>

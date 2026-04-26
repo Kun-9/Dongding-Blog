@@ -65,7 +65,7 @@ export function Header({ categories, posts }: Props) {
           WebkitBackdropFilter: "saturate(160%) blur(12px)",
         }}
       >
-        <div className="mx-auto flex max-w-[1180px] items-center justify-between px-8 py-3.5">
+        <div className="mx-auto flex max-w-[1180px] items-center justify-between px-5 py-3.5 md:px-8">
           <Link
             href="/"
             className="flex shrink-0 items-center gap-2.5 no-underline"
@@ -86,18 +86,20 @@ export function Header({ categories, posts }: Props) {
           </Link>
 
           <div className="flex items-center gap-1">
-            {navLink("/posts", "Posts", isPostsActive)}
-            {navLink("/about", "About", isAboutActive)}
+            <div className="hidden items-center gap-1 md:flex">
+              {navLink("/posts", "Posts", isPostsActive)}
+              {navLink("/about", "About", isAboutActive)}
+            </div>
 
             <button
               type="button"
               onClick={() => setOpenK(true)}
               aria-label="Open command palette"
-              className="ml-1.5 inline-flex items-center gap-2 rounded-full border border-border-token bg-transparent px-2.5 py-[5px] font-sans text-[12.5px] text-ink-muted"
+              className="ml-1.5 inline-flex h-8 w-8 items-center justify-center rounded-full border border-border-token bg-transparent text-[13px] text-ink-muted md:h-auto md:w-auto md:gap-2 md:px-2.5 md:py-[5px] md:text-[12.5px]"
             >
-              <span className="text-[13px]">⌕</span>
-              <span>검색</span>
-              <kbd className="rounded border border-border-token bg-surface-alt px-1.5 py-px font-mono text-[10.5px] text-ink-muted">
+              <span>⌕</span>
+              <span className="hidden md:inline">검색</span>
+              <kbd className="hidden rounded border border-border-token bg-surface-alt px-1.5 py-px font-mono text-[10.5px] text-ink-muted md:inline-block">
                 ⌘K
               </kbd>
             </button>
