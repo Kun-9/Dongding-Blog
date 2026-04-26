@@ -10,6 +10,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import { CommandPalette } from "@/components/command/CommandPalette";
+import { useMounted } from "@/lib/hooks";
 import type { Category, PostMeta } from "@/lib/types";
 
 interface Props {
@@ -21,9 +22,7 @@ export function Header({ categories, posts }: Props) {
   const pathname = usePathname();
   const { resolvedTheme, setTheme } = useTheme();
   const [openK, setOpenK] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
+  const mounted = useMounted();
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

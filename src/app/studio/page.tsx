@@ -39,10 +39,12 @@ export default function Page() {
   const [saved, setSaved] = useState<"saved" | "typing">("saved");
 
   useEffect(() => {
-    setSaved("typing");
+    if (saved !== "typing") return;
     const id = setTimeout(() => setSaved("saved"), 800);
     return () => clearTimeout(id);
-  }, [title, category, tags, body]);
+  }, [saved, title, category, tags, body]);
+
+  const markTyping = () => setSaved("typing");
 
   const wordCount = body.replace(/\s+/g, "").length;
   const readTime = Math.max(1, Math.round(wordCount / 500));
@@ -168,14 +170,20 @@ export default function Page() {
             <FieldRow label="title">
               <input
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  markTyping();
+                }}
                 className="w-full rounded-md border border-border-token bg-surface px-2.5 py-[7px] font-sans text-[15px] font-semibold tracking-[-0.01em] text-ink outline-none"
               />
             </FieldRow>
             <FieldRow label="category">
               <select
                 value={category}
-                onChange={(e) => setCategory(e.target.value)}
+                onChange={(e) => {
+                  setCategory(e.target.value);
+                  markTyping();
+                }}
                 className="w-full rounded-md border border-border-token bg-surface px-2.5 py-[7px] font-sans text-[13px] tracking-[-0.005em] text-ink outline-none"
               >
                 {categories.map((cat) => (
@@ -188,7 +196,10 @@ export default function Page() {
             <FieldRow label="tags">
               <input
                 value={tags}
-                onChange={(e) => setTags(e.target.value)}
+                onChange={(e) => {
+                  setTags(e.target.value);
+                  markTyping();
+                }}
                 placeholder="comma, separated"
                 className="w-full rounded-md border border-border-token bg-surface px-2.5 py-[7px] font-sans text-[13px] tracking-[-0.005em] text-ink outline-none"
               />
@@ -226,7 +237,10 @@ export default function Page() {
 
           <textarea
             value={body}
-            onChange={(e) => setBody(e.target.value)}
+            onChange={(e) => {
+              setBody(e.target.value);
+              markTyping();
+            }}
             className="min-h-[540px] w-full rounded-lg border border-border-token bg-surface px-[18px] py-4 font-mono text-[13.5px] leading-[1.7] text-ink outline-none"
             style={{ resize: "vertical" }}
           />

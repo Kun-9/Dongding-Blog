@@ -5,13 +5,14 @@
  * Receives the post list + categories from a server parent because
  * lib/posts is server-only.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useTheme } from "next-themes";
 import type { Category, PostMeta } from "@/lib/types";
 import { TagChip } from "@/components/post/TagChip";
 import { fmtDate } from "@/lib/tokens";
+import { useMounted } from "@/lib/hooks";
 
 interface Props {
   posts: PostMeta[];
@@ -26,8 +27,7 @@ export function SearchClient({ posts, categories }: Props) {
   const [q, setQ] = useState(initial);
   const [scope, setScope] = useState<Scope>("all");
   const { resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const mounted = useMounted();
   const isDark = mounted ? resolvedTheme === "dark" : false;
 
   const ql = q.trim().toLowerCase();

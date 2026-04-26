@@ -106,10 +106,6 @@ export function CommandPalette({ onClose, categories, posts }: Props) {
     return out;
   }, [q, categories, posts]);
 
-  useEffect(() => {
-    setHi(0);
-  }, [q]);
-
   const navigate = (item: CmdItem) => {
     router.push(item.href);
     onClose();
@@ -149,7 +145,10 @@ export function CommandPalette({ onClose, categories, posts }: Props) {
           <input
             ref={inputRef}
             value={q}
-            onChange={(e) => setQ(e.target.value)}
+            onChange={(e) => {
+              setQ(e.target.value);
+              setHi(0);
+            }}
             onKeyDown={onKey}
             placeholder="검색하거나 명령을 입력하세요…"
             className="flex-1 border-none bg-transparent font-sans text-[15px] tracking-[-0.01em] text-ink outline-none"
