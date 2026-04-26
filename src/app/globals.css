@@ -1,26 +1,199 @@
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css");
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ============================================================
+   Design Tokens — Light (cream) / Dark
+   Faithfully ported from project/tokens.js (window.DD_TOKENS)
+   ============================================================ */
+:root,
+[data-theme="light"] {
+  --bg: #f7f4ed;
+  --surface: #fcfbf8;
+  --surface-alt: #f1ede2;
+  --ink: #1c1c1c;
+  --ink-soft: rgba(28, 28, 28, 0.82);
+  --ink-muted: #5f5f5d;
+  --ink-subtle: rgba(28, 28, 28, 0.4);
+  --border: #eceae4;
+  --border-strong: rgba(28, 28, 28, 0.4);
+  --accent: #1c1c1c;
+  --accent-ink: #fcfbf8;
+  --hover: rgba(28, 28, 28, 0.04);
+
+  /* Code block colors */
+  --code-bg: #1c1c1c;
+  --code-ink: #e8e6e0;
+  --code-muted: #888475;
+  --code-keyword: #d49a6a;
+  --code-string: #9bbf86;
+  --code-number: #c08a76;
+  --code-comment: #6b675c;
+  --code-type: #c4a87a;
+  --code-filename: #bcb6a4;
+  --code-line-num: #5f5b50;
+
+  /* Callouts: info / warning / tip / note */
+  --callout-info-bg: #eef3f5;
+  --callout-info-bd: #aac0c8;
+  --callout-info-ink: #2a3e44;
+  --callout-info-glyph: #5a8590;
+
+  --callout-warning-bg: #f7eedb;
+  --callout-warning-bd: #d4b56a;
+  --callout-warning-ink: #5e4912;
+  --callout-warning-glyph: #9a7a23;
+
+  --callout-tip-bg: #ecf1e8;
+  --callout-tip-bd: #9bb88a;
+  --callout-tip-ink: #324225;
+  --callout-tip-glyph: #5d7a46;
+
+  --callout-note-bg: #f0ece2;
+  --callout-note-bd: #bdb39a;
+  --callout-note-ink: #3a342a;
+  --callout-note-glyph: #7a6e55;
+
+  /* Glow gradients (hero) */
+  --glow-1: rgba(255, 210, 170, 0.55);
+  --glow-2: rgba(190, 205, 225, 0.45);
+
+  /* Selection highlight (light) */
+  --selection: rgba(255, 200, 120, 0.35);
 }
 
+[data-theme="dark"] {
+  --bg: #161513;
+  --surface: #1f1d1a;
+  --surface-alt: #26231f;
+  --ink: #ece9e0;
+  --ink-soft: rgba(236, 233, 224, 0.85);
+  --ink-muted: #9a948a;
+  --ink-subtle: rgba(236, 233, 224, 0.35);
+  --border: #2c2925;
+  --border-strong: rgba(236, 233, 224, 0.18);
+  --accent: #ece9e0;
+  --accent-ink: #161513;
+  --hover: rgba(236, 233, 224, 0.05);
+
+  --code-bg: #0f0e0c;
+  --code-ink: #d6d2c6;
+  --code-muted: #7d7768;
+  --code-keyword: #e0a878;
+  --code-string: #a8c89b;
+  --code-number: #d2a079;
+  --code-comment: #5e5a4f;
+  --code-type: #d4be8d;
+  --code-filename: #a09a8a;
+  --code-line-num: #4a4640;
+
+  --callout-info-bg: #1c2429;
+  --callout-info-bd: #3d525a;
+  --callout-info-ink: #bcd2da;
+  --callout-info-glyph: #7fa5b0;
+
+  --callout-warning-bg: #2a2316;
+  --callout-warning-bd: #6e5523;
+  --callout-warning-ink: #e0c486;
+  --callout-warning-glyph: #c2a05a;
+
+  --callout-tip-bg: #1d2419;
+  --callout-tip-bd: #4d6037;
+  --callout-tip-ink: #bcd1a4;
+  --callout-tip-glyph: #92ad75;
+
+  --callout-note-bg: #23211c;
+  --callout-note-bd: #4a4538;
+  --callout-note-ink: #c8c2b0;
+  --callout-note-glyph: #9c9583;
+
+  --glow-1: rgba(110, 75, 40, 0.35);
+  --glow-2: rgba(40, 55, 80, 0.4);
+
+  --selection: rgba(212, 158, 106, 0.25);
+}
+
+/* ============================================================
+   Tailwind v4 — expose tokens as utilities (bg-bg, text-ink, etc.)
+   ============================================================ */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-alt: var(--surface-alt);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-subtle: var(--ink-subtle);
+  --color-border-token: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-hover: var(--hover);
+
+  --color-code-bg: var(--code-bg);
+  --color-code-ink: var(--code-ink);
+  --color-code-muted: var(--code-muted);
+  --color-code-keyword: var(--code-keyword);
+  --color-code-string: var(--code-string);
+  --color-code-number: var(--code-number);
+  --color-code-comment: var(--code-comment);
+  --color-code-type: var(--code-type);
+  --color-code-filename: var(--code-filename);
+  --color-code-line-num: var(--code-line-num);
+
+  --font-sans: "Pretendard Variable", Pretendard, -apple-system,
+    BlinkMacSystemFont, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", var(--font-jetbrains-mono), "D2Coding",
+    ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-serif: "Source Serif 4", "Noto Serif KR", Georgia, serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ============================================================
+   Base styles — Korean-first typography
+   ============================================================ */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--ink);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  word-break: keep-all; /* Korean: prevent mid-word breaks */
+  transition: background-color 0.2s, color 0.2s;
+}
+
+::selection {
+  background: var(--selection);
+}
+
+a {
+  color: inherit;
+}
+
+/* Scenic glow background — applied once on body */
+.scenic-glow {
+  background-image: radial-gradient(
+      ellipse 1200px 600px at 90% -20%,
+      var(--glow-1),
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse 900px 500px at 0% 10%,
+      var(--glow-2),
+      transparent 60%
+    );
+  background-attachment: fixed;
 }
