@@ -101,6 +101,56 @@ main .markdown-body code {
   font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
+/* Inline code — match prose.jsx#IC mustard tint (dark) */
+main .markdown-body :not(pre) > code,
+main .markdown-body :not(pre) > tt {
+  background: rgba(255, 200, 140, 0.1);
+  color: #e8c89a;
+  border-radius: 5px;
+  padding: 1.5px 6px;
+  font-size: 0.86em;
+  font-weight: 500;
+  white-space: nowrap;
+  letter-spacing: -0.005em;
+}
+
+/* Owner / Author badge — green tone matching mock (dark) */
+main .gsc-comment-author span.color-box-border-info {
+  background: rgba(122, 138, 90, 0.22) !important;
+  color: #a8c08a !important;
+  border-color: transparent !important;
+  border-radius: 4px !important;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Reaction chips — pill */
+main .gsc-upvote-button,
+main .gsc-social-reaction-summary-item,
+main .gsc-direct-reaction-buttons button,
+main .gsc-reactions-count {
+  border-radius: 999px !important;
+}
+
+/* Composer card — match site card radius */
+main .gsc-comment-box,
+main .gsc-comment-box-write,
+main .gsc-comment {
+  border-radius: 12px !important;
+}
+
+/* Composer tabs row */
+main .gsc-comment-box-tabs {
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+}
+
+/* Soften comment thread spacing */
+main .gsc-timeline {
+  gap: 18px;
+}
+
 main .pagination-loader-container {
   display: none;
 }

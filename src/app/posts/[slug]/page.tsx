@@ -34,7 +34,7 @@ export async function generateMetadata({
   const post = getPostBySlug(slug);
   if (!post) return { title: "404" };
   return {
-    title: `${post.meta.title} · Dong-Ding`,
+    title: post.meta.title,
     description: post.meta.summary,
   };
 }
@@ -113,12 +113,7 @@ export default async function Page({
 
           <div>{content}</div>
 
-          <section className="mt-16 border-t border-border-token pt-8">
-            <div className="mb-4 font-sans text-[11px] font-bold uppercase tracking-[0.1em] text-ink-muted">
-              Comments
-            </div>
-            <Comments />
-          </section>
+          <Comments />
         </article>
 
         <aside className="hidden md:block md:pt-14">
