@@ -33,7 +33,7 @@ jobs:
 
       - name: Build static export
         env:
-          NEXT_PUBLIC_SITE_URL: https://dongding.dev
+          NEXT_PUBLIC_SITE_URL: https://kun-9.github.io/Dongding-Blog
         run: npm run build
 
       - name: Ensure .nojekyll
