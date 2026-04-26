@@ -59,6 +59,10 @@
 
   /* Selection highlight (light) */
   --selection: rgba(255, 200, 120, 0.35);
+
+  /* Inline code — warm amber tint, prose.jsx#IC */
+  --inline-code-bg: rgba(168, 129, 74, 0.12);
+  --inline-code-fg: #7a5a2a;
 }
 
 [data-theme="dark"] {
@@ -110,6 +114,10 @@
   --glow-2: rgba(40, 55, 80, 0.4);
 
   --selection: rgba(212, 158, 106, 0.25);
+
+  /* Inline code — mustard tint for dark theme */
+  --inline-code-bg: rgba(255, 200, 140, 0.1);
+  --inline-code-fg: #e8c89a;
 }
 
 /* ============================================================
@@ -139,6 +147,9 @@
   --color-code-type: var(--code-type);
   --color-code-filename: var(--code-filename);
   --color-code-line-num: var(--code-line-num);
+
+  --color-inline-code-bg: var(--inline-code-bg);
+  --color-inline-code: var(--inline-code-fg);
 
   --font-sans: "Pretendard Variable", Pretendard, -apple-system,
     BlinkMacSystemFont, system-ui, sans-serif;
