@@ -2,6 +2,8 @@ import type { MetadataRoute } from "next";
 import { getAllPosts, getAllTags } from "@/lib/posts";
 import { categories } from "@/lib/categories";
 
+export const dynamic = "force-static";
+
 const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://dongding.dev";
 
