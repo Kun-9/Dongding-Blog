@@ -69,10 +69,7 @@ export default function Page() {
         <div className="mb-6 border-b border-border-token pb-3 font-sans text-[11px] font-bold uppercase tracking-[0.1em] text-ink-muted">
           Featured
         </div>
-        <Link
-          href={`/posts/${featured.slug}`}
-          className="grid grid-cols-[1fr_280px] items-center gap-8 px-0 pb-8 pt-2 text-inherit no-underline"
-        >
+        <article className="relative grid grid-cols-[1fr_280px] items-center gap-8 px-0 pb-8 pt-2">
           <div>
             <div className="mb-3 flex items-center gap-2 whitespace-nowrap text-xs tabular-nums text-ink-muted">
               <span>{fmtDate(featured.date)}</span>
@@ -80,12 +77,17 @@ export default function Page() {
               <span>{featured.readTime}분 읽기</span>
             </div>
             <h2 className="m-0 font-sans text-[36px] font-semibold leading-[1.2] tracking-[-0.03em] text-ink">
-              {featured.title}
+              <Link
+                href={`/posts/${featured.slug}`}
+                className="text-inherit no-underline before:absolute before:inset-0 before:content-['']"
+              >
+                {featured.title}
+              </Link>
             </h2>
             <p className="mb-4 mt-3.5 text-base leading-[1.7] text-ink-soft">
               {featured.summary}
             </p>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="relative z-10 flex flex-wrap gap-1.5">
               {featured.tags.map((tag) => (
                 <TagChip key={tag} tag={tag} />
               ))}
@@ -109,7 +111,7 @@ export default function Page() {
               <div>persistence.context</div>
             </div>
           </div>
-        </Link>
+        </article>
       </section>
 
       {/* Recent grid */}
