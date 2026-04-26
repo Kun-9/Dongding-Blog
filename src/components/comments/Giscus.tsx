@@ -23,6 +23,9 @@ export function Giscus({ repo, repoId, category, categoryId }: Props) {
     // Tear down on theme change so giscus reloads with new theme.
     ref.current.innerHTML = "";
 
+    const themeName = resolvedTheme === "dark" ? "dark" : "light";
+    const themeUrl = `${window.location.origin}/giscus-${themeName}.css`;
+
     const script = document.createElement("script");
     script.src = "https://giscus.app/client.js";
     script.async = true;
@@ -37,7 +40,7 @@ export function Giscus({ repo, repoId, category, categoryId }: Props) {
       "data-reactions-enabled": "1",
       "data-emit-metadata": "0",
       "data-input-position": "bottom",
-      "data-theme": resolvedTheme === "dark" ? "noborder_gray" : "light",
+      "data-theme": themeUrl,
       "data-lang": "ko",
       "data-loading": "lazy",
     }).forEach(([k, v]) => script.setAttribute(k, v));
