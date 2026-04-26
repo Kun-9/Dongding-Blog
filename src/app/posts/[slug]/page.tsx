@@ -125,15 +125,17 @@ export default async function Page({
         </article>
 
         <aside className="pt-14">
-          {toc.length > 0 && <TOC items={toc} />}
-          <div className="mt-7 border-t border-border-token pt-5">
-            <div className="mb-2.5 font-sans text-[11px] font-bold uppercase tracking-[0.08em] text-ink-muted">
-              Tags
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {post.meta.tags.map((tag) => (
-                <TagChip key={tag} tag={tag} size="sm" />
-              ))}
+          <div className="sticky top-[90px] self-start">
+            {toc.length > 0 && <TOC items={toc} sticky={false} />}
+            <div className="mt-7 border-t border-border-token pt-5">
+              <div className="mb-2.5 font-sans text-[11px] font-bold uppercase tracking-[0.08em] text-ink-muted">
+                Tags
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {post.meta.tags.map((tag) => (
+                  <TagChip key={tag} tag={tag} size="sm" />
+                ))}
+              </div>
             </div>
           </div>
         </aside>

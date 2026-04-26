@@ -10,9 +10,10 @@ import type { TocItem } from "@/lib/types";
 
 interface Props {
   items: TocItem[];
+  sticky?: boolean;
 }
 
-export function TOC({ items }: Props) {
+export function TOC({ items, sticky = true }: Props) {
   const [active, setActive] = useState<string | undefined>(items[0]?.id);
 
   useEffect(() => {
@@ -36,7 +37,7 @@ export function TOC({ items }: Props) {
   }, [items]);
 
   return (
-    <nav className="sticky top-[90px] self-start">
+    <nav className={sticky ? "sticky top-[90px] self-start" : ""}>
       <div className="mb-3 font-sans text-[11px] font-bold uppercase tracking-[0.08em] text-ink-muted">
         On this page
       </div>
