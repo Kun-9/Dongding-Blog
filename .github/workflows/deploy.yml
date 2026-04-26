@@ -34,6 +34,10 @@ jobs:
       - name: Build static export
         env:
           NEXT_PUBLIC_SITE_URL: https://kun-9.github.io/Dongding-Blog
+          NEXT_PUBLIC_GISCUS_REPO: Kun-9/Dongding-Blog
+          NEXT_PUBLIC_GISCUS_REPO_ID: R_kgDOSNJvUQ
+          NEXT_PUBLIC_GISCUS_CATEGORY: Comments
+          NEXT_PUBLIC_GISCUS_CATEGORY_ID: DIC_kwDOSNJvUc4C7vwu
         run: npm run build
 
       - name: Ensure .nojekyll
