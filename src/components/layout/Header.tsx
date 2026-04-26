@@ -85,7 +85,7 @@ export function Header({ categories, posts }: Props) {
             </span>
           </Link>
 
-          <div className="flex items-center gap-0.5">
+          <div className="flex items-center gap-1">
             {navLink("/posts", "Posts", isPostsActive)}
             {navLink("/about", "About", isAboutActive)}
 
@@ -93,7 +93,7 @@ export function Header({ categories, posts }: Props) {
               type="button"
               onClick={() => setOpenK(true)}
               aria-label="Open command palette"
-              className="ml-1.5 inline-flex items-center gap-2 rounded-full border border-border-token bg-transparent px-2.5 py-1 font-sans text-[12.5px] text-ink-muted"
+              className="ml-1.5 inline-flex items-center gap-2 rounded-full border border-border-token bg-transparent px-2.5 py-[5px] font-sans text-[12.5px] text-ink-muted"
             >
               <span className="text-[13px]">⌕</span>
               <span>검색</span>
