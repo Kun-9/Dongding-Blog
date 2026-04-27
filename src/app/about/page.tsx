@@ -9,20 +9,17 @@ export const metadata = {
 };
 
 const CAREER: ReadonlyArray<readonly [string, string, string]> = [
-  ["2024 — 현재", "시니어 백엔드 엔지니어", "결제 도메인 마이그레이션, 트래픽 5배 처리"],
-  ["2022 — 2024", "백엔드 엔지니어", "주문/배송 시스템 설계 및 구축"],
-  ["2021 — 2022", "백엔드 엔지니어", "레거시 모놀리스를 모듈러 모놀리스로 전환"],
+  ["2024.08 — 현재", "백엔드 엔지니어 · 한경정보기술", "MSA 시스템 공통관리 · 사내 AI 도입 실험"],
 ];
 
 const INTERESTS = [
   "Java",
   "Spring",
-  "JPA / Hibernate",
-  "MySQL",
-  "PostgreSQL",
-  "시스템 설계",
-  "면접 준비",
-  "DB internals",
+  "Oracle",
+  "MSA",
+  "공통 모듈 설계",
+  "AI 활용 개발",
+  "LLM 워크플로우",
 ];
 
 export default function Page() {
@@ -41,14 +38,15 @@ export default function Page() {
 
       <section className="mb-10">
         <p className="mb-5 font-sans text-[17px] leading-[1.85] tracking-[-0.005em] text-ink-soft">
-          5년차 백엔드 개발자입니다. Java · Spring · JPA로 일하고, 최근에는 DB
-          internals와 시스템 설계 쪽을 깊게 파고 있어요.
+          2년차 백엔드 개발자입니다. Java · Spring · Oracle로 일하고, MSA
+          환경의 공통관리 영역을 맡으면서 시스템이 어떻게 맞물려 돌아가는지
+          익히고 있어요.
         </p>
         <p className="mb-5 font-sans text-[17px] leading-[1.85] tracking-[-0.005em] text-ink-soft">
-          이 블로그에는 실무에서 마주친 문제를 끝까지 풀어본 기록을 씁니다.
-          답이 있는 글보다, 같이 고민하다가 함께 답에 도달하는 글을 쓰고 싶어요.
-          빠르게 훑어 읽기 어려운 글이 되더라도, 한 번 읽고 나면 코드를 짤 때
-          떠올릴 수 있는 글이 목표입니다.
+          요즘은 AI를 학습하고 실제 업무에 어떻게 녹여낼지 실험하는 게
+          가장 즐겁습니다. 이 블로그에는 그 과정에서 마주친 문제를 끝까지
+          풀어본 기록을 남겨요. 답이 있는 글보다, 같이 고민하다가 함께
+          답에 도달하는 글을 쓰고 싶습니다.
         </p>
       </section>
 
