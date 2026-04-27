@@ -5,7 +5,7 @@
  */
 import { NextResponse } from "next/server";
 import { getCategoriesWithCounts } from "@/lib/category-stats";
-import { devGuard } from "@/app/api/posts/_shared";
+import { devGuard } from "../../posts/_shared";
 
 export async function GET() {
   const blocked = devGuard();

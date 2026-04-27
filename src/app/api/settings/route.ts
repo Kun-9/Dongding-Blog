@@ -8,7 +8,7 @@ import { NextResponse } from "next/server";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { z } from "zod";
-import { devGuard } from "@/app/api/posts/_shared";
+import { devGuard } from "../posts/_shared";
 
 const SETTINGS_PATH = path.join(process.cwd(), "src", "lib", "site.json");
 

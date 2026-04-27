@@ -8,7 +8,7 @@ import { NextResponse } from "next/server";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { z } from "zod";
-import { SLUG_RE, devGuard } from "@/app/api/posts/_shared";
+import { SLUG_RE, devGuard } from "../posts/_shared";
 
 const CATEGORIES_PATH = path.join(
   process.cwd(),
