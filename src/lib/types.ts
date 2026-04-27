@@ -6,14 +6,14 @@
 export interface Subcategory {
   id: string;
   name: string;
-  count: number;
+  count?: number;
 }
 
 export interface Category {
   id: string;
   name: string;
-  count: number;
   desc: string;
+  count?: number;
   subs?: Subcategory[];
 }
 
@@ -63,12 +63,32 @@ export interface Draft {
 }
 
 export interface SiteMeta {
+  url: string;
+  title: string;
+  shortTitle: string;
+  description: string;
+  lang: string;
+  locale: string;
+  copyright: string;
+
   author: string;
+  handle: string;
   bio: string;
   intro: string;
+
+  og: {
+    headline: readonly string[];
+    tagline: string;
+    label: string;
+  };
+
   social: {
     github: string;
     email: string;
     rss: string;
+  };
+
+  publish: {
+    rssLimit: number;
   };
 }

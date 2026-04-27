@@ -1,15 +1,17 @@
 /**
- * Site-wide author / social metadata. Edit this file to change About / Footer.
+ * Site-wide configuration. Mutable values live in `site.json` so the
+ * dev-only `/api/settings` route can rewrite them; this module just imports
+ * them, layers env overrides, and exposes a typed `site` object.
+ *
+ * To change site title / SEO / social, edit `site.json` directly or use the
+ * Settings page on a local `npm run dev` server.
  */
+import siteData from "@/lib/site.json";
 import type { SiteMeta } from "@/lib/types";
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? siteData.url;
+
 export const site: SiteMeta = {
-  author: "동딩",
-  bio: "Spring · JPA · 시스템 설계를 깊게 파는 백엔드 개발자",
-  intro: "실무에서 마주친 문제를 끝까지 파보는 노트.",
-  social: {
-    github: "github.com/dong-ding",
-    email: "dong-ding@dev.kr",
-    rss: "/rss.xml",
-  },
+  ...siteData,
+  url: SITE_URL,
 };
