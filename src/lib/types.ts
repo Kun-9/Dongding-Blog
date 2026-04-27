@@ -50,6 +50,7 @@ export interface Series {
 }
 
 export interface Bookmark {
+  id: number;
   url: string;
   title: string;
   source: string;

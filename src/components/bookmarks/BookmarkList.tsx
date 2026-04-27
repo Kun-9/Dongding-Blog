@@ -1,25 +1,104 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAdmin } from "@/lib/hooks";
 import { fmtDate } from "@/lib/tokens";
 import type { Bookmark } from "@/lib/types";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 const TAG_OPTIONS = ["system", "db", "spring", "kafka", "jvm", "observability"];
 const ADMIN_DELETE = "#a04a3a";
 
+type EditorState =
+  | { kind: "create" }
+  | { kind: "edit"; item: Bookmark }
+  | null;
+
+type Patch =
+  | { kind: "add"; item: Bookmark }
+  | { kind: "update"; item: Bookmark }
+  | { kind: "delete"; id: number };
+
+function sortByDateDesc(items: Bookmark[]): Bookmark[] {
+  return [...items].sort((a, b) => b.date.localeCompare(a.date));
+}
+
+function applyPatches(items: Bookmark[], patches: Patch[]): Bookmark[] {
+  let next = items;
+  for (const p of patches) {
+    if (p.kind === "add") {
+      if (!next.some((x) => x.id === p.item.id)) next = [p.item, ...next];
+    } else if (p.kind === "update") {
+      next = next.map((x) => (x.id === p.item.id ? p.item : x));
+    } else {
+      next = next.filter((x) => x.id !== p.id);
+    }
+  }
+  return sortByDateDesc(next);
+}
+
 export function BookmarkList({ items }: { items: Bookmark[] }) {
   const isAdmin = useAdmin();
-  const [creating, setCreating] = useState(false);
+  const router = useRouter();
+  // Optimistic patches layered on top of the latest server-rendered `items`.
+  // Each patch self-expires once the server-rendered list reflects it,
+  // computed inline during render — no setState-in-effect needed.
+  const [patches, setPatches] = useState<Patch[]>([]);
+  const visiblePatches = useMemo(
+    () =>
+      patches.filter((p) => {
+        if (p.kind === "add") return !items.some((x) => x.id === p.item.id);
+        if (p.kind === "update") {
+          const cur = items.find((x) => x.id === p.item.id);
+          return !cur || JSON.stringify(cur) !== JSON.stringify(p.item);
+        }
+        return items.some((x) => x.id === p.id);
+      }),
+    [items, patches],
+  );
+  const list = useMemo(
+    () => applyPatches(sortByDateDesc(items), visiblePatches),
+    [items, visiblePatches],
+  );
+  const [editor, setEditor] = useState<EditorState>(null);
+  const [pendingDelete, setPendingDelete] = useState<Bookmark | null>(null);
+
+  function handleCreated(b: Bookmark) {
+    setPatches((cur) => [...cur, { kind: "add", item: b }]);
+    setEditor(null);
+    router.refresh();
+  }
+
+  function handleUpdated(b: Bookmark) {
+    setPatches((cur) => [...cur, { kind: "update", item: b }]);
+    setEditor(null);
+    router.refresh();
+  }
+
+  async function handleDelete(b: Bookmark) {
+    setPendingDelete(null);
+    setPatches((cur) => [...cur, { kind: "delete", id: b.id }]);
+    try {
+      const res = await fetch(`/api/bookmarks/${b.id}`, { method: "DELETE" });
+      if (!res.ok) {
+        setPatches((cur) => cur.filter((p) => !(p.kind === "delete" && p.id === b.id)));
+        return;
+      }
+      router.refresh();
+    } catch {
+      setPatches((cur) => cur.filter((p) => !(p.kind === "delete" && p.id === b.id)));
+    }
+  }
 
   return (
     <>
       {isAdmin && (
         <div className="mb-6 flex justify-end">
-          {!creating && (
+          {editor === null && (
             <button
               type="button"
-              onClick={() => setCreating(true)}
+              onClick={() => setEditor({ kind: "create" })}
               className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border-none px-[13px] py-[7px] pl-[11px] font-sans text-[13px] font-semibold tracking-[-0.005em]"
               style={{ background: "var(--ink)", color: "var(--bg)" }}
             >
@@ -30,16 +109,58 @@ export function BookmarkList({ items }: { items: Bookmark[] }) {
         </div>
       )}
 
-      {isAdmin && creating && (
-        <BookmarkEditor onClose={() => setCreating(false)} />
+      {isAdmin && editor?.kind === "create" && (
+        <BookmarkEditor
+          mode="create"
+          onClose={() => setEditor(null)}
+          onCreated={handleCreated}
+          onUpdated={handleUpdated}
+        />
       )}
 
       <ul className="m-0 list-none p-0">
-        {items.map((b, i) => (
-          <BookmarkRow key={b.url} b={b} isFirst={i === 0} isAdmin={isAdmin} />
-        ))}
+        {list.map((b, i) => {
+          const isEditing =
+            editor?.kind === "edit" && editor.item.id === b.id;
+          if (isEditing) {
+            return (
+              <li key={`edit-${b.id}`} className="py-5">
+                <BookmarkEditor
+                  mode="edit"
+                  initial={b}
+                  onClose={() => setEditor(null)}
+                  onCreated={handleCreated}
+                  onUpdated={handleUpdated}
+                />
+              </li>
+            );
+          }
+          return (
+            <BookmarkRow
+              key={b.id}
+              b={b}
+              isFirst={i === 0}
+              isAdmin={isAdmin}
+              onEdit={() => setEditor({ kind: "edit", item: b })}
+              onDelete={() => setPendingDelete(b)}
+            />
+          );
+        })}
       </ul>
       <div className="h-16" />
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        tone="danger"
+        title="링크를 삭제하시겠습니까?"
+        body="삭제한 항목은 복구할 수 없습니다."
+        meta={pendingDelete?.title}
+        confirmLabel="삭제"
+        onConfirm={() => {
+          if (pendingDelete) handleDelete(pendingDelete);
+        }}
+        onCancel={() => setPendingDelete(null)}
+      />
     </>
   );
 }
@@ -48,10 +169,14 @@ function BookmarkRow({
   b,
   isFirst,
   isAdmin,
+  onEdit,
+  onDelete,
 }: {
   b: Bookmark;
   isFirst: boolean;
   isAdmin: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
 }) {
   const [hover, setHover] = useState(false);
   return (
@@ -103,6 +228,7 @@ function BookmarkRow({
           <button
             type="button"
             title="수정"
+            onClick={onEdit}
             className="inline-flex h-[26px] w-[26px] items-center justify-center rounded-[5px] border-none bg-transparent p-0 text-[13px] text-ink-soft"
           >
             ✎
@@ -110,6 +236,7 @@ function BookmarkRow({
           <button
             type="button"
             title="삭제"
+            onClick={onDelete}
             className="inline-flex h-[26px] w-[26px] items-center justify-center rounded-[5px] border-none bg-transparent p-0 text-[13px]"
             style={{ color: ADMIN_DELETE }}
           >
@@ -121,17 +248,111 @@ function BookmarkRow({
   );
 }
 
-function BookmarkEditor({ onClose }: { onClose: () => void }) {
-  const [url, setUrl] = useState("");
-  const [title, setTitle] = useState("");
-  const [source, setSource] = useState("");
-  const [tag, setTag] = useState(TAG_OPTIONS[0]);
-  const [note, setNote] = useState("");
+interface EditorProps {
+  mode: "create" | "edit";
+  initial?: Bookmark;
+  onClose: () => void;
+  onCreated: (b: Bookmark) => void;
+  onUpdated: (b: Bookmark) => void;
+}
+
+function BookmarkEditor({
+  mode,
+  initial,
+  onClose,
+  onCreated,
+  onUpdated,
+}: EditorProps) {
+  const [url, setUrl] = useState(initial?.url ?? "");
+  const [title, setTitle] = useState(initial?.title ?? "");
+  const [source, setSource] = useState(initial?.source ?? "");
+  const [tag, setTag] = useState(initial?.tag ?? TAG_OPTIONS[0]);
+  const [note, setNote] = useState(initial?.note ?? "");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const titleTouched = useRef(initial?.title ? true : false);
+  const sourceTouched = useRef(initial?.source ? true : false);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const previewSeq = useRef(0);
 
   const inp =
     "w-full rounded-md border border-border-token px-[11px] py-2 font-sans text-[14px] tracking-[-0.005em] text-ink outline-none";
   const lbl =
     "mb-1.5 font-sans text-[11px] font-bold uppercase tracking-[0.08em] text-ink-muted";
+
+  useEffect(() => {
+    return () => {
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    };
+  }, []);
+
+  function schedulePreview(nextUrl: string) {
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    const trimmed = nextUrl.trim();
+    if (!trimmed) return;
+    const seq = ++previewSeq.current;
+    debounceTimer.current = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `/api/bookmarks/preview?url=${encodeURIComponent(trimmed)}`,
+        );
+        if (!res.ok) return;
+        const data = (await res.json()) as { title?: string; source?: string };
+        if (seq !== previewSeq.current) return;
+        if (!titleTouched.current && data.title) setTitle(data.title);
+        if (!sourceTouched.current && data.source) setSource(data.source);
+      } catch {
+        // Silent — preview is best-effort.
+      }
+    }, 800);
+  }
+
+  async function submit() {
+    setError(null);
+    setSubmitting(true);
+    try {
+      const payload = {
+        url: url.trim(),
+        title: title.trim(),
+        source: source.trim(),
+        tag,
+        note,
+      };
+      const endpoint =
+        mode === "edit" && initial
+          ? `/api/bookmarks/${initial.id}`
+          : "/api/bookmarks";
+      const method = mode === "edit" ? "PUT" : "POST";
+      const res = await fetch(endpoint, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (res.status === 409) {
+        setError("이미 등록된 URL입니다");
+        return;
+      }
+      if (res.status === 400 || res.status === 422) {
+        setError("입력값을 확인해주세요");
+        return;
+      }
+      if (!res.ok) {
+        setError("저장에 실패했습니다");
+        return;
+      }
+      const saved = (await res.json()) as Bookmark;
+      if (mode === "edit") onUpdated(saved);
+      else onCreated(saved);
+    } catch {
+      setError("네트워크 오류가 발생했습니다");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const heading = mode === "edit" ? "링크 수정" : "링크 추가";
+  const submitLabel = mode === "edit" ? "저장" : "추가";
 
   return (
     <div
@@ -143,7 +364,7 @@ function BookmarkEditor({ onClose }: { onClose: () => void }) {
     >
       <div className="mb-[18px] flex items-center justify-between">
         <h3 className="m-0 font-sans text-[17px] font-semibold tracking-[-0.02em] text-ink">
-          링크 추가
+          {heading}
         </h3>
         <button
           type="button"
@@ -153,12 +374,27 @@ function BookmarkEditor({ onClose }: { onClose: () => void }) {
           ×
         </button>
       </div>
+      {error && (
+        <div
+          className="mb-3 rounded-md px-3 py-2 font-sans text-[13px]"
+          style={{
+            background: "rgba(160,74,58,0.08)",
+            color: "#a04a3a",
+          }}
+        >
+          {error}
+        </div>
+      )}
       <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
         <label className="sm:col-span-2">
           <div className={lbl}>URL</div>
           <input
             value={url}
-            onChange={(e) => setUrl(e.target.value)}
+            onChange={(e) => {
+              const v = e.target.value;
+              setUrl(v);
+              schedulePreview(v);
+            }}
             placeholder="https://example.com/article"
             className={`${inp} font-mono text-[13px]`}
             style={{ background: "var(--bg)" }}
@@ -171,7 +407,10 @@ function BookmarkEditor({ onClose }: { onClose: () => void }) {
           <div className={lbl}>제목</div>
           <input
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => {
+              titleTouched.current = true;
+              setTitle(e.target.value);
+            }}
             placeholder="자동 채움 또는 수동 입력"
             className={inp}
             style={{ background: "var(--bg)" }}
@@ -181,7 +420,10 @@ function BookmarkEditor({ onClose }: { onClose: () => void }) {
           <div className={lbl}>출처</div>
           <input
             value={source}
-            onChange={(e) => setSource(e.target.value)}
+            onChange={(e) => {
+              sourceTouched.current = true;
+              setSource(e.target.value);
+            }}
             placeholder="Martin Fowler"
             className={inp}
             style={{ background: "var(--bg)" }}
@@ -218,17 +460,23 @@ function BookmarkEditor({ onClose }: { onClose: () => void }) {
         <button
           type="button"
           onClick={onClose}
+          disabled={submitting}
           className="rounded-md border border-border-token bg-transparent px-3.5 py-[7px] font-sans text-[13px] font-medium text-ink-soft"
         >
           취소
         </button>
         <button
           type="button"
-          onClick={onClose}
+          onClick={submit}
+          disabled={submitting}
           className="rounded-md border-none px-3.5 py-[7px] font-sans text-[13px] font-semibold"
-          style={{ background: "var(--ink)", color: "var(--bg)" }}
+          style={{
+            background: "var(--ink)",
+            color: "var(--bg)",
+            opacity: submitting ? 0.6 : 1,
+          }}
         >
-          추가
+          {submitting ? "저장 중..." : submitLabel}
         </button>
       </div>
     </div>

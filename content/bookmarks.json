@@ -1,5 +1,6 @@
 [
   {
+    "id": 1,
     "url": "martinfowler.com/articles/patterns-of-distributed-systems",
     "title": "Patterns of Distributed Systems",
     "source": "Martin Fowler",
@@ -8,6 +9,7 @@
     "date": "2026-04-22"
   },
   {
+    "id": 2,
     "url": "kafka.apache.org/documentation",
     "title": "Kafka Documentation — Exactly-Once Semantics",
     "source": "Apache Kafka",
@@ -16,6 +18,7 @@
     "date": "2026-04-20"
   },
   {
+    "id": 3,
     "url": "planetscale.com/blog/btrees-and-database-indexes",
     "title": "B-Trees and Database Indexes",
     "source": "PlanetScale",
@@ -24,6 +27,7 @@
     "date": "2026-04-12"
   },
   {
+    "id": 4,
     "url": "jepsen.io/analyses",
     "title": "Jepsen — Distributed Systems Safety Research",
     "source": "Jepsen",
@@ -32,6 +36,7 @@
     "date": "2026-04-08"
   },
   {
+    "id": 5,
     "url": "use-the-index-luke.com",
     "title": "Use The Index, Luke!",
     "source": "Markus Winand",
@@ -40,6 +45,7 @@
     "date": "2026-03-28"
   },
   {
+    "id": 6,
     "url": "shopify.engineering/scaling-shopify",
     "title": "Shopify의 모놀리스 분리기",
     "source": "Shopify Engineering",

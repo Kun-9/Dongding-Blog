@@ -9,6 +9,7 @@ import { z } from "zod";
 import type { Bookmark } from "@/lib/types";
 
 const BookmarkSchema = z.object({
+  id: z.number().int().positive(),
   url: z.string(),
   title: z.string(),
   source: z.string(),
@@ -20,6 +21,10 @@ const BookmarkSchema = z.object({
 const FILE = path.join(process.cwd(), "content", "bookmarks.json");
 
 let cache: Bookmark[] | null = null;
+
+export function invalidateBookmarksCache(): void {
+  cache = null;
+}
 
 export function getAllBookmarks(): Bookmark[] {
   if (cache) return cache;
