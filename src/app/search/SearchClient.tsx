@@ -9,19 +9,19 @@ import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useTheme } from "next-themes";
-import type { Category, PostMeta } from "@/lib/types";
+import type { PostMeta } from "@/lib/types";
+import { getCategory } from "@/lib/categories";
 import { TagChip } from "@/components/post/TagChip";
 import { fmtDate } from "@/lib/tokens";
 import { useMounted } from "@/lib/hooks";
 
 interface Props {
   posts: PostMeta[];
-  categories: Category[];
 }
 
 type Scope = "all" | "title" | "tag" | "body";
 
-export function SearchClient({ posts, categories }: Props) {
+export function SearchClient({ posts }: Props) {
   const params = useSearchParams();
   const initial = params?.get("q") ?? "";
   const [q, setQ] = useState(initial);
@@ -31,8 +31,6 @@ export function SearchClient({ posts, categories }: Props) {
   const isDark = mounted ? resolvedTheme === "dark" : false;
 
   const ql = q.trim().toLowerCase();
-  const lookupCategory = (id: string) =>
-    categories.find((c) => c.id === id)?.name;
 
   const matches = useMemo(() => {
     if (!ql) return [];
@@ -153,7 +151,7 @@ export function SearchClient({ posts, categories }: Props) {
                 className="block text-inherit no-underline"
               >
                 <div className="mb-1 font-mono text-[11px] font-semibold tabular-nums text-ink-muted">
-                  {lookupCategory(p.category) ?? p.category} · {fmtDate(p.date)}
+                  {getCategory(p.category)?.name ?? p.category} · {fmtDate(p.date)}
                 </div>
                 <div className="font-sans text-[18px] font-semibold leading-[1.35] tracking-[-0.025em] text-ink">
                   {highlight(p.title)}
