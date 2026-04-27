@@ -4,7 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
-import { Plausible } from "@/components/analytics/Plausible";
+import { Umami } from "@/components/analytics/Umami";
 import { categories } from "@/lib/categories";
 import { getAllPosts } from "@/lib/posts";
 import { site } from "@/lib/site";
@@ -40,7 +40,7 @@ export default function RootLayout({
           {children}
           <Footer />
         </ThemeProvider>
-        <Plausible />
+        <Umami />
       </body>
     </html>
   );
