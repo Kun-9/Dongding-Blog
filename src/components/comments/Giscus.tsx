@@ -19,9 +19,10 @@ export function Giscus({ repo, repoId, category, categoryId }: Props) {
   const { resolvedTheme } = useTheme();
 
   useEffect(() => {
-    if (!ref.current) return;
+    const host = ref.current;
+    if (!host) return;
     // Tear down on theme change so giscus reloads with new theme.
-    ref.current.innerHTML = "";
+    host.replaceChildren();
 
     const themeName = resolvedTheme === "dark" ? "dark" : "light";
     const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
@@ -46,7 +47,10 @@ export function Giscus({ repo, repoId, category, categoryId }: Props) {
       "data-loading": "lazy",
     }).forEach(([k, v]) => script.setAttribute(k, v));
 
-    ref.current.appendChild(script);
+    host.appendChild(script);
+    return () => {
+      host.replaceChildren();
+    };
   }, [repo, repoId, category, categoryId, resolvedTheme]);
 
   return <div ref={ref} />;

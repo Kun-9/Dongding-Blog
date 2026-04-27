@@ -21,7 +21,7 @@ export function ReadingProgress({ articleId }: Props) {
       const total = el.scrollHeight - window.innerHeight;
       const scrolled = window.scrollY - el.offsetTop;
       const p = Math.max(0, Math.min(1, scrolled / Math.max(1, total)));
-      setPct(p);
+      setPct((prev) => (Math.abs(prev - p) > 0.005 ? p : prev));
     };
     window.addEventListener("scroll", onScroll, { passive: true });
     onScroll();
