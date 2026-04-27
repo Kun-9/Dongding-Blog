@@ -193,18 +193,51 @@ function formReducer(state: FormState, action: FormAction): FormState {
       };
     case "HYDRATE_FROM_DRAFT":
       return {
-        title: action.draft.title,
-        summary: action.draft.summary,
-        slug: action.draft.slug,
+        title: action.draft.title ?? "",
+        summary: action.draft.summary ?? "",
+        slug: action.draft.slug ?? "",
         slugLocked: false,
-        category: action.draft.category,
-        tags: action.draft.tags,
+        category: action.draft.category ?? "",
+        tags: action.draft.tags ?? "",
         body: action.draft.body,
-        visibility: action.draft.visibility,
+        visibility: action.draft.visibility ?? "draft",
         date: state.date,
       };
   }
 }
+
+const VISIBILITY_OPTIONS = [
+  {
+    v: "published" as const,
+    label: "발행",
+    glyph: "●",
+    desc: "외부에 공개",
+    badgeLabel: "PUBLISHED",
+    ctaLabel: "발행하기 →",
+  },
+  {
+    v: "private" as const,
+    label: "비공개",
+    glyph: "◐",
+    desc: "URL 알아도 안 보임",
+    badgeLabel: "PRIVATE",
+    ctaLabel: "비공개로 저장",
+  },
+  {
+    v: "draft" as const,
+    label: "초안",
+    glyph: "○",
+    desc: "저장만, 미공개",
+    badgeLabel: "DRAFT",
+    ctaLabel: "초안 저장",
+  },
+] as const;
+
+type VisibilityMeta = (typeof VISIBILITY_OPTIONS)[number];
+
+const VISIBILITY_META: Record<Visibility, VisibilityMeta> = Object.fromEntries(
+  VISIBILITY_OPTIONS.map((o) => [o.v, o]),
+) as Record<Visibility, VisibilityMeta>;
 
 function StudioEditor() {
   const router = useRouter();
@@ -1026,39 +1059,6 @@ function StudioEditor() {
     </main>
   );
 }
-
-const VISIBILITY_OPTIONS = [
-  {
-    v: "published" as const,
-    label: "발행",
-    glyph: "●",
-    desc: "외부에 공개",
-    badgeLabel: "PUBLISHED",
-    ctaLabel: "발행하기 →",
-  },
-  {
-    v: "private" as const,
-    label: "비공개",
-    glyph: "◐",
-    desc: "URL 알아도 안 보임",
-    badgeLabel: "PRIVATE",
-    ctaLabel: "비공개로 저장",
-  },
-  {
-    v: "draft" as const,
-    label: "초안",
-    glyph: "○",
-    desc: "저장만, 미공개",
-    badgeLabel: "DRAFT",
-    ctaLabel: "초안 저장",
-  },
-] as const;
-
-type VisibilityMeta = (typeof VISIBILITY_OPTIONS)[number];
-
-const VISIBILITY_META: Record<Visibility, VisibilityMeta> = Object.fromEntries(
-  VISIBILITY_OPTIONS.map((o) => [o.v, o]),
-) as Record<Visibility, VisibilityMeta>;
 
 function VisibilityField({
   value,
