@@ -9,10 +9,16 @@ import { invalidatePostsCache } from "@/lib/posts";
 import {
   PostBodySchema,
   devGuard,
-  postExists,
   postPath,
   serializePost,
 } from "./_shared";
+
+function isCode(err: unknown, code: string): boolean {
+  return (
+    err instanceof Error &&
+    (err as NodeJS.ErrnoException).code === code
+  );
+}
 
 export async function POST(req: Request) {
   const blocked = devGuard();
@@ -34,14 +40,20 @@ export async function POST(req: Request) {
   }
 
   const data = parsed.data;
-  if (await postExists(data.slug)) {
-    return NextResponse.json(
-      { error: "이미 존재하는 slug입니다", slug: data.slug },
-      { status: 409 },
-    );
+  try {
+    await fs.writeFile(postPath(data.slug), serializePost(data), {
+      encoding: "utf8",
+      flag: "wx",
+    });
+  } catch (err) {
+    if (isCode(err, "EEXIST")) {
+      return NextResponse.json(
+        { error: "이미 존재하는 slug입니다", slug: data.slug },
+        { status: 409 },
+      );
+    }
+    throw err;
   }
-
-  await fs.writeFile(postPath(data.slug), serializePost(data), "utf8");
   invalidatePostsCache();
 
   return NextResponse.json({ slug: data.slug }, { status: 201 });

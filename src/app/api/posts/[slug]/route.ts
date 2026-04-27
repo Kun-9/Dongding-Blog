@@ -19,16 +19,28 @@ import {
 
 type Ctx = { params: Promise<{ slug: string }> };
 
+function isENOENT(err: unknown): boolean {
+  return (
+    err instanceof Error &&
+    (err as NodeJS.ErrnoException).code === "ENOENT"
+  );
+}
+
 export async function GET(_req: Request, { params }: Ctx) {
   const blocked = devGuard();
   if (blocked) return blocked;
 
   const { slug } = await params;
-  if (!(await postExists(slug))) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
 
-  const raw = await fs.readFile(postPath(slug), "utf8");
+  let raw: string;
+  try {
+    raw = await fs.readFile(postPath(slug), "utf8");
+  } catch (err) {
+    if (isENOENT(err)) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    throw err;
+  }
   const { data, content } = matter(raw);
 
   // Resolve visibility: explicit field wins; legacy `draft: true` → 'draft';
@@ -104,11 +116,14 @@ export async function DELETE(_req: Request, { params }: Ctx) {
   if (blocked) return blocked;
 
   const { slug } = await params;
-  if (!(await postExists(slug))) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  try {
+    await fs.unlink(postPath(slug));
+  } catch (err) {
+    if (isENOENT(err)) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    throw err;
   }
-
-  await fs.unlink(postPath(slug));
   invalidatePostsCache();
 
   return NextResponse.json({ slug });
