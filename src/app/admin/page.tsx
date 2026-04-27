@@ -6,13 +6,16 @@
 import Link from "next/link";
 import { getAllPosts } from "@/lib/posts";
 import { getAllDrafts } from "@/lib/drafts";
-import { categories } from "@/lib/categories";
+import { getCategoriesWithCounts } from "@/lib/category-stats";
 import { fmtDate } from "@/lib/tokens";
 import { CTA } from "@/components/ui/CTA";
+import { DevOnlyNotice } from "@/components/layout/DevOnlyNotice";
 
 export const metadata = {
-  title: "Admin · Dong-Ding",
+  title: "Admin",
 };
+
+const isDev = process.env.NODE_ENV === "development";
 
 const MONTHLY = [3, 1, 2, 4, 2, 3, 5, 2, 4, 6, 3, 4];
 const MONTH_LABELS = ["M", "J", "J", "A", "S", "O", "N", "D", "J", "F", "M", "A"];
@@ -39,10 +42,13 @@ const RECENT_COMMENTS = [
 ];
 
 export default function Page() {
+  if (!isDev) return <DevOnlyNotice page="대시보드" />;
+
   const posts = getAllPosts();
   const drafts = getAllDrafts();
+  const categories = getCategoriesWithCounts();
   const max = Math.max(...MONTHLY);
-  const totalCatPosts = categories.reduce((a, x) => a + x.count, 0);
+  const totalCatPosts = categories.reduce((a, x) => a + (x.count ?? 0), 0);
 
   const stats = [
     { label: "발행된 글", value: posts.length, sub: "누적", isDelta: false },
@@ -141,7 +147,8 @@ export default function Page() {
           </div>
           <ul className="m-0 flex list-none flex-col gap-2 p-0">
             {categories.map((cat) => {
-              const pct = (cat.count / totalCatPosts) * 100;
+              const count = cat.count ?? 0;
+              const pct = totalCatPosts > 0 ? (count / totalCatPosts) * 100 : 0;
               return (
                 <li
                   key={cat.id}
@@ -160,7 +167,7 @@ export default function Page() {
                     />
                   </div>
                   <span className="text-right font-mono tabular-nums text-ink-muted">
-                    {cat.count}
+                    {count}
                   </span>
                 </li>
               );

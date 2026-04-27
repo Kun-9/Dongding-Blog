@@ -3,6 +3,8 @@
 /**
  * Studio — write/edit page with split editor + live preview.
  * Port of project/page-extras.jsx#StudioPage. UI only — no real save/publish.
+ * Production builds render <DevOnlyNotice />; the real editor is reachable
+ * only via `npm run dev`.
  */
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
@@ -12,6 +14,9 @@ import { CodeBlock } from "@/components/prose/CodeBlock";
 import { InlineCode } from "@/components/prose/InlineCode";
 import { Callout } from "@/components/prose/Callout";
 import { TagChip } from "@/components/post/TagChip";
+import { DevOnlyNotice } from "@/components/layout/DevOnlyNotice";
+
+const isDev = process.env.NODE_ENV === "development";
 
 const SAMPLE_BODY = `# 들어가며
 
@@ -30,6 +35,11 @@ o.setStatus(PAID);  // setter만 호출했는데
 엔티티가 영속성 컨텍스트에 들어올 때, Hibernate는 그 시점의 필드값을 \`Object[]\` 배열로 복제해 둔다.`;
 
 export default function Page() {
+  if (!isDev) return <DevOnlyNotice page="스튜디오" />;
+  return <StudioEditor />;
+}
+
+function StudioEditor() {
   const [title, setTitle] = useState(
     "JPA dirty checking, 어떻게 그렇게 빠른가",
   );
