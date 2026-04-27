@@ -47,6 +47,7 @@ function getStyle(dark: boolean): CSSProperties {
     return {
       background: "var(--accent)",
       color: "var(--accent-ink)",
+      border: "1px solid transparent",
       boxShadow:
         "inset 0 0.5px 0 rgba(255,255,255,0.18), inset 0 0 0 0.5px rgba(0,0,0,0.25), 0 1px 2px rgba(0,0,0,0.08)",
     };
@@ -62,7 +63,7 @@ export function CTA(props: CTAProps) {
   const { children, dark = true, size = "md", className = "" } = props;
   const cls = [
     "inline-block rounded-md font-sans font-semibold tracking-[-0.01em]",
-    "whitespace-nowrap no-underline",
+    "whitespace-nowrap no-underline cursor-pointer",
     "transition-opacity hover:opacity-85",
     padBySize[size],
     fontBySize[size],

@@ -1093,7 +1093,7 @@ function StudioEditor() {
           type="button"
           onClick={handleCancelClick}
           disabled={!isDirty}
-          className="rounded-md border border-border-token bg-transparent px-3 py-[6px] font-sans text-[12.5px] font-medium text-ink-soft transition-colors hover:bg-hover hover:text-ink disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-ink-soft"
+          className="cursor-pointer rounded-md border border-border-token bg-transparent px-3 py-[6px] font-sans text-[12.5px] font-medium text-ink-soft transition-colors hover:bg-hover hover:text-ink disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-ink-soft"
           title={isDirty ? "변경사항 폐기" : "변경사항 없음"}
         >
           취소
