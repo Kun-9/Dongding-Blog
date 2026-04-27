@@ -1,69 +1,155 @@
 "use client";
 
 /**
- * Settings — port of project/page-settings.jsx#SettingsPage.
- * UI only (no actual persistence).
+ * Settings — dev-only editor for `src/lib/site.json` plus a localStorage-
+ * backed editor preferences pane. The /api/settings PUT route persists the
+ * site-wide form; comments (Giscus) stays read-only because it is configured
+ * via .env. Production builds short-circuit to <DevOnlyNotice />.
  */
-import { useState } from "react";
-import type { ReactNode } from "react";
-import { CTA } from "@/components/ui/CTA";
-import { useTheme } from "next-themes";
+import { useMemo, useState, useSyncExternalStore } from "react";
+import type { ChangeEvent, ReactNode } from "react";
+import { site } from "@/lib/site";
+import siteJson from "@/lib/site.json";
+import { DevOnlyNotice } from "@/components/layout/DevOnlyNotice";
 
-const AVATAR_COLORS = ["#7a8a5a", "#8a7355", "#5a7480", "#8a5d5d", "#5d6b8a"];
+const isDev = process.env.NODE_ENV === "development";
+
+const giscus = {
+  repo: process.env.NEXT_PUBLIC_GISCUS_REPO,
+  repoId: process.env.NEXT_PUBLIC_GISCUS_REPO_ID,
+  category: process.env.NEXT_PUBLIC_GISCUS_CATEGORY,
+  categoryId: process.env.NEXT_PUBLIC_GISCUS_CATEGORY_ID,
+};
+const giscusOn = Boolean(
+  giscus.repo && giscus.repoId && giscus.category && giscus.categoryId,
+);
+const urlEnvOverride = Boolean(process.env.NEXT_PUBLIC_SITE_URL);
+
+const PREFS_KEY = "dongding:editor-prefs";
+const PREFS_CHANGE = "dongding:prefs-change";
+
+interface EditorPrefs {
+  autoSaveSec: number;
+  notifyOnComment: boolean;
+}
+
+const DEFAULT_PREFS: EditorPrefs = {
+  autoSaveSec: 8,
+  notifyOnComment: true,
+};
+
+function subscribePrefs(callback: () => void) {
+  if (typeof window === "undefined") return () => {};
+  window.addEventListener(PREFS_CHANGE, callback);
+  window.addEventListener("storage", callback);
+  return () => {
+    window.removeEventListener(PREFS_CHANGE, callback);
+    window.removeEventListener("storage", callback);
+  };
+}
+
+function getRawPrefs(): string {
+  return window.localStorage.getItem(PREFS_KEY) ?? "";
+}
+
+function getServerRawPrefs(): string {
+  return "";
+}
+
+function parsePrefs(raw: string): EditorPrefs {
+  if (!raw) return DEFAULT_PREFS;
+  try {
+    const parsed = JSON.parse(raw) as Partial<EditorPrefs>;
+    return { ...DEFAULT_PREFS, ...parsed };
+  } catch {
+    return DEFAULT_PREFS;
+  }
+}
+
+const SECTIONS: ReadonlyArray<readonly [string, string]> = [
+  ["profile", "프로필"],
+  ["social", "소셜 링크"],
+  ["comments", "댓글"],
+  ["seo", "SEO · 메타"],
+  ["publish", "발행"],
+  ["editor", "에디터"],
+];
+
+type SiteData = typeof siteJson;
+type SaveStatus = "idle" | "saving" | "saved" | { error: string };
 
 export default function Page() {
-  const { resolvedTheme } = useTheme();
-  const isDark = resolvedTheme === "dark";
+  if (!isDev) return <DevOnlyNotice page="설정" />;
+  return <SettingsView />;
+}
 
-  const [profile, setProfile] = useState({
-    handle: "dongding",
-    name: "동딩 (Dong-Ding)",
-    bio: "백엔드 7년차. 자바·스프링·DB. 한 번에 한 글씩 천천히.",
-    email: "dongding@example.com",
-    avatar: "#7a8a5a",
-  });
-  const [social, setSocial] = useState({
-    github: "dongding",
-    twitter: "",
-    linkedin: "dongding-kim",
-    rss: true,
-  });
-  const [comments, setComments] = useState({
-    enabled: true,
-    repo: "dongding/blog-comments",
-    category: "General",
-    mapping: "pathname",
-  });
-  const [seo, setSeo] = useState({
-    siteTitle: "Dong-Ding · 백엔드 노트",
-    description: "자바·스프링·DB를 깊이, 천천히 따라가는 블로그.",
-    canonical: "https://dongding.dev",
-    ogImage: "og-default.png",
-  });
-  const [publish, setPublish] = useState({
-    autoSaveSec: 8,
-    rssLimit: 20,
-    drafts: "private",
-    notifyOnComment: true,
-  });
-  const [danger, setDanger] = useState(false);
+function SettingsView() {
+  const [form, setForm] = useState<SiteData>(siteJson);
+  const [status, setStatus] = useState<SaveStatus>("idle");
+
+  const initial = JSON.stringify(siteJson);
+  const current = JSON.stringify(form);
+  const dirty = current !== initial;
+  const displayStatus: SaveStatus =
+    status === "saved" && dirty ? "idle" : status;
+
+  const set = <K extends keyof SiteData>(key: K, value: SiteData[K]) =>
+    setForm((prev) => ({ ...prev, [key]: value }));
+  const setSocial = <K extends keyof SiteData["social"]>(
+    key: K,
+    value: SiteData["social"][K],
+  ) =>
+    setForm((prev) => ({
+      ...prev,
+      social: { ...prev.social, [key]: value },
+    }));
+  const setOg = <K extends keyof SiteData["og"]>(
+    key: K,
+    value: SiteData["og"][K],
+  ) => setForm((prev) => ({ ...prev, og: { ...prev.og, [key]: value } }));
+  const setPublish = <K extends keyof SiteData["publish"]>(
+    key: K,
+    value: SiteData["publish"][K],
+  ) =>
+    setForm((prev) => ({
+      ...prev,
+      publish: { ...prev.publish, [key]: value },
+    }));
+
+  const save = async () => {
+    setStatus("saving");
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as {
+          error?: string;
+        };
+        throw new Error(data.error ?? `HTTP ${res.status}`);
+      }
+      setStatus("saved");
+    } catch (e) {
+      setStatus({ error: e instanceof Error ? e.message : String(e) });
+    }
+  };
+
+  const reset = () => {
+    setForm(siteJson);
+    setStatus("idle");
+  };
 
   return (
-    <main className="mx-auto grid max-w-[1080px] grid-cols-1 gap-6 px-5 pb-12 pt-8 md:grid-cols-[200px_1fr] md:gap-8 md:px-8 md:pb-16 md:pt-10">
+    <main className="mx-auto grid max-w-[1080px] grid-cols-[200px_1fr] gap-8 px-8 pb-16 pt-10">
       {/* Side nav */}
-      <aside className="md:sticky md:top-20 md:self-start">
+      <aside className="sticky top-20 self-start">
         <div className="mb-3.5 whitespace-nowrap font-sans text-[11px] font-bold uppercase tracking-[0.1em] text-ink-muted">
           SETTINGS
         </div>
         <ul className="m-0 flex list-none flex-col gap-0.5 p-0">
-          {[
-            ["profile", "프로필"],
-            ["social", "소셜 링크"],
-            ["comments", "댓글"],
-            ["seo", "SEO · 메타"],
-            ["publish", "발행 설정"],
-            ["danger", "데이터"],
-          ].map(([id, lbl]) => (
+          {SECTIONS.map(([id, lbl]) => (
             <li key={id}>
               <a
                 href={`#settings-${id}`}
@@ -97,311 +183,341 @@ export default function Page() {
             설정
           </h1>
           <p className="mt-2 text-sm leading-[1.6] text-ink-muted">
-            사이트와 관련된 거의 모든 것을 여기서. 변경사항은 저장 시점에
-            적용됩니다.
+            글로벌 값은{" "}
+            <code className="rounded bg-surface-alt px-1 py-px font-mono text-[12px]">
+              src/lib/site.json
+            </code>
+            에 저장됩니다. 저장하면 자동으로 페이지가 다시 로드되고, git diff로
+            변경 내용을 확인 후 commit·push하면 배포에 반영됩니다.
           </p>
         </header>
 
         {/* PROFILE */}
-        <Card id="settings-profile" title="프로필" desc="About 페이지와 글 푸터에 함께 노출됩니다.">
-          <Row label="아바타">
-            <div className="flex items-center gap-2.5">
-              <div
-                className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-border-token font-sans text-lg font-bold tracking-[-0.02em] text-white"
-                style={{ background: profile.avatar }}
-              >
-                동
-              </div>
-              <button type="button" className={GHOST}>
-                이미지 변경
-              </button>
-              <div className="flex gap-1">
-                {AVATAR_COLORS.map((col) => (
-                  <button
-                    key={col}
-                    type="button"
-                    onClick={() => setProfile((p) => ({ ...p, avatar: col }))}
-                    title={col}
-                    className="h-[22px] w-[22px] cursor-pointer rounded-full p-0"
-                    style={{
-                      background: col,
-                      border:
-                        profile.avatar === col
-                          ? `2px solid var(--ink)`
-                          : `1px solid var(--border)`,
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
-          </Row>
+        <Card id="settings-profile" title="프로필" source="site.json">
           <Row label="핸들">
-            <Input
-              value={profile.handle}
-              onChange={(v) => setProfile((p) => ({ ...p, handle: v }))}
+            <TextInput
+              value={form.handle}
+              onChange={(v) => set("handle", v)}
               prefix="@"
+              mono
             />
           </Row>
           <Row label="이름">
-            <Input
-              value={profile.name}
-              onChange={(v) => setProfile((p) => ({ ...p, name: v }))}
+            <TextInput
+              value={form.author}
+              onChange={(v) => set("author", v)}
             />
           </Row>
           <Row label="짧은 소개">
-            <Textarea
-              value={profile.bio}
-              onChange={(v) => setProfile((p) => ({ ...p, bio: v }))}
-              hint={`${profile.bio.length}/120자`}
-            />
+            <TextInput value={form.bio} onChange={(v) => set("bio", v)} />
           </Row>
-          <Row label="이메일">
-            <Input
-              value={profile.email}
-              onChange={(v) => setProfile((p) => ({ ...p, email: v }))}
-              type="email"
+          <Row label="introduction">
+            <TextInput
+              value={form.intro}
+              onChange={(v) => set("intro", v)}
             />
           </Row>
         </Card>
 
         {/* SOCIAL */}
-        <Card id="settings-social" title="소셜 링크" desc="Footer와 About 페이지에 노출. 비워두면 숨겨집니다.">
+        <Card
+          id="settings-social"
+          title="소셜 링크"
+          source="site.json → social"
+        >
           <Row label="GitHub">
-            <Input
-              value={social.github}
-              onChange={(v) => setSocial((s) => ({ ...s, github: v }))}
-              prefix="github.com/"
+            <TextInput
+              value={form.social.github}
+              onChange={(v) => setSocial("github", v)}
               mono
             />
           </Row>
-          <Row label="X (Twitter)">
-            <Input
-              value={social.twitter}
-              onChange={(v) => setSocial((s) => ({ ...s, twitter: v }))}
-              prefix="x.com/"
-              mono
-              placeholder="empty — hide"
-            />
-          </Row>
-          <Row label="LinkedIn">
-            <Input
-              value={social.linkedin}
-              onChange={(v) => setSocial((s) => ({ ...s, linkedin: v }))}
-              prefix="in/"
+          <Row label="Email">
+            <TextInput
+              value={form.social.email}
+              onChange={(v) => setSocial("email", v)}
               mono
             />
           </Row>
-          <Row label="RSS 피드 노출">
-            <Toggle
-              value={social.rss}
-              onChange={(v) => setSocial((s) => ({ ...s, rss: v }))}
+          <Row label="RSS">
+            <TextInput
+              value={form.social.rss}
+              onChange={(v) => setSocial("rss", v)}
+              mono
             />
           </Row>
         </Card>
 
-        {/* COMMENTS */}
-        <Card id="settings-comments" title="댓글 (Giscus)" desc="GitHub Discussions 기반. 별도 DB가 필요 없습니다.">
-          <Row label="댓글 사용">
-            <Toggle
-              value={comments.enabled}
-              onChange={(v) => setComments((s) => ({ ...s, enabled: v }))}
-            />
+        {/* COMMENTS — env-driven, read-only */}
+        <Card
+          id="settings-comments"
+          title="댓글 (Giscus)"
+          source="환경변수 NEXT_PUBLIC_GISCUS_* (.env.local) — 읽기 전용"
+        >
+          <Row label="상태">
+            <Pill on={giscusOn}>
+              {giscusOn ? "on · env 설정 완료" : "off · env 미설정"}
+            </Pill>
           </Row>
-          <div
-            style={{
-              opacity: comments.enabled ? 1 : 0.45,
-              pointerEvents: comments.enabled ? "auto" : "none",
-              transition: "opacity 0.2s",
-            }}
-          >
-            <Row label="저장소">
-              <Input
-                value={comments.repo}
-                onChange={(v) => setComments((s) => ({ ...s, repo: v }))}
-                mono
-              />
-            </Row>
-            <Row label="카테고리">
-              <Select
-                value={comments.category}
-                onChange={(v) => setComments((s) => ({ ...s, category: v }))}
-                options={["General", "Announcements", "Comments", "Q&A"]}
-              />
-            </Row>
-            <Row label="매핑 방식">
-              <Segmented
-                value={comments.mapping}
-                onChange={(v) => setComments((s) => ({ ...s, mapping: v }))}
-                options={[
-                  ["pathname", "pathname"],
-                  ["url", "url"],
-                  ["title", "title"],
-                ]}
-              />
-            </Row>
-          </div>
+          <Row label="저장소">
+            <ReadOnly mono empty={!giscus.repo}>
+              {giscus.repo ?? "—"}
+            </ReadOnly>
+          </Row>
+          <Row label="Repo ID">
+            <ReadOnly mono empty={!giscus.repoId}>
+              {giscus.repoId ?? "—"}
+            </ReadOnly>
+          </Row>
+          <Row label="카테고리">
+            <ReadOnly mono empty={!giscus.category}>
+              {giscus.category ?? "—"}
+            </ReadOnly>
+          </Row>
+          <Row label="Category ID">
+            <ReadOnly mono empty={!giscus.categoryId}>
+              {giscus.categoryId ?? "—"}
+            </ReadOnly>
+          </Row>
+          <Row label="매핑">
+            <ReadOnly mono>pathname (고정)</ReadOnly>
+          </Row>
         </Card>
 
         {/* SEO */}
-        <Card id="settings-seo" title="SEO · 메타" desc="검색엔진과 SNS 미리보기에 사용됩니다.">
+        <Card id="settings-seo" title="SEO · 메타" source="site.json">
           <Row label="사이트 제목">
-            <Input
-              value={seo.siteTitle}
-              onChange={(v) => setSeo((s) => ({ ...s, siteTitle: v }))}
+            <TextInput
+              value={form.title}
+              onChange={(v) => set("title", v)}
+            />
+          </Row>
+          <Row label="짧은 제목">
+            <TextInput
+              value={form.shortTitle}
+              onChange={(v) => set("shortTitle", v)}
             />
           </Row>
           <Row label="설명">
-            <Textarea
-              value={seo.description}
-              onChange={(v) => setSeo((s) => ({ ...s, description: v }))}
-              hint={`${seo.description.length}/160자`}
+            <TextInput
+              value={form.description}
+              onChange={(v) => set("description", v)}
             />
           </Row>
           <Row label="Canonical URL">
-            <Input
-              value={seo.canonical}
-              onChange={(v) => setSeo((s) => ({ ...s, canonical: v }))}
+            <div>
+              <TextInput
+                value={form.url}
+                onChange={(v) => set("url", v)}
+                mono
+              />
+              {urlEnvOverride && (
+                <p className="mt-1 font-mono text-[11px] text-ink-muted">
+                  ⚠ NEXT_PUBLIC_SITE_URL 환경변수가 적용 중입니다 — 표시
+                  값({site.url})은 env가 우선합니다.
+                </p>
+              )}
+            </div>
+          </Row>
+          <Row label="저작권 표기">
+            <TextInput
+              value={form.copyright}
+              onChange={(v) => set("copyright", v)}
+            />
+          </Row>
+          <Row label="언어">
+            <TextInput
+              value={form.lang}
+              onChange={(v) => set("lang", v)}
               mono
             />
           </Row>
-          <Row label="기본 OG 이미지">
-            <div className="flex items-center gap-2.5">
-              <div
-                className="flex h-[63px] w-[120px] items-center justify-center rounded-md border border-border-token font-mono text-[10px] text-ink-muted"
-                style={{
-                  background:
-                    "linear-gradient(135deg, var(--surface), var(--surface-alt))",
-                }}
-              >
-                1200×630
-              </div>
-              <div className="flex flex-col gap-1">
-                <code className="font-mono text-xs text-ink-soft">
-                  {seo.ogImage}
-                </code>
-                <button type="button" className={GHOST}>
-                  이미지 업로드
-                </button>
-              </div>
-            </div>
+          <Row label="locale">
+            <TextInput
+              value={form.locale}
+              onChange={(v) => set("locale", v)}
+              mono
+            />
+          </Row>
+          <Row label="OG 헤드라인">
+            <Textarea
+              value={form.og.headline.join("\n")}
+              onChange={(v) =>
+                setOg(
+                  "headline",
+                  v.split("\n").map((l) => l.trim()).filter(Boolean),
+                )
+              }
+              hint="줄바꿈으로 구분 (1~3줄)"
+              rows={3}
+            />
+          </Row>
+          <Row label="OG 태그라인">
+            <TextInput
+              value={form.og.tagline}
+              onChange={(v) => setOg("tagline", v)}
+            />
+          </Row>
+          <Row label="OG 라벨">
+            <TextInput
+              value={form.og.label}
+              onChange={(v) => setOg("label", v)}
+              mono
+            />
           </Row>
         </Card>
 
         {/* PUBLISH */}
-        <Card id="settings-publish" title="발행 설정">
-          <Row label="자동저장 간격">
-            <div className="flex items-center gap-2.5">
-              <input
-                type="range"
-                min={3}
-                max={30}
-                step={1}
-                value={publish.autoSaveSec}
-                onChange={(e) =>
-                  setPublish((p) => ({ ...p, autoSaveSec: +e.target.value }))
-                }
-                className="max-w-[220px] flex-1"
-                style={{ accentColor: "var(--border-strong)" }}
-              />
-              <code className="min-w-[36px] whitespace-nowrap font-mono text-xs tabular-nums text-ink-soft">
-                {publish.autoSaveSec}s
-              </code>
-            </div>
-          </Row>
+        <Card
+          id="settings-publish"
+          title="발행"
+          source="site.json → publish"
+        >
           <Row label="RSS 글 개수">
-            <div className="flex items-center gap-2.5">
-              <input
-                type="range"
-                min={5}
-                max={50}
-                step={5}
-                value={publish.rssLimit}
-                onChange={(e) =>
-                  setPublish((p) => ({ ...p, rssLimit: +e.target.value }))
-                }
-                className="max-w-[220px] flex-1"
-                style={{ accentColor: "var(--border-strong)" }}
-              />
-              <code className="min-w-[36px] whitespace-nowrap font-mono text-xs tabular-nums text-ink-soft">
-                {publish.rssLimit}편
-              </code>
-            </div>
-          </Row>
-          <Row label="초안 공개 범위">
-            <Segmented
-              value={publish.drafts}
-              onChange={(v) => setPublish((p) => ({ ...p, drafts: v }))}
-              options={[
-                ["private", "나만"],
-                ["unlisted", "링크 있는 사람"],
-                ["public", "전체"],
-              ]}
-            />
-          </Row>
-          <Row label="새 댓글 알림">
-            <Toggle
-              value={publish.notifyOnComment}
-              onChange={(v) =>
-                setPublish((p) => ({ ...p, notifyOnComment: v }))
-              }
+            <NumberInput
+              value={form.publish.rssLimit}
+              onChange={(v) => setPublish("rssLimit", v)}
+              min={1}
+              max={100}
+              suffix="편"
             />
           </Row>
         </Card>
 
-        {/* DANGER */}
-        <Card id="settings-danger" title="데이터" desc="신중하게.">
-          <Row label="전체 글 내보내기">
-            <button type="button" className={GHOST}>
-              Markdown ZIP 내보내기 ↓
+        {/* EDITOR — localStorage-backed */}
+        <EditorCard />
+
+        {/* SAVE BAR */}
+        <div
+          className="sticky bottom-3 z-30 mt-6 flex items-center justify-between gap-3 rounded-xl border border-border-token bg-surface px-4 py-3 shadow-lg"
+          style={{ backdropFilter: "saturate(160%) blur(8px)" }}
+        >
+          <StatusLine status={displayStatus} dirty={dirty} />
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={reset}
+              disabled={!dirty || status === "saving"}
+              className="rounded-md border border-border-token bg-transparent px-3 py-1.5 font-sans text-[12.5px] font-medium text-ink disabled:opacity-40"
+              style={{ cursor: dirty ? "pointer" : "not-allowed" }}
+            >
+              되돌리기
             </button>
-          </Row>
-          <Row label="구독자 목록">
-            <button type="button" className={GHOST}>
-              CSV 내보내기 ↓
-            </button>
-          </Row>
-          <Row label="블로그 비공개 전환">
-            <Toggle value={danger} onChange={setDanger} />
-          </Row>
-          {danger && (
-            <div
-              className="mt-2 rounded-lg px-3.5 py-2.5 text-[13px] leading-[1.5]"
+            <button
+              type="button"
+              onClick={save}
+              disabled={!dirty || status === "saving"}
+              className="rounded-md border border-transparent px-3.5 py-1.5 font-sans text-[12.5px] font-semibold disabled:opacity-50"
               style={{
-                background: isDark
-                  ? "rgba(168,93,93,0.14)"
-                  : "rgba(220,138,138,0.12)",
-                color: isDark ? "#d8a8a8" : "#8a4d4d",
+                background: "var(--ink)",
+                color: "var(--bg)",
+                cursor: !dirty || status === "saving" ? "not-allowed" : "pointer",
               }}
             >
-              비공개 상태에서는 본인만 글을 볼 수 있어요. 검색엔진 노출도
-              막힙니다.
-            </div>
-          )}
-        </Card>
-
-        <div className="mt-6 flex justify-end gap-2 border-t border-border-token pt-6">
-          <button type="button" className={GHOST}>
-            되돌리기
-          </button>
-          <CTA size="md">변경사항 저장</CTA>
+              {status === "saving" ? "저장 중…" : "변경사항 저장"}
+            </button>
+          </div>
         </div>
       </div>
     </main>
   );
 }
 
-const GHOST =
-  "rounded-md border border-border-token bg-transparent px-3 py-1.5 font-sans text-[12.5px] font-medium tracking-[-0.005em] text-ink whitespace-nowrap";
+function EditorCard() {
+  const raw = useSyncExternalStore(
+    subscribePrefs,
+    getRawPrefs,
+    getServerRawPrefs,
+  );
+  const prefs = useMemo(() => parsePrefs(raw), [raw]);
+
+  const updatePrefs = (patch: Partial<EditorPrefs>) => {
+    const next = { ...prefs, ...patch };
+    try {
+      window.localStorage.setItem(PREFS_KEY, JSON.stringify(next));
+      window.dispatchEvent(new Event(PREFS_CHANGE));
+    } catch {
+      /* quota or privacy mode — silently drop */
+    }
+  };
+
+  return (
+    <Card
+      id="settings-editor"
+      title="에디터"
+      source="이 브라우저에만 저장 (localStorage)"
+    >
+      <Row label="자동저장 간격">
+        <div className="flex items-center gap-2.5">
+          <input
+            type="range"
+            min={3}
+            max={30}
+            step={1}
+            value={prefs.autoSaveSec}
+            onChange={(e) =>
+              updatePrefs({ autoSaveSec: +e.target.value })
+            }
+            className="max-w-[220px] flex-1"
+            style={{ accentColor: "var(--border-strong)" }}
+          />
+          <code className="min-w-[36px] whitespace-nowrap font-mono text-xs tabular-nums text-ink-soft">
+            {prefs.autoSaveSec}s
+          </code>
+        </div>
+      </Row>
+      <Row label="새 댓글 알림">
+        <Toggle
+          value={prefs.notifyOnComment}
+          onChange={(v) => updatePrefs({ notifyOnComment: v })}
+        />
+      </Row>
+    </Card>
+  );
+}
+
+function StatusLine({
+  status,
+  dirty,
+}: {
+  status: SaveStatus;
+  dirty: boolean;
+}) {
+  if (typeof status === "object") {
+    return (
+      <span className="font-mono text-[12px] text-[#c95642]">
+        ✗ {status.error}
+      </span>
+    );
+  }
+  if (status === "saving") {
+    return (
+      <span className="font-mono text-[12px] text-ink-muted">저장 중…</span>
+    );
+  }
+  if (status === "saved") {
+    return (
+      <span className="font-mono text-[12px] text-[#5d8a66]">
+        ✓ 저장됨 — 페이지가 곧 새로고침됩니다
+      </span>
+    );
+  }
+  return (
+    <span className="font-mono text-[12px] text-ink-muted">
+      {dirty ? "● 변경됨 — 저장하지 않은 내용이 있습니다" : "변경사항 없음"}
+    </span>
+  );
+}
 
 function Card({
   id,
   title,
-  desc,
+  source,
   children,
 }: {
   id: string;
   title: string;
-  desc?: string;
+  source: string;
   children: ReactNode;
 }) {
   return (
@@ -414,11 +530,9 @@ function Card({
         <h2 className="m-0 font-sans text-[17px] font-semibold tracking-[-0.02em] text-ink">
           {title}
         </h2>
-        {desc && (
-          <p className="mt-1 text-[13px] leading-[1.55] text-ink-muted">
-            {desc}
-          </p>
-        )}
+        <p className="mt-1 font-mono text-[12px] leading-[1.55] text-ink-muted">
+          {source}
+        </p>
       </div>
       <div className="flex flex-col gap-3.5">{children}</div>
     </section>
@@ -436,34 +550,29 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-interface InputProps {
+interface TextInputProps {
   value: string;
   onChange: (v: string) => void;
   prefix?: string;
-  type?: string;
-  placeholder?: string;
   mono?: boolean;
 }
-function Input({
-  value,
-  onChange,
-  prefix,
-  type = "text",
-  placeholder,
-  mono,
-}: InputProps) {
+function TextInput({ value, onChange, prefix, mono }: TextInputProps) {
   return (
-    <div className="flex items-stretch overflow-hidden rounded-md border border-border-token" style={{ background: "var(--bg)" }}>
+    <div
+      className="flex items-stretch overflow-hidden rounded-md border border-border-token"
+      style={{ background: "var(--bg)" }}
+    >
       {prefix && (
         <span className="whitespace-nowrap border-r border-border-token bg-surface-alt px-2.5 py-[7px] font-mono text-[12.5px] text-ink-muted">
           {prefix}
         </span>
       )}
       <input
-        type={type}
+        type="text"
         value={value}
-        placeholder={placeholder}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e: ChangeEvent<HTMLInputElement>) =>
+          onChange(e.target.value)
+        }
         className="flex-1 border-none bg-transparent px-2.5 py-[7px] tracking-[-0.005em] text-ink outline-none"
         style={{
           fontFamily: mono ? "var(--font-mono)" : "var(--font-sans)",
@@ -477,20 +586,22 @@ function Input({
 function Textarea({
   value,
   onChange,
-  rows = 2,
   hint,
+  rows = 2,
 }: {
   value: string;
   onChange: (v: string) => void;
-  rows?: number;
   hint?: string;
+  rows?: number;
 }) {
   return (
     <div>
       <textarea
         value={value}
         rows={rows}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e: ChangeEvent<HTMLTextAreaElement>) =>
+          onChange(e.target.value)
+        }
         className="w-full rounded-md border border-border-token px-2.5 py-2 font-sans text-[13.5px] leading-[1.55] tracking-[-0.005em] text-ink outline-none"
         style={{ resize: "vertical", background: "var(--bg)" }}
       />
@@ -503,59 +614,79 @@ function Textarea({
   );
 }
 
-function Select({
+function NumberInput({
   value,
   onChange,
-  options,
+  min,
+  max,
+  suffix,
 }: {
-  value: string;
-  onChange: (v: string) => void;
-  options: string[];
+  value: number;
+  onChange: (v: number) => void;
+  min?: number;
+  max?: number;
+  suffix?: string;
 }) {
   return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="cursor-pointer rounded-md border border-border-token px-2.5 py-[7px] font-sans text-[13.5px] tracking-[-0.005em] text-ink outline-none"
-      style={{ background: "var(--bg)" }}
-    >
-      {options.map((o) => (
-        <option key={o} value={o}>
-          {o}
-        </option>
-      ))}
-    </select>
+    <div className="flex items-center gap-2">
+      <input
+        type="number"
+        value={value}
+        min={min}
+        max={max}
+        onChange={(e: ChangeEvent<HTMLInputElement>) => {
+          const n = Number(e.target.value);
+          if (Number.isFinite(n)) onChange(n);
+        }}
+        className="w-[100px] rounded-md border border-border-token bg-bg px-2.5 py-[7px] font-mono text-[13px] tabular-nums text-ink outline-none"
+        style={{ background: "var(--bg)" }}
+      />
+      {suffix && (
+        <code className="font-mono text-xs text-ink-muted">{suffix}</code>
+      )}
+    </div>
   );
 }
 
-function Segmented({
-  value,
-  onChange,
-  options,
+function ReadOnly({
+  children,
+  mono,
+  empty,
 }: {
-  value: string;
-  onChange: (v: string) => void;
-  options: ReadonlyArray<readonly [string, string]>;
+  children: ReactNode;
+  mono?: boolean;
+  empty?: boolean;
 }) {
   return (
-    <div className="inline-flex rounded-md border border-border-token bg-surface-alt p-0.5">
-      {options.map(([k, lbl]) => (
-        <button
-          key={k}
-          type="button"
-          onClick={() => onChange(k)}
-          className="cursor-pointer whitespace-nowrap rounded border-none px-3 py-[5px] font-sans text-[12.5px] tracking-[-0.005em]"
-          style={{
-            background: value === k ? "var(--bg)" : "transparent",
-            color: value === k ? "var(--ink)" : "var(--ink-muted)",
-            fontWeight: value === k ? 600 : 500,
-            boxShadow: value === k ? "0 1px 2px rgba(0,0,0,0.06)" : "none",
-          }}
-        >
-          {lbl}
-        </button>
-      ))}
+    <div
+      className="rounded-md border border-border-token px-2.5 py-[7px] tracking-[-0.005em]"
+      style={{
+        background: "var(--surface-alt)",
+        fontFamily: mono ? "var(--font-mono)" : "var(--font-sans)",
+        fontSize: mono ? 13 : 13.5,
+        color: empty ? "var(--ink-muted)" : "var(--ink)",
+      }}
+    >
+      {children}
     </div>
+  );
+}
+
+function Pill({ on, children }: { on: boolean; children: ReactNode }) {
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 rounded-full border border-border-token px-2.5 py-1 font-mono text-[11.5px]"
+      style={{
+        background: on ? "rgba(125,167,94,0.12)" : "var(--surface-alt)",
+        color: on ? "#5d8a66" : "var(--ink-muted)",
+      }}
+    >
+      <span
+        className="h-1.5 w-1.5 rounded-full"
+        style={{ background: on ? "#5d8a66" : "var(--ink-muted)" }}
+      />
+      {children}
+    </span>
   );
 }
 
