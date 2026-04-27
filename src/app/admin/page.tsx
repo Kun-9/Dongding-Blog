@@ -13,7 +13,6 @@ import {
 } from "@/lib/post-stats";
 import { getRecentComments } from "@/lib/comments-recent";
 import { fmtDate } from "@/lib/tokens";
-import { CTA } from "@/components/ui/CTA";
 import { DevOnlyNotice } from "@/components/layout/DevOnlyNotice";
 
 export const metadata = {
@@ -52,27 +51,16 @@ export default async function Page() {
 
   return (
     <main className="mx-auto max-w-[1180px] px-5 pt-8 md:px-8 md:pt-10">
-      <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <div className="mb-2 font-sans text-[11px] font-bold uppercase tracking-[0.1em] text-ink-muted">
-            ADMIN
-          </div>
-          <h1 className="m-0 font-sans text-[36px] font-semibold tracking-[-0.03em] text-ink">
-            대시보드
-          </h1>
-          <p className="mt-2 whitespace-nowrap text-sm text-ink-muted">
-            {dateStr} · {weekCopy}
-          </p>
+      <header className="mb-8">
+        <div className="mb-2 font-sans text-[11px] font-bold uppercase tracking-[0.1em] text-ink-muted">
+          ADMIN
         </div>
-        <div className="flex gap-2">
-          <CTA dark={false} size="sm" href="/settings">
-            설정
-          </CTA>
-          <CTA dark={false} size="sm" href="/studio">
-            새 글 →
-          </CTA>
-          <CTA size="sm">바로 발행</CTA>
-        </div>
+        <h1 className="m-0 font-sans text-[36px] font-semibold tracking-[-0.03em] text-ink">
+          대시보드
+        </h1>
+        <p className="mt-2 whitespace-nowrap text-sm text-ink-muted">
+          {dateStr} · {weekCopy}
+        </p>
       </header>
 
       {/* Stats */}
@@ -165,16 +153,8 @@ export default async function Page() {
 
       {/* Drafts */}
       <section className="mb-8">
-        <div className="mb-3.5 flex items-baseline justify-between gap-3 border-b border-border-token pb-2.5">
-          <div className="whitespace-nowrap font-sans text-[11px] font-bold uppercase tracking-[0.1em] text-ink-muted">
-            초안 ({drafts.length})
-          </div>
-          <Link
-            href="/studio"
-            className="whitespace-nowrap text-[12.5px] text-ink-muted no-underline"
-          >
-            새 초안 +
-          </Link>
+        <div className="mb-3.5 border-b border-border-token pb-2.5 font-sans text-[11px] font-bold uppercase tracking-[0.1em] text-ink-muted">
+          초안 ({drafts.length})
         </div>
         {drafts.length === 0 ? (
           <div className="rounded-xl border border-border-token bg-surface p-6 text-center text-sm text-ink-muted">
