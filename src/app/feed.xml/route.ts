@@ -1,12 +1,13 @@
 import { getAllPosts } from "@/lib/posts";
 import { buildRss } from "@/lib/rss";
+import { site } from "@/lib/site";
 
 export const dynamic = "force-static";
 
 export function GET() {
   const xml = buildRss(getAllPosts(), {
-    title: "Dong-Ding · 백엔드 노트",
-    description: "자바·스프링·DB를 깊이, 천천히 따라가는 블로그.",
+    title: site.title,
+    description: site.description,
   });
   return new Response(xml, {
     headers: {

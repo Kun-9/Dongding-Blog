@@ -1,10 +1,13 @@
 import { ImageResponse } from "next/og";
 import { getPostBySlug, getAllPosts } from "@/lib/posts";
 import { getCategory } from "@/lib/categories";
+import { site } from "@/lib/site";
 
 export const runtime = "nodejs"; // need fs access via lib/posts
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
+
+const SITE_HOST = new URL(site.url).host;
 
 export function generateStaticParams() {
   return getAllPosts().map((p) => ({ slug: p.slug }));
@@ -65,7 +68,7 @@ export default function OpengraphImage({
           >
             동
           </div>
-          <span>{cat?.name ?? "Dong-Ding"}</span>
+          <span>{cat?.name ?? site.shortTitle}</span>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column" }}>
@@ -104,7 +107,7 @@ export default function OpengraphImage({
           }}
         >
           <span>{post.meta.date.replace(/-/g, ".")} · {post.meta.readTime}분 읽기</span>
-          <span>dongding.dev</span>
+          <span>{SITE_HOST}</span>
         </div>
       </div>
     ),

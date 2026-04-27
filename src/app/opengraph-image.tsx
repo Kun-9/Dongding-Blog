@@ -1,9 +1,10 @@
 import { ImageResponse } from "next/og";
+import { site } from "@/lib/site";
 
 export const dynamic = "force-static";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
-export const alt = "Dong-Ding · 백엔드 노트";
+export const alt = site.title;
 
 export default function OpengraphImage() {
   return new ImageResponse(
@@ -47,32 +48,24 @@ export default function OpengraphImage() {
           >
             동
           </div>
-          <span>Dong-Ding</span>
+          <span>{site.og.label}</span>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column" }}>
-          <div
-            style={{
-              fontSize: 84,
-              fontWeight: 700,
-              color: "#1c1c1c",
-              letterSpacing: "-0.04em",
-              lineHeight: 1.05,
-            }}
-          >
-            백엔드 노트,
-          </div>
-          <div
-            style={{
-              fontSize: 84,
-              fontWeight: 700,
-              color: "#1c1c1c",
-              letterSpacing: "-0.04em",
-              lineHeight: 1.05,
-            }}
-          >
-            다시 짓다.
-          </div>
+          {site.og.headline.map((line) => (
+            <div
+              key={line}
+              style={{
+                fontSize: 84,
+                fontWeight: 700,
+                color: "#1c1c1c",
+                letterSpacing: "-0.04em",
+                lineHeight: 1.05,
+              }}
+            >
+              {line}
+            </div>
+          ))}
           <div
             style={{
               marginTop: 32,
@@ -81,7 +74,7 @@ export default function OpengraphImage() {
               lineHeight: 1.5,
             }}
           >
-            자바 · 스프링 · DB를 깊이, 천천히 따라가는 1인 기술 블로그
+            {site.og.tagline}
           </div>
         </div>
       </div>

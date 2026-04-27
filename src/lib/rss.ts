@@ -2,9 +2,9 @@
  * Tiny RSS 2.0 builder. Hand-written to keep the dependency graph small.
  */
 import type { PostMeta } from "@/lib/types";
+import { site } from "@/lib/site";
 
-const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://dongding.dev";
+const SITE_URL = site.url;
 
 const escape = (s: string) =>
   s
@@ -19,7 +19,7 @@ export function buildRss(posts: PostMeta[], opts: {
   description: string;
 }): string {
   const items = posts
-    .slice(0, 20)
+    .slice(0, site.publish.rssLimit)
     .map((p) => {
       const url = `${SITE_URL}/posts/${p.slug}`;
       const pubDate = new Date(`${p.date}T00:00:00Z`).toUTCString();
@@ -40,7 +40,7 @@ export function buildRss(posts: PostMeta[], opts: {
     <title>${escape(opts.title)}</title>
     <link>${SITE_URL}</link>
     <description>${escape(opts.description)}</description>
-    <language>ko-KR</language>
+    <language>${site.locale}</language>
     <atom:link href="${SITE_URL}/feed.xml" rel="self" type="application/rss+xml" />
     <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
 ${items}

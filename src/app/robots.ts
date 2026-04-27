@@ -1,9 +1,9 @@
 import type { MetadataRoute } from "next";
+import { site } from "@/lib/site";
 
 export const dynamic = "force-static";
 
-const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://dongding.dev";
+const SITE_URL = site.url;
 
 export default function robots(): MetadataRoute.Robots {
   return {
