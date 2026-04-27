@@ -141,20 +141,35 @@ export function Header({ categories, posts }: Props) {
                   href="/admin"
                   aria-label="관리자"
                   title="관리자 대시보드"
-                  className="ml-1 inline-flex h-8 w-8 items-center justify-center rounded-full border border-border-token bg-transparent font-mono text-[13px] font-bold no-underline"
+                  className="ml-1 inline-flex h-8 w-8 items-center justify-center rounded-full border border-border-token bg-transparent no-underline"
                   style={{
                     color: isAdminPageActive
                       ? "var(--ink)"
                       : "var(--ink-muted)",
                   }}
                 >
-                  ▣
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <line x1="6" y1="20" x2="6" y2="12" />
+                    <line x1="12" y1="20" x2="12" y2="6" />
+                    <line x1="18" y1="20" x2="18" y2="14" />
+                    <line x1="3" y1="20" x2="21" y2="20" />
+                  </svg>
                 </Link>
                 <Link
                   href="/settings"
                   aria-label="설정"
                   title="설정"
-                  className="ml-1 inline-flex h-8 w-8 items-center justify-center rounded-full border border-border-token bg-transparent text-sm no-underline transition-transform duration-[600ms] hover:rotate-[60deg]"
+                  className="ml-1 inline-flex h-8 w-8 items-center justify-center rounded-full border border-border-token bg-transparent text-[17px] leading-none no-underline transition-transform duration-[600ms] hover:rotate-[60deg]"
                   style={{
                     color: isSettingsActive
                       ? "var(--ink)"
