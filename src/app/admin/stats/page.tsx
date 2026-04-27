@@ -10,12 +10,19 @@ import { DevOnlyNotice } from "@/components/layout/DevOnlyNotice";
 
 const isDev = process.env.NODE_ENV === "development";
 
+type Stat = number | { value: number };
+
 interface Summary {
-  pageviews: { value: number };
-  visitors: { value: number };
-  visits: { value: number };
-  bounces: { value: number };
-  totaltime: { value: number };
+  pageviews: Stat;
+  visitors: Stat;
+  visits: Stat;
+  bounces: Stat;
+  totaltime: Stat;
+}
+
+function statValue(s: Stat | undefined): number {
+  if (s == null) return 0;
+  return typeof s === "number" ? s : (s.value ?? 0);
 }
 
 interface Series {
@@ -85,18 +92,24 @@ export default function StatsPage() {
   }
 
   const cards = summary
-    ? [
-        { label: "방문자", value: summary.visitors.value },
-        { label: "페이지뷰", value: summary.pageviews.value },
-        { label: "세션", value: summary.visits.value },
-        {
-          label: "이탈률",
-          value:
-            summary.visits.value > 0
-              ? `${Math.round((summary.bounces.value / summary.visits.value) * 100)}%`
-              : "—",
-        },
-      ]
+    ? (() => {
+        const visitors = statValue(summary.visitors);
+        const pageviews = statValue(summary.pageviews);
+        const visits = statValue(summary.visits);
+        const bounces = statValue(summary.bounces);
+        return [
+          { label: "방문자", value: visitors },
+          { label: "페이지뷰", value: pageviews },
+          { label: "세션", value: visits },
+          {
+            label: "이탈률",
+            value:
+              visits > 0
+                ? `${Math.round((bounces / visits) * 100)}%`
+                : "—",
+          },
+        ];
+      })()
     : [];
 
   const max = series ? Math.max(1, ...series.pageviews.map((p) => p.y)) : 1;
