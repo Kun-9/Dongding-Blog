@@ -1,26 +1,25 @@
 /**
- * Post Detail — port of project/page-detail.jsx#PostDetailPage.
- * Server component that compiles the MDX body via next-mdx-remote/rsc and
- * mounts a client ReadingProgress + sticky TOC alongside.
+ * Post Detail — renders post body through the shared markdown parser used
+ * by Studio's preview. Server component; mounts a client ReadingProgress +
+ * sticky TOC alongside.
  */
-import { compileMDX } from "next-mdx-remote/rsc";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import rehypeSlug from "rehype-slug";
 
 import { getAllPosts, getPostBySlug } from "@/lib/posts";
 import { getCategory } from "@/lib/categories";
 import { site } from "@/lib/site";
 import { fmtDate } from "@/lib/tokens";
+import { renderMarkdown } from "@/lib/markdown";
 
 import { TagChip } from "@/components/post/TagChip";
 import { TOC } from "@/components/prose/TOC";
 import { ReadingProgress } from "@/components/prose/ReadingProgress";
-import { mdxComponents } from "@/components/prose/MdxComponents";
 import { Comments } from "@/components/comments/Comments";
 import { AdminBar } from "@/components/post/AdminBar";
 
 const ARTICLE_ID = "article-body";
+const isDev = process.env.NODE_ENV === "development";
 
 export function generateStaticParams() {
   return getAllPosts().map((p) => ({ slug: p.slug }));
@@ -47,17 +46,10 @@ export default async function Page({
 }) {
   const { slug } = await params;
   const post = getPostBySlug(slug);
-  if (!post || post.meta.visibility !== "published") notFound();
+  // dev: draft·private도 조회 허용 (admin/local). prod 빌드는 published만.
+  if (!post || (!isDev && post.meta.visibility !== "published")) notFound();
 
-  const { content } = await compileMDX({
-    source: post.body,
-    options: {
-      mdxOptions: {
-        rehypePlugins: [rehypeSlug],
-      },
-    },
-    components: mdxComponents,
-  });
+  const content = renderMarkdown(post.body);
 
   const cat = getCategory(post.meta.category);
   const all = getAllPosts();

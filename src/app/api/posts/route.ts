@@ -1,5 +1,5 @@
 /**
- * Dev-only posts API — POST creates a new `content/posts/{slug}.mdx`.
+ * Dev-only posts API — POST creates a new `content/posts/{slug}.md`.
  * Slug must be unique; conflicts return 409 with the existing slug echoed back.
  * Production builds exclude API routes; the devGuard is a runtime safety net.
  */

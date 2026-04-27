@@ -1,9 +1,7 @@
 /**
- * Post loader — reads `content/posts/*.mdx`, parses frontmatter with
+ * Post loader — reads `content/posts/*.md`, parses frontmatter with
  * gray-matter + zod, falls back to reading-time when readTime is omitted.
- *
- * Phase 4 only exposes the metadata needed by list/card components. MDX
- * body rendering is added in Phase 5 (PostDetail page).
+ * Body is plain markdown rendered by `lib/markdown` (no MDX/JSX).
  */
 import "server-only";
 
@@ -11,9 +9,9 @@ import fs from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
 import readingTime from "reading-time";
-import BananaSlug from "github-slugger";
 import { z } from "zod";
-import type { PostMeta, TocItem, Visibility } from "@/lib/types";
+import type { PostMeta, Visibility } from "@/lib/types";
+import { extractTOC } from "@/lib/markdown";
 
 const POSTS_DIR = path.join(process.cwd(), "content", "posts");
 
@@ -52,44 +50,6 @@ interface CachedPost {
   body: string;
 }
 
-const HEADING_RE = /^(#{2,3})\s+(.+?)\s*$/;
-const FENCE_RE = /^\s*```/;
-
-function stripInlineMarkdown(text: string): string {
-  return text
-    .replace(/`([^`]+)`/g, "$1")
-    .replace(/\*\*([^*]+)\*\*/g, "$1")
-    .replace(/__([^_]+)__/g, "$1")
-    .replace(/\*([^*]+)\*/g, "$1")
-    .replace(/_([^_]+)_/g, "$1")
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
-    .trim();
-}
-
-// Mirrors rehype-slug's id generation (both use github-slugger).
-function extractTocFromMdx(body: string): TocItem[] {
-  const slugger = new BananaSlug();
-  const items: TocItem[] = [];
-  let inFence = false;
-
-  for (const line of body.split("\n")) {
-    if (FENCE_RE.test(line)) {
-      inFence = !inFence;
-      continue;
-    }
-    if (inFence) continue;
-
-    const m = line.match(HEADING_RE);
-    if (!m) continue;
-
-    const level = m[1].length as 2 | 3;
-    const label = stripInlineMarkdown(m[2]);
-    if (!label) continue;
-    items.push({ id: slugger.slug(label), label, level });
-  }
-  return items;
-}
-
 let cache: CachedPost[] | null = null;
 
 const isDev = process.env.NODE_ENV === "development";
@@ -107,10 +67,10 @@ function loadAll(): CachedPost[] {
 
   const files = fs
     .readdirSync(POSTS_DIR)
-    .filter((f) => f.endsWith(".mdx") || f.endsWith(".md"));
+    .filter((f) => f.endsWith(".md"));
 
   const items: CachedPost[] = files.map((file) => {
-    const slug = file.replace(/\.(mdx?|md)$/, "");
+    const slug = file.replace(/\.md$/, "");
     const full = path.join(POSTS_DIR, file);
     const raw = fs.readFileSync(full, "utf8");
     const { data, content } = matter(raw);
@@ -119,7 +79,7 @@ function loadAll(): CachedPost[] {
     const minutes =
       fm.readTime ?? Math.max(1, Math.round(readingTime(content).minutes));
 
-    const derivedToc = extractTocFromMdx(content);
+    const derivedToc = extractTOC(content);
     const toc = derivedToc.length >= 2 ? derivedToc : fm.toc;
 
     const visibility = resolveVisibility(fm);

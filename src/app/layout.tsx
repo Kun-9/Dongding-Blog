@@ -33,7 +33,7 @@ export default function RootLayout({
   const posts = getAllPosts();
 
   return (
-    <html lang={site.lang} suppressHydrationWarning className={jetbrainsMono.variable}>
+    <html lang={site.lang} suppressHydrationWarning data-scroll-behavior="smooth" className={jetbrainsMono.variable}>
       <body className="scenic-glow min-h-screen">
         <ThemeProvider>
           <Header categories={categories} posts={posts} />

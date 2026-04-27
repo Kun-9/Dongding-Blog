@@ -43,7 +43,7 @@ export function devGuard(): NextResponse | null {
 }
 
 export function postPath(slug: string): string {
-  return path.join(POSTS_DIR, `${slug}.mdx`);
+  return path.join(POSTS_DIR, `${slug}.md`);
 }
 
 export async function postExists(slug: string): Promise<boolean> {

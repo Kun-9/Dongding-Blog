@@ -3,7 +3,7 @@
  * page can persist edits via PUT /api/categories. The JSON is the single
  * source of truth; this module just types and re-exports it.
  *
- * Post counts are computed at build time from `content/posts/*.mdx` frontmatter
+ * Post counts are computed at build time from `content/posts/*.md` frontmatter
  * by `getCategoriesWithCounts()` in `category-stats.ts` (server-only).
  */
 import type { Category } from "@/lib/types";

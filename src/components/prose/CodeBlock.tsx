@@ -3,8 +3,7 @@
 /**
  * CodeBlock — file/lang header + copy + line numbers + diff/highlight rows.
  * Port of prose.jsx#CodeBlock. Includes a tiny Java/SQL-leaning syntax
- * tokenizer (good enough for the design demo). Phase 4 may swap this for
- * shiki via rehype-pretty-code; the consumer API stays the same.
+ * tokenizer (good enough for the design demo).
  */
 import { useState, type ReactNode } from "react";
 
