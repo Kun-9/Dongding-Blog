@@ -1,11 +1,11 @@
 "use client";
 
 /**
- * TOC — sticky table of contents with scroll-spy.
- * Port of prose.jsx#TOC. Uses IntersectionObserver to highlight the
- * topmost intersecting heading.
+ * TOC — sticky table of contents. Highlight is click-driven only;
+ * scroll-spy was removed because the constant re-highlight as the
+ * user scrolled felt jittery.
  */
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { TocItem } from "@/lib/types";
 
 interface Props {
@@ -14,27 +14,7 @@ interface Props {
 }
 
 export function TOC({ items, sticky = true }: Props) {
-  const [active, setActive] = useState<string | undefined>(items[0]?.id);
-
-  useEffect(() => {
-    const headings = items
-      .map((i) => document.getElementById(i.id))
-      .filter((h): h is HTMLElement => Boolean(h));
-    if (!headings.length) return;
-
-    const obs = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((e) => e.isIntersecting)
-          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
-        if (visible[0]) setActive(visible[0].target.id);
-      },
-      { rootMargin: "-80px 0px -60% 0px", threshold: [0, 1] },
-    );
-
-    headings.forEach((h) => obs.observe(h));
-    return () => obs.disconnect();
-  }, [items]);
+  const [active, setActive] = useState<string | undefined>();
 
   return (
     <nav className={sticky ? "sticky top-[90px] self-start" : ""}>
@@ -50,6 +30,7 @@ export function TOC({ items, sticky = true }: Props) {
                 href={`#${item.id}`}
                 onClick={(e) => {
                   e.preventDefault();
+                  setActive(item.id);
                   document
                     .getElementById(item.id)
                     ?.scrollIntoView({ behavior: "smooth", block: "start" });

@@ -56,7 +56,9 @@ export function Callout({ kind = "info", title, children }: Props) {
           {LABELS[kind]}
           {title ? ` · ${title}` : ""}
         </div>
-        <div className="text-[14.5px] leading-[1.7]">{children}</div>
+        <div className="text-[14.5px] leading-[1.7] [&_p]:m-0 [&_p:not(:last-child)]:mb-2 [&_p]:font-sans [&_p]:text-[inherit] [&_p]:leading-[inherit] [&_p]:tracking-normal [&_p]:text-current">
+          {children}
+        </div>
       </div>
     </aside>
   );

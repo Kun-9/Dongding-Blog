@@ -73,6 +73,7 @@ export function CodeBlock({
   const lines = code.replace(/\n$/, "").split("\n");
   const isMinimal = style === "minimal";
   const isInline = style === "inline";
+  const gutterCh = String(lines.length).length;
 
   const onCopy = () => {
     navigator.clipboard?.writeText(code);
@@ -157,8 +158,11 @@ export function CodeBlock({
               >
                 <span
                   aria-hidden
-                  className="mr-3.5 inline-block w-7 select-none text-right tabular-nums"
-                  style={{ color: "var(--code-line-num)" }}
+                  className="mr-3.5 inline-block shrink-0 select-none text-left tabular-nums"
+                  style={{
+                    width: `${gutterCh}ch`,
+                    color: "var(--code-line-num)",
+                  }}
                 >
                   {n}
                 </span>
