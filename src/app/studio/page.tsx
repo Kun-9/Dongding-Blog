@@ -6,16 +6,22 @@
  * updates (with optional slug rename), GET to hydrate an existing post via
  * `?slug=`. Production builds render <DevOnlyNotice />.
  */
-import { Suspense, useCallback, useEffect, useRef, useState } from "react";
-import type { ReactNode } from "react";
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { MDXRemote, type MDXRemoteSerializeResult } from "next-mdx-remote";
 import { categories } from "@/lib/categories";
 import type { Visibility } from "@/lib/types";
+import { renderMarkdown } from "@/lib/markdown";
 import { CTA } from "@/components/ui/CTA";
 import { TagChip } from "@/components/post/TagChip";
 import { DevOnlyNotice } from "@/components/layout/DevOnlyNotice";
-import { mdxComponents } from "@/components/prose/MdxComponents";
 
 const isDev = process.env.NODE_ENV === "development";
 
@@ -23,17 +29,26 @@ const SAMPLE_BODY = `# 들어가며
 
 여기에 본문을 작성해 주세요.
 
-\`\`\`java
+\`\`\`java:Example.java
 // 코드 블록 예시
 \`\`\`
 
-> **Info** — 콜아웃 예시.
+> [!INFO] 콜아웃 예시
+> 본문 내용
 
 ## 다음 섹션
 `;
 
 type SaveState = "idle" | "typing" | "saving" | "saved" | "error";
 type Toast = { kind: "success" | "error"; message: string; href?: string };
+type ToolbarAction =
+  | "bold"
+  | "italic"
+  | "code"
+  | "para"
+  | "codeblock"
+  | "callout"
+  | "divider";
 const PUBLISH_REDIRECT_MS = 2000;
 
 export default function Page() {
@@ -186,6 +201,7 @@ function StudioEditor() {
   const initializedRef = useRef(false);
   const dirtyRef = useRef(false);
   const hydratedSlugRef = useRef<string | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Load existing post or initialize new draft.
   useEffect(() => {
@@ -279,7 +295,7 @@ function StudioEditor() {
   }, []);
 
   const buildPayload = useCallback(
-    (overrides?: Partial<{ visibility: Visibility }>) => ({
+    () => ({
       slug: slug.trim(),
       title: title.trim() || "(제목 없음)",
       summary: summary.trim() || title.trim() || "(요약 없음)",
@@ -289,7 +305,7 @@ function StudioEditor() {
         .map((t) => t.trim())
         .filter(Boolean),
       body,
-      visibility: overrides?.visibility ?? visibility,
+      visibility,
       ...(date ? { date } : {}),
     }),
     [body, category, date, visibility, slug, summary, tags, title],
@@ -339,40 +355,45 @@ function StudioEditor() {
     | { ok: true; slug: string }
     | { ok: false; error: string };
 
-  const save = useCallback(
-    async (
-      overrides?: Partial<{ visibility: Visibility }>,
-    ): Promise<SaveResult> => {
-      setSaveState("saving");
-      setSaveError(null);
-      const previousKey = draftKey(editingSlug);
-      try {
-        const canonicalSlug = await persist(buildPayload(overrides));
-        dirtyRef.current = false;
-        if (overrides?.visibility !== undefined)
-          setVisibility(overrides.visibility);
-        setSaveState("saved");
-        // Server is authoritative now — drop the local backup. Clear both the
-        // pre-save key and the post-rename key so a slug change can't leave
-        // an orphan draft behind.
-        clearDraft(previousKey);
-        const nextKey = draftKey(canonicalSlug);
-        if (nextKey !== previousKey) clearDraft(nextKey);
-        setLocalSavedAt(null);
-        return { ok: true, slug: canonicalSlug };
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : String(err);
-        setSaveError(msg);
-        setSaveState("error");
-        return { ok: false, error: msg };
-      }
-    },
-    [buildPayload, persist, editingSlug],
-  );
+  const save = useCallback(async (): Promise<SaveResult> => {
+    setSaveState("saving");
+    setSaveError(null);
+    const previousKey = draftKey(editingSlug);
+    try {
+      const canonicalSlug = await persist(buildPayload());
+      dirtyRef.current = false;
+      setSaveState("saved");
+      // Server is authoritative now — drop the local backup. Clear both the
+      // pre-save key and the post-rename key so a slug change can't leave
+      // an orphan draft behind.
+      clearDraft(previousKey);
+      const nextKey = draftKey(canonicalSlug);
+      if (nextKey !== previousKey) clearDraft(nextKey);
+      setLocalSavedAt(null);
+      return { ok: true, slug: canonicalSlug };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setSaveError(msg);
+      setSaveState("error");
+      return { ok: false, error: msg };
+    }
+  }, [buildPayload, persist, editingSlug]);
 
-  const handlePublish = useCallback(async () => {
+  // visibility 탭이 진실의 원천. published면 confirm 모달, 아니면 즉시 저장.
+  const handleSave = useCallback(async () => {
+    if (visibility === "published") {
+      setConfirmingPublish(true);
+      return;
+    }
+    const result = await save();
+    if (!result.ok) {
+      setToast({ kind: "error", message: `저장 실패: ${result.error}` });
+    }
+  }, [save, visibility]);
+
+  const handleConfirmPublish = useCallback(async () => {
     setConfirmingPublish(false);
-    const result = await save({ visibility: "published" });
+    const result = await save();
     if (!result.ok) {
       setToast({ kind: "error", message: `발행 실패: ${result.error}` });
       return;
@@ -454,40 +475,166 @@ function StudioEditor() {
   const wordCount = body.replace(/\s+/g, "").length;
   const readTime = Math.max(1, Math.round(wordCount / 500));
 
-  const [previewMdx, setPreviewMdx] =
-    useState<MDXRemoteSerializeResult | null>(null);
-  const [previewError, setPreviewError] = useState<string | null>(null);
+  // Same parser as the post detail page → preview matches the published view.
+  const renderedBody = useMemo(() => renderMarkdown(body), [body]);
 
-  // Debounced MDX compile via dev-only /api/preview. Fresh request supersedes
-  // in-flight ones via the cancel token so out-of-order responses don't win.
-  useEffect(() => {
-    let cancelled = false;
-    const id = setTimeout(() => {
-      fetch("/api/preview/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ source: body }),
-      })
-        .then(async (res) => {
-          const data = await res.json().catch(() => ({}));
-          if (!res.ok) throw new Error(data?.error ?? `HTTP ${res.status}`);
-          return data as MDXRemoteSerializeResult;
-        })
-        .then((result) => {
-          if (cancelled) return;
-          setPreviewMdx(result);
-          setPreviewError(null);
-        })
-        .catch((err: unknown) => {
-          if (cancelled) return;
-          setPreviewError(err instanceof Error ? err.message : String(err));
+  const insertMd = useCallback(
+    (action: ToolbarAction) => {
+      const ta = textareaRef.current;
+      if (!ta) return;
+      const start = ta.selectionStart;
+      const end = ta.selectionEnd;
+      const before = body.slice(0, start);
+      const sel = body.slice(start, end);
+      const after = body.slice(end);
+
+      let nextBody = body;
+      let cursorStart = start;
+      let cursorEnd = end;
+
+      const wrap = (left: string, right: string, placeholder: string) => {
+        const inner = sel || placeholder;
+        nextBody = before + left + inner + right + after;
+        cursorStart = start + left.length;
+        cursorEnd = cursorStart + inner.length;
+      };
+
+      const insertBlock = (block: string) => {
+        const needsBlankBefore =
+          before.length > 0 && !before.endsWith("\n\n");
+        const needsBlankAfter = after.length > 0 && !after.startsWith("\n\n");
+        const prefix = needsBlankBefore
+          ? before.endsWith("\n")
+            ? "\n"
+            : "\n\n"
+          : "";
+        const suffix = needsBlankAfter
+          ? after.startsWith("\n")
+            ? "\n"
+            : "\n\n"
+          : "";
+        nextBody = before + prefix + block + suffix + after;
+        cursorStart = before.length + prefix.length;
+        cursorEnd = cursorStart + block.length;
+      };
+
+      switch (action) {
+        case "bold":
+          wrap("**", "**", "굵게");
+          break;
+        case "italic":
+          wrap("*", "*", "기울임");
+          break;
+        case "code":
+          wrap("`", "`", "코드");
+          break;
+        case "para":
+          wrap("", "\n\n", "");
+          break;
+        case "codeblock":
+          insertBlock("```java:File.java\n" + (sel || "// code") + "\n```");
+          break;
+        case "callout":
+          insertBlock("> [!INFO] 제목\n> " + (sel || "본문 내용"));
+          break;
+        case "divider":
+          insertBlock("---");
+          break;
+        default:
+          return;
+      }
+
+      setBody(nextBody);
+      markDirty();
+      requestAnimationFrame(() => {
+        ta.focus();
+        ta.setSelectionRange(cursorStart, cursorEnd);
+      });
+    },
+    [body, markDirty],
+  );
+
+  /**
+   * Auto-prefix on Enter inside callouts and lists. Mirrors the behavior of
+   * Notion / GitHub markdown editors — pressing Enter on `> ...`, `- ...`,
+   * `1. ...` continues the marker on the next line. A blank prefix-only line
+   * exits (clears the prefix and breaks out).
+   */
+  const handleEditorKeyDown = useCallback(
+    (e: ReactKeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.key !== "Enter" || e.shiftKey || e.nativeEvent.isComposing) return;
+      const ta = e.currentTarget;
+      const value = ta.value;
+      const pos = ta.selectionStart;
+      if (pos !== ta.selectionEnd) return;
+
+      const lineStart = value.lastIndexOf("\n", pos - 1) + 1;
+      const line = value.slice(lineStart, pos);
+
+      let prefix: string | null = null;
+      let exit = false;
+
+      // Callout header: > [!KIND] title  →  next line gets "> "
+      if (/^>\s*\[!\w+\]/i.test(line)) {
+        prefix = "> ";
+      } else if (line.startsWith(">")) {
+        // Plain callout body line. Empty (just `>` / `> `) exits.
+        const rest = line.replace(/^>\s?/, "");
+        prefix = "> ";
+        if (rest.trim() === "") exit = true;
+      } else {
+        const ol = line.match(/^(\d+)\.\s+(.*)$/);
+        const olEmpty = line.match(/^\d+\.\s*$/);
+        const ul = line.match(/^-\s+(.*)$/);
+        const ulEmpty = /^-\s*$/.test(line);
+        if (ol) {
+          if (ol[2].trim() === "") {
+            exit = true;
+            prefix = "1. ";
+          } else {
+            prefix = `${parseInt(ol[1], 10) + 1}. `;
+          }
+        } else if (olEmpty) {
+          exit = true;
+          prefix = "1. ";
+        } else if (ul) {
+          prefix = "- ";
+          if (ul[1].trim() === "") exit = true;
+        } else if (ulEmpty) {
+          exit = true;
+          prefix = "- ";
+        }
+      }
+
+      if (prefix == null) return;
+      e.preventDefault();
+
+      if (exit) {
+        const before = value.slice(0, lineStart);
+        const after = value.slice(pos);
+        const next = before + "\n" + after;
+        setBody(next);
+        markDirty();
+        const cursor = lineStart + 1;
+        requestAnimationFrame(() => {
+          ta.focus();
+          ta.setSelectionRange(cursor, cursor);
         });
-    }, 250);
-    return () => {
-      cancelled = true;
-      clearTimeout(id);
-    };
-  }, [body]);
+      } else {
+        const before = value.slice(0, pos);
+        const after = value.slice(pos);
+        const next = before + "\n" + prefix + after;
+        setBody(next);
+        markDirty();
+        const cursor = pos + 1 + prefix.length;
+        requestAnimationFrame(() => {
+          ta.focus();
+          ta.setSelectionRange(cursor, cursor);
+        });
+      }
+    },
+    [markDirty],
+  );
 
   const now = useNowTicker(localSavedAt !== null);
 
@@ -574,22 +721,18 @@ function StudioEditor() {
           </span>
         )}
         <div className="flex-1" />
-        <button
-          type="button"
-          onClick={() => void save({ visibility: "draft" })}
-          disabled={saveState === "saving"}
-          className="whitespace-nowrap rounded-md border border-border-token bg-transparent px-3 py-1.5 font-sans text-[13px] font-medium text-ink disabled:opacity-50"
-        >
-          초안 저장
-        </button>
         <CTA
           size="sm"
           onClick={(e) => {
             e.preventDefault();
-            setConfirmingPublish(true);
+            void handleSave();
           }}
         >
-          발행하기 →
+          {visibility === "published"
+            ? "발행하기 →"
+            : visibility === "private"
+              ? "비공개로 저장"
+              : "초안 저장"}
         </CTA>
       </div>
 
@@ -598,7 +741,7 @@ function StudioEditor() {
           title={title || "(제목 없음)"}
           slug={slug}
           alreadyPublished={visibility === "published"}
-          onConfirm={() => void handlePublish()}
+          onConfirm={() => void handleConfirmPublish()}
           onCancel={() => setConfirmingPublish(false)}
         />
       )}
@@ -732,44 +875,66 @@ function StudioEditor() {
             </FieldRow>
           </div>
 
-          {/* Toolbar (cosmetic) */}
-          <div className="mb-2 flex w-fit gap-1 rounded-lg border border-border-token bg-surface-alt p-1.5">
-            {(
-              [
-                ["B", "bold", "sans"],
-                ["I", "italic", "sans"],
-                ["‹/›", "code", "mono"],
-                ["¶", "para", "sans"],
-                ["{ }", "codeblock", "mono"],
-                ["◐", "callout", "sans"],
-                ["—", "divider", "sans"],
-              ] as const
-            ).map(([g, k, font]) => (
-              <button
-                key={k}
-                type="button"
-                title={k}
-                className="h-7 w-7 rounded-[5px] border-none bg-transparent text-[12px] font-semibold text-ink-soft hover:bg-hover"
-                style={{
-                  fontFamily:
-                    font === "mono" ? "var(--font-mono)" : "var(--font-sans)",
-                  fontStyle: k === "italic" ? "italic" : "normal",
-                }}
-              >
-                {g}
-              </button>
-            ))}
+          {/* Toolbar */}
+          <div className="mb-2 flex items-center gap-1.5">
+            <div className="flex w-fit gap-1 rounded-lg border border-border-token bg-surface-alt p-1.5">
+              {(
+                [
+                  ["B", "bold", "sans"],
+                  ["I", "italic", "sans"],
+                  ["‹/›", "code", "mono"],
+                  ["¶", "para", "sans"],
+                  ["{ }", "codeblock", "mono"],
+                  ["◐", "callout", "sans"],
+                  ["—", "divider", "sans"],
+                ] as const
+              ).map(([g, k, font]) => (
+                <button
+                  key={k}
+                  type="button"
+                  title={k}
+                  onClick={() => insertMd(k)}
+                  className="h-7 w-7 rounded-[5px] border-none bg-transparent text-[12px] font-semibold text-ink-soft hover:bg-hover"
+                  style={{
+                    fontFamily:
+                      font === "mono"
+                        ? "var(--font-mono)"
+                        : "var(--font-sans)",
+                    fontStyle: k === "italic" ? "italic" : "normal",
+                  }}
+                >
+                  {g}
+                </button>
+              ))}
+            </div>
+            <div className="flex-1" />
+            <a
+              href="#md-cheatsheet"
+              onClick={(e) => {
+                e.preventDefault();
+                document
+                  .getElementById("md-cheatsheet")
+                  ?.scrollIntoView({ behavior: "smooth", block: "center" });
+              }}
+              className="font-mono text-[11px] text-ink-muted no-underline"
+            >
+              마크다운 문법 ↓
+            </a>
           </div>
 
           <textarea
+            ref={textareaRef}
             value={body}
             onChange={(e) => {
               setBody(e.target.value);
               markDirty();
             }}
+            onKeyDown={handleEditorKeyDown}
             className="min-h-[540px] w-full rounded-lg border border-border-token bg-surface px-[18px] py-4 font-mono text-[13.5px] leading-[1.7] text-ink outline-none"
             style={{ resize: "vertical" }}
           />
+
+          <MarkdownCheatsheet />
         </section>
 
         {/* Preview */}
@@ -799,17 +964,7 @@ function StudioEditor() {
                 ))}
             </div>
             <hr className="my-6 border-0 border-t border-border-token" />
-            {previewError ? (
-              <pre className="whitespace-pre-wrap rounded-md border border-[#c95c5c] bg-surface-alt p-3 font-mono text-[12px] text-[#c95c5c]">
-                MDX 컴파일 오류 — {previewError}
-              </pre>
-            ) : previewMdx ? (
-              <MDXRemote {...previewMdx} components={mdxComponents} />
-            ) : (
-              <div className="font-mono text-xs text-ink-muted">
-                미리보기 컴파일 중…
-              </div>
-            )}
+            {renderedBody}
           </div>
         </section>
       </div>
@@ -1064,6 +1219,109 @@ function RecoveryPromptModal({
         </div>
       </div>
     </div>
+  );
+}
+
+function CheatsheetRow({
+  syntax,
+  label,
+}: {
+  syntax: string;
+  label: string;
+}) {
+  return (
+    <tr>
+      <td
+        className="border-b border-border-token px-2.5 py-[7px] align-top font-mono text-[12px] text-ink-soft"
+        style={{ whiteSpace: "pre", width: "52%" }}
+      >
+        {syntax}
+      </td>
+      <td className="border-b border-border-token px-2.5 py-[7px] align-top font-sans text-[12.5px] tracking-[-0.005em] text-ink-muted">
+        {label}
+      </td>
+    </tr>
+  );
+}
+
+function MarkdownCheatsheet() {
+  const [open, setOpen] = useState(false);
+  return (
+    <section
+      id="md-cheatsheet"
+      className="mt-5 rounded-[10px] border border-border-token bg-surface-alt px-4 py-3.5"
+    >
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full cursor-pointer items-center gap-2.5 border-none bg-transparent p-0 font-sans text-[13px] font-semibold tracking-[-0.01em] text-ink"
+      >
+        <span
+          aria-hidden
+          className="inline-block w-2.5 text-[10px] text-ink-muted transition-transform duration-150"
+          style={{ transform: open ? "rotate(90deg)" : "rotate(0)" }}
+        >
+          ▸
+        </span>
+        마크다운 문법
+        <span className="flex-1" />
+        <span className="font-mono text-[11px] font-normal text-ink-muted">
+          {open ? "닫기" : "펼치기"}
+        </span>
+      </button>
+      {open && (
+        <div className="mt-3">
+          <div className="my-1 mb-2 font-sans text-[11px] font-bold uppercase tracking-[0.08em] text-ink-muted">
+            블록
+          </div>
+          <table
+            className="w-full border-collapse"
+            style={{ tableLayout: "fixed" }}
+          >
+            <tbody>
+              <CheatsheetRow syntax="# 제목" label="H1" />
+              <CheatsheetRow syntax="## 섹션" label="H2 (TOC에 표시)" />
+              <CheatsheetRow syntax="### 하위 섹션" label="H3 (TOC에 표시)" />
+              <CheatsheetRow syntax="#### 작은 제목" label="H4" />
+              <CheatsheetRow
+                syntax={"```java:Order.java\n코드…\n```"}
+                label="코드 블록 (lang : filename)"
+              />
+              <CheatsheetRow
+                syntax={"> [!INFO] 제목\n> 본문 줄들\n> 계속"}
+                label="Callout — INFO / WARNING / TIP / NOTE"
+              />
+              <CheatsheetRow syntax={"- 항목\n- 항목"} label="리스트" />
+              <CheatsheetRow syntax={"1. 항목\n2. 항목"} label="번호 리스트" />
+              <CheatsheetRow syntax="---" label="수평선" />
+            </tbody>
+          </table>
+          <div className="mt-3.5 mb-2 font-sans text-[11px] font-bold uppercase tracking-[0.08em] text-ink-muted">
+            인라인
+          </div>
+          <table
+            className="w-full border-collapse"
+            style={{ tableLayout: "fixed" }}
+          >
+            <tbody>
+              <CheatsheetRow syntax="**굵게**" label="강조" />
+              <CheatsheetRow syntax="*기울임*" label="이탤릭" />
+              <CheatsheetRow syntax="`코드`" label="인라인 코드" />
+              <CheatsheetRow syntax="[텍스트](url)" label="링크" />
+              <CheatsheetRow syntax="![alt](url)" label="이미지" />
+            </tbody>
+          </table>
+          <div className="mt-3.5 rounded-lg border border-border-token bg-surface px-3 py-2.5 font-sans text-[12px] leading-[1.6] tracking-[-0.005em] text-ink-muted">
+            <strong className="font-semibold text-ink">규칙</strong> ·{" "}
+            <code className="font-mono">{"> "}</code>는 callout 전용 (일반
+            인용문 없음). · 헤더와 마커 뒤엔{" "}
+            <strong className="font-semibold text-ink">공백 한 칸</strong>{" "}
+            필수. · <code className="font-mono">{"<Callout>"}</code> 같은 JSX
+            태그는 인식하지 않는다.
+          </div>
+        </div>
+      )}
+    </section>
   );
 }
 
