@@ -14,10 +14,9 @@ import { PostCard } from "@/components/post/PostCard";
 import { InlineCode } from "@/components/prose/InlineCode";
 
 export default function Page() {
-  const featured = getFeaturedPost() ?? getAllPosts()[0];
-  const recent = getAllPosts()
-    .filter((p) => p.slug !== featured?.slug)
-    .slice(0, 6);
+  const all = getAllPosts();
+  const featured = getFeaturedPost() ?? all[0];
+  const recent = all.filter((p) => p.slug !== featured?.slug).slice(0, 6);
   const categories = getCategoriesWithCounts();
 
   if (!featured) {

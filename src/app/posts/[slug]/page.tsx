@@ -110,7 +110,7 @@ export default async function Page({
             </div>
           </header>
 
-          <div>{content}</div>
+          {content}
 
           <Comments />
         </article>
