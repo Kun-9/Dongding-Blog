@@ -61,6 +61,12 @@ export default async function Page() {
         <p className="mt-2 whitespace-nowrap text-sm text-ink-muted">
           {dateStr} · {weekCopy}
         </p>
+        <Link
+          href="/admin/stats"
+          className="mt-2 inline-block font-mono text-[12px] text-ink-muted no-underline"
+        >
+          → 통계 보기
+        </Link>
       </header>
 
       {/* Stats */}
