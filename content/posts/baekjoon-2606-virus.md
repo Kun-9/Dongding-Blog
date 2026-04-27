@@ -1,7 +1,7 @@
 ---
 title: '백준 2606. 바이러스 풀이 JAVA'
 summary: '백준 2606번 바이러스 문제 풀이.'
-category: algorithm
+category: algorithm-solve
 tags: []
 date: '2023-12-05'
 visibility: published

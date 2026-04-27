@@ -1,7 +1,7 @@
 ---
 title: '백준 2573. 빙산 문제풀이 자바 JAVA'
 summary: '백준 2573번 빙산 풀이.'
-category: algorithm
+category: algorithm-solve
 tags: []
 date: '2023-12-07'
 visibility: published

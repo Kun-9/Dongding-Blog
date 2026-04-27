@@ -1,7 +1,7 @@
 ---
 title: '백준 2667. 단지번호붙이기 문제풀이 JAVA'
 summary: '백준 2667번 단지번호붙이기 풀이.'
-category: algorithm
+category: algorithm-solve
 tags: []
 date: '2023-12-05'
 visibility: published

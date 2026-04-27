@@ -1,7 +1,7 @@
 ---
 title: 'DFS와 BFS 개념 정리 및 풀이 (백준 1260 .JAVA )'
 summary: 'DFS와 BFS의 개념을 정리하고 백준 1260번을 자바로 풀어본다.'
-category: algorithm
+category: algorithm-study
 tags:
   - dfs
   - java

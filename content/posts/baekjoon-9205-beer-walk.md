@@ -1,7 +1,7 @@
 ---
 title: '백준 9205. 맥주 마시면서 걸어가기 문제풀이 자바 JAVA'
 summary: '백준 9205번 맥주 마시면서 걸어가기 풀이.'
-category: algorithm
+category: algorithm-solve
 tags: []
 date: '2023-12-07'
 visibility: published

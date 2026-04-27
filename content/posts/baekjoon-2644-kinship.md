@@ -1,7 +1,7 @@
 ---
 title: '백준 2644. 촌수계산 문제풀이 JAVA'
 summary: '백준 2644번 촌수계산 풀이.'
-category: algorithm
+category: algorithm-solve
 tags: []
 date: '2023-12-06'
 visibility: published

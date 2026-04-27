@@ -1,7 +1,7 @@
 ---
 title: '백준 2178. 미로탐색 문제풀이 JAVA'
 summary: '백준 2178번 미로탐색 문제를 BFS로 푼다.'
-category: algorithm
+category: algorithm-solve
 tags: []
 date: '2023-12-05'
 visibility: published

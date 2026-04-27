@@ -1,7 +1,7 @@
 ---
 title: 백준 3085. 사탕 게임 문제풀이 자바 JAVA
 summary: 백준 3085번 사탕 게임 풀이.
-category: algorithm
+category: algorithm-solve
 tags: []
 date: '2024-03-06'
 visibility: published

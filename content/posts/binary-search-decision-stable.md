@@ -1,7 +1,7 @@
 ---
 title: '이분탐색 결정 알고리즘 개념정리 및 예제 문제풀이 <마구간 정하기>'
 summary: '결정 알고리즘과 이분탐색 — 마구간 정하기 예제 풀이.'
-category: algorithm
+category: algorithm-study
 tags: []
 date: '2023-12-14'
 visibility: published

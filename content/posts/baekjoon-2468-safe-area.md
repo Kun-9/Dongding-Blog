@@ -1,7 +1,7 @@
 ---
 title: '백준 2468. 안전 영역 문제풀이 자바 (JAVA)'
 summary: '백준 2468번 안전 영역 풀이.'
-category: algorithm
+category: algorithm-solve
 tags: []
 date: '2023-12-07'
 visibility: published

@@ -1,7 +1,7 @@
 ---
 title: '백준 7569. 토마토 문제풀이 자바 JAVA'
 summary: '백준 7569번 토마토 풀이.'
-category: algorithm
+category: algorithm-solve
 tags:
   - java
   - 알고리즘

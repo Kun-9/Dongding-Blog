@@ -1,7 +1,7 @@
 ---
 title: '백준 14503. 로봇 청소기 문제풀이 자바 JAVA'
 summary: '백준 14503번 로봇 청소기 풀이.'
-category: algorithm
+category: algorithm-solve
 tags: []
 date: '2023-12-13'
 visibility: published
