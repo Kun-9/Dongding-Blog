@@ -11,15 +11,18 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useReducer,
   useRef,
   useState,
 } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { categories } from "@/lib/categories";
+import { categories, getCategory } from "@/lib/categories";
 import type { Visibility } from "@/lib/types";
 import { renderMarkdown } from "@/lib/markdown";
+import { safeReadJSON, safeRemove, safeWriteJSON } from "@/lib/storage";
 import { CTA } from "@/components/ui/CTA";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { TagChip } from "@/components/post/TagChip";
 import { DevOnlyNotice } from "@/components/layout/DevOnlyNotice";
 
@@ -106,39 +109,22 @@ function draftKey(slug: string | null): string {
   return `${DRAFT_STORAGE_PREFIX}${slug ?? NEW_DRAFT_KEY}`;
 }
 
+function isLocalDraft(value: unknown): value is LocalDraft {
+  if (!value || typeof value !== "object") return false;
+  const v = value as Partial<LocalDraft>;
+  return typeof v.body === "string" && typeof v.savedAt === "number";
+}
+
 function readDraft(key: string): LocalDraft | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.localStorage.getItem(key);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as Partial<LocalDraft>;
-    if (
-      typeof parsed?.body !== "string" ||
-      typeof parsed?.savedAt !== "number"
-    )
-      return null;
-    return parsed as LocalDraft;
-  } catch {
-    return null;
-  }
+  return safeReadJSON<LocalDraft>(key, isLocalDraft);
 }
 
 function writeDraft(key: string, value: LocalDraft): void {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    /* quota exceeded — skip silently */
-  }
+  safeWriteJSON(key, value);
 }
 
 function clearDraft(key: string): void {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.removeItem(key);
-  } catch {
-    /* ignore */
-  }
+  safeRemove(key);
 }
 
 function snapshotsEqual(a: DraftSnapshot, b: DraftSnapshot): boolean {
@@ -171,6 +157,55 @@ function useNowTicker(active: boolean): number {
   return now;
 }
 
+type FormState = DraftSnapshot & { slugLocked: boolean; date: string };
+
+type FormAction =
+  | { type: "PATCH"; patch: Partial<FormState> }
+  | { type: "HYDRATE_NEW"; defaultCategory: string }
+  | { type: "HYDRATE_FROM_SERVER"; snapshot: DraftSnapshot; date: string }
+  | { type: "HYDRATE_FROM_DRAFT"; draft: LocalDraft };
+
+function newDraftState(defaultCategory: string): FormState {
+  return {
+    title: "",
+    summary: "",
+    slug: "",
+    slugLocked: true,
+    category: defaultCategory,
+    tags: "",
+    body: SAMPLE_BODY,
+    visibility: "draft",
+    date: "",
+  };
+}
+
+function formReducer(state: FormState, action: FormAction): FormState {
+  switch (action.type) {
+    case "PATCH":
+      return { ...state, ...action.patch };
+    case "HYDRATE_NEW":
+      return newDraftState(action.defaultCategory);
+    case "HYDRATE_FROM_SERVER":
+      return {
+        ...action.snapshot,
+        slugLocked: false,
+        date: action.date,
+      };
+    case "HYDRATE_FROM_DRAFT":
+      return {
+        title: action.draft.title,
+        summary: action.draft.summary,
+        slug: action.draft.slug,
+        slugLocked: false,
+        category: action.draft.category,
+        tags: action.draft.tags,
+        body: action.draft.body,
+        visibility: action.draft.visibility,
+        date: state.date,
+      };
+  }
+}
+
 function StudioEditor() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -179,15 +214,16 @@ function StudioEditor() {
   const [loading, setLoading] = useState<boolean>(!!editingSlug);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const [title, setTitle] = useState("");
-  const [summary, setSummary] = useState("");
-  const [slug, setSlug] = useState("");
-  const [slugLocked, setSlugLocked] = useState(true);
-  const [category, setCategory] = useState(categories[0]?.id ?? "");
-  const [tags, setTags] = useState("");
-  const [body, setBody] = useState(SAMPLE_BODY);
-  const [visibility, setVisibility] = useState<Visibility>("draft");
-  const [date, setDate] = useState("");
+  const [form, dispatch] = useReducer(
+    formReducer,
+    categories[0]?.id ?? "",
+    newDraftState,
+  );
+  const { title, summary, slug, slugLocked, category, tags, body, visibility, date } = form;
+  const patch = useCallback(
+    (p: Partial<FormState>) => dispatch({ type: "PATCH", patch: p }),
+    [],
+  );
 
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -232,15 +268,11 @@ function StudioEditor() {
             body: data.body ?? "",
             visibility: serverVisibility,
           };
-          setTitle(serverSnapshot.title);
-          setSummary(serverSnapshot.summary);
-          setSlug(serverSnapshot.slug);
-          setSlugLocked(false); // existing slug is intentional
-          setCategory(serverSnapshot.category);
-          setTags(serverSnapshot.tags);
-          setBody(serverSnapshot.body);
-          setVisibility(serverSnapshot.visibility);
-          setDate(data.date ?? "");
+          dispatch({
+            type: "HYDRATE_FROM_SERVER",
+            snapshot: serverSnapshot,
+            date: data.date ?? "",
+          });
           setSaveState("saved");
           initializedRef.current = true;
           hydratedSlugRef.current = editingSlug;
@@ -265,15 +297,10 @@ function StudioEditor() {
       // Effect-driven setState here mirrors a URL change; the alternative
       // would be remounting StudioEditor with a `key` prop. Either is fine.
       /* eslint-disable react-hooks/set-state-in-effect */
-      setTitle("");
-      setSummary("");
-      setSlug("");
-      setSlugLocked(true);
-      setCategory(categories[0]?.id ?? "");
-      setTags("");
-      setBody(SAMPLE_BODY);
-      setVisibility("draft");
-      setDate("");
+      dispatch({
+        type: "HYDRATE_NEW",
+        defaultCategory: categories[0]?.id ?? "",
+      });
       setSaveState("idle");
       setLocalSavedAt(null);
       initializedRef.current = true;
@@ -409,14 +436,7 @@ function StudioEditor() {
 
   const applyRecovery = useCallback(() => {
     if (!pendingRecovery) return;
-    setTitle(pendingRecovery.title);
-    setSummary(pendingRecovery.summary);
-    setSlug(pendingRecovery.slug);
-    setSlugLocked(false);
-    setCategory(pendingRecovery.category);
-    setTags(pendingRecovery.tags);
-    setBody(pendingRecovery.body);
-    setVisibility(pendingRecovery.visibility);
+    dispatch({ type: "HYDRATE_FROM_DRAFT", draft: pendingRecovery });
     dirtyRef.current = true;
     setSaveState("typing");
     setLocalSavedAt(pendingRecovery.savedAt);
@@ -544,14 +564,14 @@ function StudioEditor() {
           return;
       }
 
-      setBody(nextBody);
+      patch({ body: nextBody });
       markDirty();
       requestAnimationFrame(() => {
         ta.focus();
         ta.setSelectionRange(cursorStart, cursorEnd);
       });
     },
-    [body, markDirty],
+    [body, markDirty, patch],
   );
 
   /**
@@ -613,7 +633,7 @@ function StudioEditor() {
         const before = value.slice(0, lineStart);
         const after = value.slice(pos);
         const next = before + "\n" + after;
-        setBody(next);
+        patch({ body: next });
         markDirty();
         const cursor = lineStart + 1;
         requestAnimationFrame(() => {
@@ -624,7 +644,7 @@ function StudioEditor() {
         const before = value.slice(0, pos);
         const after = value.slice(pos);
         const next = before + "\n" + prefix + after;
-        setBody(next);
+        patch({ body: next });
         markDirty();
         const cursor = pos + 1 + prefix.length;
         requestAnimationFrame(() => {
@@ -633,7 +653,7 @@ function StudioEditor() {
         });
       }
     },
-    [markDirty],
+    [markDirty, patch],
   );
 
   const now = useNowTicker(localSavedAt !== null);
@@ -713,11 +733,7 @@ function StudioEditor() {
                   : "var(--ink-muted)",
             }}
           >
-            {visibility === "published"
-              ? "PUBLISHED"
-              : visibility === "private"
-                ? "PRIVATE"
-                : "DRAFT"}
+            {VISIBILITY_META[visibility].badgeLabel}
           </span>
         )}
         <div className="flex-1" />
@@ -728,32 +744,68 @@ function StudioEditor() {
             void handleSave();
           }}
         >
-          {visibility === "published"
-            ? "발행하기 →"
-            : visibility === "private"
-              ? "비공개로 저장"
-              : "초안 저장"}
+          {VISIBILITY_META[visibility].ctaLabel}
         </CTA>
       </div>
 
-      {confirmingPublish && (
-        <ConfirmPublishModal
-          title={title || "(제목 없음)"}
-          slug={slug}
-          alreadyPublished={visibility === "published"}
-          onConfirm={() => void handleConfirmPublish()}
-          onCancel={() => setConfirmingPublish(false)}
-        />
-      )}
+      <ConfirmDialog
+        open={confirmingPublish}
+        tone="info"
+        title="이 글을 지금 발행할까요?"
+        body={
+          visibility === "published"
+            ? "이미 발행된 글입니다. 변경 사항을 다시 발행하면 즉시 반영돼요."
+            : "발행하면 공개 범위가 published로 바뀌고 공개 목록·RSS·sitemap에 노출됩니다."
+        }
+        meta={
+          <>
+            <div className="font-sans text-[14px] font-medium text-ink">
+              {title || "(제목 없음)"}
+            </div>
+            <div className="mt-1">/posts/{slug || "—"}</div>
+          </>
+        }
+        confirmLabel="발행하기 →"
+        cancelLabel="취소"
+        onConfirm={() => void handleConfirmPublish()}
+        onCancel={() => setConfirmingPublish(false)}
+      />
 
-      {pendingRecovery && (
-        <RecoveryPromptModal
-          draft={pendingRecovery}
-          isNewPost={!editingSlug}
-          onApply={applyRecovery}
-          onDiscard={discardRecovery}
-        />
-      )}
+      <ConfirmDialog
+        open={pendingRecovery !== null}
+        tone="info"
+        title={
+          editingSlug
+            ? "이 글에 저장되지 않은 변경이 있어요"
+            : "이전에 쓰던 새 글을 이어서 쓸까요?"
+        }
+        body={
+          editingSlug
+            ? "서버에 반영된 본문과 다른 로컬 백업이 있습니다. 이어서 쓰면 백업 내용으로 교체되며, 버리면 서버 버전으로 진행돼요."
+            : "이전 세션에서 쓰다가 저장하지 않은 임시본입니다. 이어서 쓰면 현재 편집 화면이 임시본 내용으로 교체돼요."
+        }
+        meta={
+          pendingRecovery && (
+            <>
+              <div className="font-sans text-[14px] font-medium text-ink">
+                {pendingRecovery.title || "(제목 없음)"}
+              </div>
+              <div className="mt-1">
+                /posts/{pendingRecovery.slug || "—"} ·{" "}
+                {pendingRecovery.body.length}자
+              </div>
+              <div className="mt-1 text-[11px]">
+                백업 시각:{" "}
+                {new Date(pendingRecovery.savedAt).toLocaleString()}
+              </div>
+            </>
+          )
+        }
+        confirmLabel="이어서 쓰기 →"
+        cancelLabel="버리기"
+        onConfirm={applyRecovery}
+        onCancel={discardRecovery}
+      />
 
       {toast && (
         <ToastBanner toast={toast} onClose={() => setToast(null)} />
@@ -771,8 +823,11 @@ function StudioEditor() {
                 value={title}
                 onChange={(e) => {
                   const v = e.target.value;
-                  setTitle(v);
-                  if (slugLocked) setSlug(slugifyTitle(v));
+                  patch(
+                    slugLocked
+                      ? { title: v, slug: slugifyTitle(v) }
+                      : { title: v },
+                  );
                   markDirty();
                 }}
                 placeholder="제목"
@@ -791,8 +846,10 @@ function StudioEditor() {
                   <input
                     value={slug}
                     onChange={(e) => {
-                      setSlugLocked(false);
-                      setSlug(normalizeSlug(e.target.value));
+                      patch({
+                        slugLocked: false,
+                        slug: normalizeSlug(e.target.value),
+                      });
                       markDirty();
                     }}
                     placeholder="my-post-slug"
@@ -806,8 +863,10 @@ function StudioEditor() {
                   <button
                     type="button"
                     onClick={() => {
-                      setSlugLocked(true);
-                      setSlug(slugifyTitle(title));
+                      patch({
+                        slugLocked: true,
+                        slug: slugifyTitle(title),
+                      });
                       markDirty();
                     }}
                     title="제목에서 자동 생성"
@@ -830,7 +889,7 @@ function StudioEditor() {
               <input
                 value={summary}
                 onChange={(e) => {
-                  setSummary(e.target.value);
+                  patch({ summary: e.target.value });
                   markDirty();
                 }}
                 placeholder="목록·OG에서 보일 한 줄 요약"
@@ -841,7 +900,7 @@ function StudioEditor() {
               <select
                 value={category}
                 onChange={(e) => {
-                  setCategory(e.target.value);
+                  patch({ category: e.target.value });
                   markDirty();
                 }}
                 className="w-full rounded-md border border-border-token bg-surface px-2.5 py-[7px] font-sans text-[13px] tracking-[-0.005em] text-ink outline-none"
@@ -857,7 +916,7 @@ function StudioEditor() {
               <input
                 value={tags}
                 onChange={(e) => {
-                  setTags(e.target.value);
+                  patch({ tags: e.target.value });
                   markDirty();
                 }}
                 placeholder="comma, separated"
@@ -868,7 +927,7 @@ function StudioEditor() {
               <VisibilityField
                 value={visibility}
                 onChange={(v) => {
-                  setVisibility(v);
+                  patch({ visibility: v });
                   markDirty();
                 }}
               />
@@ -926,7 +985,7 @@ function StudioEditor() {
             ref={textareaRef}
             value={body}
             onChange={(e) => {
-              setBody(e.target.value);
+              patch({ body: e.target.value });
               markDirty();
             }}
             onKeyDown={handleEditorKeyDown}
@@ -944,12 +1003,8 @@ function StudioEditor() {
           </div>
           <div className="max-w-[640px]">
             <div className="mb-2 font-sans text-[11px] font-bold uppercase tracking-[0.08em] text-ink-muted">
-              {categories.find((x) => x.id === category)?.name ?? "—"} ·{" "}
-              {visibility === "published"
-                ? "발행"
-                : visibility === "private"
-                  ? "비공개"
-                  : "초안"}
+              {getCategory(category)?.name ?? "—"} ·{" "}
+              {VISIBILITY_META[visibility].label}
             </div>
             <h1 className="m-0 font-sans text-[36px] font-semibold leading-[1.15] tracking-[-0.035em] text-ink">
               {title || "(제목 없음)"}
@@ -972,16 +1027,38 @@ function StudioEditor() {
   );
 }
 
-const VISIBILITY_OPTIONS: ReadonlyArray<{
-  v: Visibility;
-  label: string;
-  glyph: string;
-  desc: string;
-}> = [
-  { v: "published", label: "발행", glyph: "●", desc: "외부에 공개" },
-  { v: "private", label: "비공개", glyph: "◐", desc: "URL 알아도 안 보임" },
-  { v: "draft", label: "초안", glyph: "○", desc: "저장만, 미공개" },
-];
+const VISIBILITY_OPTIONS = [
+  {
+    v: "published" as const,
+    label: "발행",
+    glyph: "●",
+    desc: "외부에 공개",
+    badgeLabel: "PUBLISHED",
+    ctaLabel: "발행하기 →",
+  },
+  {
+    v: "private" as const,
+    label: "비공개",
+    glyph: "◐",
+    desc: "URL 알아도 안 보임",
+    badgeLabel: "PRIVATE",
+    ctaLabel: "비공개로 저장",
+  },
+  {
+    v: "draft" as const,
+    label: "초안",
+    glyph: "○",
+    desc: "저장만, 미공개",
+    badgeLabel: "DRAFT",
+    ctaLabel: "초안 저장",
+  },
+] as const;
+
+type VisibilityMeta = (typeof VISIBILITY_OPTIONS)[number];
+
+const VISIBILITY_META: Record<Visibility, VisibilityMeta> = Object.fromEntries(
+  VISIBILITY_OPTIONS.map((o) => [o.v, o]),
+) as Record<Visibility, VisibilityMeta>;
 
 function VisibilityField({
   value,
@@ -990,8 +1067,7 @@ function VisibilityField({
   value: Visibility;
   onChange: (v: Visibility) => void;
 }) {
-  const desc =
-    VISIBILITY_OPTIONS.find((o) => o.v === value)?.desc ?? "";
+  const desc = VISIBILITY_META[value].desc;
   return (
     <div className="grid gap-2">
       <div className="inline-flex border-b border-border-token">
@@ -1049,176 +1125,6 @@ function FieldRow({
       <span className="pt-[9px] font-mono text-xs text-ink-muted">{label}</span>
       {children}
     </label>
-  );
-}
-
-function ConfirmPublishModal({
-  title,
-  slug,
-  alreadyPublished,
-  onConfirm,
-  onCancel,
-}: {
-  title: string;
-  slug: string;
-  alreadyPublished: boolean;
-  onConfirm: () => void;
-  onCancel: () => void;
-}) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onCancel();
-      if (e.key === "Enter") onConfirm();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onCancel, onConfirm]);
-
-  return (
-    <div
-      onClick={onCancel}
-      className="fixed inset-0 z-[100] flex items-center justify-center"
-      style={{ background: "rgba(0,0,0,0.42)", backdropFilter: "blur(4px)" }}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="w-[min(440px,92vw)] overflow-hidden rounded-2xl border border-border-token bg-surface"
-        style={{ boxShadow: "0 20px 50px rgba(0,0,0,0.25)" }}
-      >
-        <div className="px-6 pt-6 pb-2">
-          <div className="mb-2 font-mono text-[11px] font-bold uppercase tracking-[0.1em] text-ink-muted">
-            {alreadyPublished ? "다시 발행" : "발행 확인"}
-          </div>
-          <h2 className="m-0 font-sans text-[20px] font-semibold tracking-[-0.02em] text-ink">
-            이 글을 지금 발행할까요?
-          </h2>
-          <div className="mt-3 rounded-md border border-border-token bg-surface-alt px-3 py-2.5">
-            <div className="font-sans text-[14px] font-medium text-ink">
-              {title}
-            </div>
-            <div className="mt-1 font-mono text-[12px] text-ink-muted">
-              /posts/{slug || "—"}
-            </div>
-          </div>
-          <p className="mt-3 text-[13px] leading-[1.65] text-ink-muted">
-            {alreadyPublished
-              ? "이미 발행된 글입니다. 변경 사항을 다시 발행하면 즉시 반영돼요."
-              : "발행하면 공개 범위가 published로 바뀌고 공개 목록·RSS·sitemap에 노출됩니다."}
-          </p>
-        </div>
-        <div className="flex justify-end gap-2 border-t border-border-token px-6 py-3.5">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="rounded-md border border-border-token bg-transparent px-3 py-1.5 font-sans text-[13px] font-medium text-ink"
-          >
-            취소
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            autoFocus
-            className="rounded-md border-none px-3.5 py-1.5 font-sans text-[13px] font-semibold"
-            style={{
-              background: "var(--accent)",
-              color: "var(--accent-ink)",
-              boxShadow:
-                "inset 0 0.5px 0 rgba(255,255,255,0.18), inset 0 0 0 0.5px rgba(0,0,0,0.25)",
-            }}
-          >
-            발행하기 →
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function RecoveryPromptModal({
-  draft,
-  isNewPost,
-  onApply,
-  onDiscard,
-}: {
-  draft: LocalDraft;
-  isNewPost: boolean;
-  onApply: () => void;
-  onDiscard: () => void;
-}) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onDiscard();
-      if (e.key === "Enter") onApply();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onApply, onDiscard]);
-
-  const savedAtLabel = new Date(draft.savedAt).toLocaleString();
-  const charCount = draft.body.length;
-
-  return (
-    <div
-      onClick={onDiscard}
-      className="fixed inset-0 z-[100] flex items-center justify-center"
-      style={{ background: "rgba(0,0,0,0.42)", backdropFilter: "blur(4px)" }}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="w-[min(460px,92vw)] overflow-hidden rounded-2xl border border-border-token bg-surface"
-        style={{ boxShadow: "0 20px 50px rgba(0,0,0,0.25)" }}
-      >
-        <div className="px-6 pt-6 pb-2">
-          <div className="mb-2 font-mono text-[11px] font-bold uppercase tracking-[0.1em] text-ink-muted">
-            임시 저장본 발견
-          </div>
-          <h2 className="m-0 font-sans text-[20px] font-semibold tracking-[-0.02em] text-ink">
-            {isNewPost
-              ? "이전에 쓰던 새 글을 이어서 쓸까요?"
-              : "이 글에 저장되지 않은 변경이 있어요"}
-          </h2>
-          <div className="mt-3 rounded-md border border-border-token bg-surface-alt px-3 py-2.5">
-            <div className="font-sans text-[14px] font-medium text-ink">
-              {draft.title || "(제목 없음)"}
-            </div>
-            <div className="mt-1 font-mono text-[12px] text-ink-muted">
-              /posts/{draft.slug || "—"} · {charCount}자
-            </div>
-            <div className="mt-1 font-mono text-[11px] text-ink-muted">
-              백업 시각: {savedAtLabel}
-            </div>
-          </div>
-          <p className="mt-3 text-[13px] leading-[1.65] text-ink-muted">
-            {isNewPost
-              ? "이전 세션에서 쓰다가 저장하지 않은 임시본입니다. 이어서 쓰면 현재 편집 화면이 임시본 내용으로 교체돼요."
-              : "서버에 반영된 본문과 다른 로컬 백업이 있습니다. 이어서 쓰면 백업 내용으로 교체되며, 버리면 서버 버전으로 진행돼요."}
-          </p>
-        </div>
-        <div className="flex justify-end gap-2 border-t border-border-token px-6 py-3.5">
-          <button
-            type="button"
-            onClick={onDiscard}
-            className="rounded-md border border-border-token bg-transparent px-3 py-1.5 font-sans text-[13px] font-medium text-ink"
-          >
-            버리기
-          </button>
-          <button
-            type="button"
-            onClick={onApply}
-            autoFocus
-            className="rounded-md border-none px-3.5 py-1.5 font-sans text-[13px] font-semibold"
-            style={{
-              background: "var(--accent)",
-              color: "var(--accent-ink)",
-              boxShadow:
-                "inset 0 0.5px 0 rgba(255,255,255,0.18), inset 0 0 0 0.5px rgba(0,0,0,0.25)",
-            }}
-          >
-            이어서 쓰기 →
-          </button>
-        </div>
-      </div>
-    </div>
   );
 }
 
