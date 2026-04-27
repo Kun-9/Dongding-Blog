@@ -72,6 +72,8 @@
   /* Inline code — warm amber tint, prose.jsx#IC */
   --inline-code-bg: rgba(168, 129, 74, 0.12);
   --inline-code-fg: #7a5a2a;
+
+  --header-bg: rgba(247, 244, 237, 0.82);
 }
 
 [data-theme="dark"] {
@@ -127,6 +129,8 @@
   /* Inline code — mustard tint for dark theme */
   --inline-code-bg: rgba(255, 200, 140, 0.1);
   --inline-code-fg: #e8c89a;
+
+  --header-bg: rgba(22, 21, 19, 0.85);
 }
 
 /* ============================================================
@@ -201,6 +205,18 @@ body {
 
 a {
   color: inherit;
+}
+
+/* Theme toggle icons — switched via [data-theme] so the correct glyph is
+   visible on first paint and there is no hydration flicker. */
+.theme-toggle-dark {
+  display: none;
+}
+[data-theme="dark"] .theme-toggle-light {
+  display: none;
+}
+[data-theme="dark"] .theme-toggle-dark {
+  display: inline;
 }
 
 /* Scenic glow background — applied once on body */

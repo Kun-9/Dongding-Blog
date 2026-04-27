@@ -64,9 +64,7 @@ export function Header({ categories, posts }: Props) {
       <header
         className="sticky top-0 z-50 border-b border-border-token"
         style={{
-          background: isDark
-            ? "rgba(22,21,19,0.85)"
-            : "rgba(247,244,237,0.82)",
+          background: "var(--header-bg)",
           backdropFilter: "saturate(160%) blur(12px)",
           WebkitBackdropFilter: "saturate(160%) blur(12px)",
         }}
@@ -116,10 +114,10 @@ export function Header({ categories, posts }: Props) {
               type="button"
               onClick={() => setTheme(isDark ? "light" : "dark")}
               aria-label="Toggle theme"
-              className="ml-1.5 inline-flex h-8 w-8 items-center justify-center rounded-full border border-border-token bg-transparent text-sm text-ink"
-              suppressHydrationWarning
+              className="theme-toggle ml-1.5 inline-flex h-8 w-8 items-center justify-center rounded-full border border-border-token bg-transparent text-sm text-ink"
             >
-              {mounted ? (isDark ? "☼" : "☾") : "☾"}
+              <span className="theme-toggle-light">☾</span>
+              <span className="theme-toggle-dark">☼</span>
             </button>
 
             {isAdmin && (
