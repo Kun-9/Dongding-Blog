@@ -13,7 +13,7 @@ export async function generateMetadata({
   const { id } = await params;
   const cat = getCategory(id);
   return {
-    title: `${cat?.name ?? id} · Dong-Ding`,
+    title: cat?.name ?? id,
   };
 }
 

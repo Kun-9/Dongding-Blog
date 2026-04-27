@@ -7,7 +7,7 @@ import { site } from "@/lib/site";
 export function Footer() {
   return (
     <footer className="mx-auto mt-20 flex max-w-[1180px] flex-wrap items-center justify-between gap-4 border-t border-border-token px-8 py-8 font-sans text-[13px] text-ink-muted">
-      <div>© 2026 Dong-Ding · 백엔드 노트</div>
+      <div>{site.copyright}</div>
       <div className="flex gap-[18px]">
         <a
           href={`https://${site.social.github}`}

@@ -1,7 +1,7 @@
 import { PostList } from "@/components/post/PostList";
 
 export const metadata = {
-  title: "Posts · Dong-Ding",
+  title: "Posts",
 };
 
 export default function Page() {

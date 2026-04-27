@@ -5,7 +5,7 @@ import { CTA } from "@/components/ui/CTA";
 import { site } from "@/lib/site";
 
 export const metadata = {
-  title: "About · Dong-Ding",
+  title: "About",
 };
 
 const CAREER: ReadonlyArray<readonly [string, string, string]> = [

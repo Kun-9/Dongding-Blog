@@ -5,7 +5,7 @@
 import { CTA } from "@/components/ui/CTA";
 
 export const metadata = {
-  title: "404 · Dong-Ding",
+  title: "404",
 };
 
 export default function NotFound() {

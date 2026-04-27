@@ -7,6 +7,7 @@ import { Footer } from "@/components/layout/Footer";
 import { Plausible } from "@/components/analytics/Plausible";
 import { categories } from "@/lib/categories";
 import { getAllPosts } from "@/lib/posts";
+import { site } from "@/lib/site";
 
 const jetbrainsMono = JetBrains_Mono({
   variable: "--font-jetbrains-mono",
@@ -14,13 +15,13 @@ const jetbrainsMono = JetBrains_Mono({
   weight: ["400", "500", "600", "700"],
 });
 
-const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://dongding.dev";
-
 export const metadata: Metadata = {
-  metadataBase: new URL(SITE_URL),
-  title: "Dong-Ding · 백엔드 노트",
-  description: "자바·스프링·DB를 깊이, 천천히 따라가는 블로그.",
+  metadataBase: new URL(site.url),
+  title: {
+    default: site.title,
+    template: `%s · ${site.shortTitle}`,
+  },
+  description: site.description,
 };
 
 export default function RootLayout({
@@ -32,7 +33,7 @@ export default function RootLayout({
   const posts = getAllPosts();
 
   return (
-    <html lang="ko" suppressHydrationWarning className={jetbrainsMono.variable}>
+    <html lang={site.lang} suppressHydrationWarning className={jetbrainsMono.variable}>
       <body className="scenic-glow min-h-screen">
         <ThemeProvider>
           <Header categories={categories} posts={posts} />

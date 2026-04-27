@@ -13,7 +13,7 @@ export async function generateMetadata({
   const { tag } = await params;
   const decoded = decodeURIComponent(tag);
   return {
-    title: `#${decoded} · Dong-Ding`,
+    title: `#${decoded}`,
   };
 }
 

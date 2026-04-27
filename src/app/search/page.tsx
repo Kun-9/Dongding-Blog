@@ -4,7 +4,7 @@ import { categories } from "@/lib/categories";
 import { SearchClient } from "./SearchClient";
 
 export const metadata = {
-  title: "Search · Dong-Ding",
+  title: "Search",
 };
 
 export default function Page() {
