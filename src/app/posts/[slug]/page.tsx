@@ -18,6 +18,7 @@ import { TOC } from "@/components/prose/TOC";
 import { ReadingProgress } from "@/components/prose/ReadingProgress";
 import { mdxComponents } from "@/components/prose/MdxComponents";
 import { Comments } from "@/components/comments/Comments";
+import { AdminBar } from "@/components/post/AdminBar";
 
 const ARTICLE_ID = "article-body";
 
@@ -85,6 +86,8 @@ export default async function Page({
               </Link>
             )}
           </div>
+
+          <AdminBar slug={slug} />
 
           <header className="mb-9">
             <h1 className="m-0 font-sans text-[40px] font-semibold leading-[1.15] tracking-[-0.035em] text-ink">
