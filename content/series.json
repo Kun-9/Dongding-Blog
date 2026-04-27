@@ -5,30 +5,6 @@
     "desc": "실무에서 JPA를 모범생처럼 쓰지 않을 때의 이야기.",
     "count": 5,
     "color": "#7a8a5a",
-    "posts": ["jpa-n-plus-1", "jpa-dirty-checking"]
-  },
-  {
-    "id": "tx-internals",
-    "title": "트랜잭션 내부",
-    "desc": "AOP·Propagation·Isolation 그 너머.",
-    "count": 3,
-    "color": "#8a7355",
-    "posts": ["spring-tx-propagation"]
-  },
-  {
-    "id": "mysql-internals",
-    "title": "MySQL Internals",
-    "desc": "B+Tree, Buffer Pool, Redo log을 코드로 따라가기.",
-    "count": 4,
-    "color": "#5a7480",
-    "posts": ["mysql-index-internals"]
-  },
-  {
-    "id": "debugging-diary",
-    "title": "디버깅 일지",
-    "desc": "실제 운영 사고에서 배운 것.",
-    "count": 2,
-    "color": "#8a5d5d",
-    "posts": ["threadlocal-leak"]
+    "posts": ["jpa-n-plus-1"]
   }
 ]
