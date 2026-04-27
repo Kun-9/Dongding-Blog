@@ -12,6 +12,7 @@ import { site } from "@/lib/site";
 import siteJson from "@/lib/site.json";
 import categoriesJson from "@/lib/categories.json";
 import { DevOnlyNotice } from "@/components/layout/DevOnlyNotice";
+import { safeWriteJSON } from "@/lib/storage";
 import {
   CategoryManager,
   type CatNode,
@@ -455,13 +456,8 @@ function EditorCard() {
   const prefs = useMemo(() => parsePrefs(raw), [raw]);
 
   const updatePrefs = (patch: Partial<EditorPrefs>) => {
-    const next = { ...prefs, ...patch };
-    try {
-      window.localStorage.setItem(PREFS_KEY, JSON.stringify(next));
-      window.dispatchEvent(new Event(PREFS_CHANGE));
-    } catch {
-      /* quota or privacy mode — silently drop */
-    }
+    safeWriteJSON(PREFS_KEY, { ...prefs, ...patch });
+    window.dispatchEvent(new Event(PREFS_CHANGE));
   };
 
   return (
