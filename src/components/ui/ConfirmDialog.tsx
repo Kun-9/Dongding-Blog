@@ -72,7 +72,7 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
 }: Props) {
-  const cardRef = useRef<HTMLDivElement | null>(null);
+  const confirmBtnRef = useRef<HTMLButtonElement | null>(null);
   const mounted = useMounted();
   const { resolvedTheme } = useTheme();
   const isDark = mounted ? resolvedTheme === "dark" : false;
@@ -88,7 +88,7 @@ export function ConfirmDialog({
     window.addEventListener("keydown", onKey);
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    const id = window.setTimeout(() => cardRef.current?.focus(), 30);
+    const id = window.setTimeout(() => confirmBtnRef.current?.focus(), 30);
     return () => {
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = prev;
@@ -124,8 +124,6 @@ export function ConfirmDialog({
       `}</style>
 
       <div
-        ref={cardRef}
-        tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
         className="w-full max-w-[440px] rounded-[14px] border border-border-token bg-surface px-7 pb-[22px] pt-7 outline-none"
         style={{
@@ -180,6 +178,7 @@ export function ConfirmDialog({
             {cancelLabel}
           </button>
           <button
+            ref={confirmBtnRef}
             type="button"
             onClick={onConfirm}
             className="whitespace-nowrap rounded-[7px] border border-transparent px-4 py-2 font-sans text-[13.5px] font-semibold tracking-[-0.005em] outline-none transition-[background] duration-[120ms]"
