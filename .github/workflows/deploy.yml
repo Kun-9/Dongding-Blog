@@ -38,6 +38,10 @@ jobs:
           NEXT_PUBLIC_GISCUS_REPO_ID: R_kgDOSNJvUQ
           NEXT_PUBLIC_GISCUS_CATEGORY: Comments
           NEXT_PUBLIC_GISCUS_CATEGORY_ID: DIC_kwDOSNJvUc4C7vwu
+          NEXT_PUBLIC_UMAMI_WEBSITE_ID: ${{ secrets.NEXT_PUBLIC_UMAMI_WEBSITE_ID }}
+          NEXT_PUBLIC_UMAMI_SCRIPT_URL: ${{ secrets.NEXT_PUBLIC_UMAMI_SCRIPT_URL }}
+          NEXT_PUBLIC_UMAMI_SHARE_ID: ${{ secrets.NEXT_PUBLIC_UMAMI_SHARE_ID }}
+          NEXT_PUBLIC_UMAMI_SHARE_BASE: ${{ secrets.NEXT_PUBLIC_UMAMI_SHARE_BASE }}
         run: npm run build
 
       - name: Ensure .nojekyll
