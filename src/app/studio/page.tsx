@@ -71,6 +71,91 @@ function normalizeSlug(input: string): string {
     .replace(/-+/g, "-");
 }
 
+const DRAFT_STORAGE_PREFIX = "studio:draft:";
+const NEW_DRAFT_KEY = "__new__";
+const LOCAL_BACKUP_DEBOUNCE_MS = 500;
+
+type LocalDraft = {
+  title: string;
+  summary: string;
+  slug: string;
+  category: string;
+  tags: string;
+  body: string;
+  visibility: Visibility;
+  savedAt: number;
+};
+type DraftSnapshot = Omit<LocalDraft, "savedAt">;
+
+function draftKey(slug: string | null): string {
+  return `${DRAFT_STORAGE_PREFIX}${slug ?? NEW_DRAFT_KEY}`;
+}
+
+function readDraft(key: string): LocalDraft | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<LocalDraft>;
+    if (
+      typeof parsed?.body !== "string" ||
+      typeof parsed?.savedAt !== "number"
+    )
+      return null;
+    return parsed as LocalDraft;
+  } catch {
+    return null;
+  }
+}
+
+function writeDraft(key: string, value: LocalDraft): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    /* quota exceeded — skip silently */
+  }
+}
+
+function clearDraft(key: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(key);
+  } catch {
+    /* ignore */
+  }
+}
+
+function snapshotsEqual(a: DraftSnapshot, b: DraftSnapshot): boolean {
+  return (
+    a.title === b.title &&
+    a.summary === b.summary &&
+    a.slug === b.slug &&
+    a.category === b.category &&
+    a.tags === b.tags &&
+    a.body === b.body &&
+    a.visibility === b.visibility
+  );
+}
+
+function formatRelative(timestamp: number, now: number): string {
+  const diff = Math.max(0, now - timestamp);
+  if (diff < 5_000) return "방금";
+  if (diff < 60_000) return `${Math.round(diff / 1_000)}초 전`;
+  if (diff < 3_600_000) return `${Math.round(diff / 60_000)}분 전`;
+  return `${Math.round(diff / 3_600_000)}시간 전`;
+}
+
+function useNowTicker(active: boolean): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!active) return;
+    const id = setInterval(() => setNow(Date.now()), 15_000);
+    return () => clearInterval(id);
+  }, [active]);
+  return now;
+}
+
 function StudioEditor() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -93,6 +178,10 @@ function StudioEditor() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [confirmingPublish, setConfirmingPublish] = useState(false);
   const [toast, setToast] = useState<Toast | null>(null);
+  const [localSavedAt, setLocalSavedAt] = useState<number | null>(null);
+  const [pendingRecovery, setPendingRecovery] = useState<LocalDraft | null>(
+    null,
+  );
 
   const initializedRef = useRef(false);
   const dirtyRef = useRef(false);
@@ -112,25 +201,43 @@ function StudioEditor() {
         })
         .then((data) => {
           if (cancelled) return;
-          setTitle(data.title ?? "");
-          setSummary(data.summary ?? "");
-          setSlug(data.slug ?? editingSlug);
-          setSlugLocked(false); // existing slug is intentional
-          setCategory(data.category || (categories[0]?.id ?? ""));
-          setTags(Array.isArray(data.tags) ? data.tags.join(", ") : "");
-          setBody(data.body ?? "");
-          setVisibility(
+          const serverVisibility: Visibility =
             data.visibility === "published" ||
-              data.visibility === "private" ||
-              data.visibility === "draft"
+            data.visibility === "private" ||
+            data.visibility === "draft"
               ? data.visibility
-              : "draft",
-          );
+              : "draft";
+          const serverSnapshot: DraftSnapshot = {
+            title: data.title ?? "",
+            summary: data.summary ?? "",
+            slug: data.slug ?? editingSlug,
+            category: data.category || (categories[0]?.id ?? ""),
+            tags: Array.isArray(data.tags) ? data.tags.join(", ") : "",
+            body: data.body ?? "",
+            visibility: serverVisibility,
+          };
+          setTitle(serverSnapshot.title);
+          setSummary(serverSnapshot.summary);
+          setSlug(serverSnapshot.slug);
+          setSlugLocked(false); // existing slug is intentional
+          setCategory(serverSnapshot.category);
+          setTags(serverSnapshot.tags);
+          setBody(serverSnapshot.body);
+          setVisibility(serverSnapshot.visibility);
           setDate(data.date ?? "");
           setSaveState("saved");
           initializedRef.current = true;
           hydratedSlugRef.current = editingSlug;
           setLoading(false);
+
+          // Recovery probe — local backup beats server only if it differs.
+          const stored = readDraft(draftKey(editingSlug));
+          if (stored && !snapshotsEqual(stored, serverSnapshot)) {
+            setPendingRecovery(stored);
+          } else if (stored) {
+            // Identical → drop stale key so it doesn't re-prompt later.
+            clearDraft(draftKey(editingSlug));
+          }
         })
         .catch((err: unknown) => {
           if (cancelled) return;
@@ -152,8 +259,13 @@ function StudioEditor() {
       setVisibility("draft");
       setDate("");
       setSaveState("idle");
+      setLocalSavedAt(null);
       initializedRef.current = true;
       /* eslint-enable react-hooks/set-state-in-effect */
+
+      // Recovery probe for new-post slot.
+      const stored = readDraft(draftKey(null));
+      if (stored) setPendingRecovery(stored);
     }
     return () => {
       cancelled = true;
@@ -233,12 +345,20 @@ function StudioEditor() {
     ): Promise<SaveResult> => {
       setSaveState("saving");
       setSaveError(null);
+      const previousKey = draftKey(editingSlug);
       try {
         const canonicalSlug = await persist(buildPayload(overrides));
         dirtyRef.current = false;
         if (overrides?.visibility !== undefined)
           setVisibility(overrides.visibility);
         setSaveState("saved");
+        // Server is authoritative now — drop the local backup. Clear both the
+        // pre-save key and the post-rename key so a slug change can't leave
+        // an orphan draft behind.
+        clearDraft(previousKey);
+        const nextKey = draftKey(canonicalSlug);
+        if (nextKey !== previousKey) clearDraft(nextKey);
+        setLocalSavedAt(null);
         return { ok: true, slug: canonicalSlug };
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -247,7 +367,7 @@ function StudioEditor() {
         return { ok: false, error: msg };
       }
     },
-    [buildPayload, persist],
+    [buildPayload, persist, editingSlug],
   );
 
   const handlePublish = useCallback(async () => {
@@ -266,6 +386,28 @@ function StudioEditor() {
     setTimeout(() => router.push(href), PUBLISH_REDIRECT_MS);
   }, [router, save]);
 
+  const applyRecovery = useCallback(() => {
+    if (!pendingRecovery) return;
+    setTitle(pendingRecovery.title);
+    setSummary(pendingRecovery.summary);
+    setSlug(pendingRecovery.slug);
+    setSlugLocked(false);
+    setCategory(pendingRecovery.category);
+    setTags(pendingRecovery.tags);
+    setBody(pendingRecovery.body);
+    setVisibility(pendingRecovery.visibility);
+    dirtyRef.current = true;
+    setSaveState("typing");
+    setLocalSavedAt(pendingRecovery.savedAt);
+    setPendingRecovery(null);
+  }, [pendingRecovery]);
+
+  const discardRecovery = useCallback(() => {
+    clearDraft(draftKey(editingSlug));
+    setLocalSavedAt(null);
+    setPendingRecovery(null);
+  }, [editingSlug]);
+
   // Auto-dismiss error toasts after 4s; success toasts stay until redirect.
   useEffect(() => {
     if (!toast || toast.kind !== "error") return;
@@ -273,15 +415,41 @@ function StudioEditor() {
     return () => clearTimeout(id);
   }, [toast]);
 
-  // Debounced autosave for existing posts only.
+  // Debounced LOCAL backup. Never writes to the server — that would re-publish
+  // implicitly. Authoritative writes only happen on explicit 초안 저장 / 발행.
   useEffect(() => {
-    if (!editingSlug) return;
+    if (!initializedRef.current) return;
+    if (pendingRecovery) return; // wait for the user's recovery decision
     if (saveState !== "typing") return;
+    const key = draftKey(editingSlug);
     const id = setTimeout(() => {
-      if (dirtyRef.current) void save();
-    }, 1500);
+      if (!dirtyRef.current) return;
+      const now = Date.now();
+      writeDraft(key, {
+        title,
+        summary,
+        slug,
+        category,
+        tags,
+        body,
+        visibility,
+        savedAt: now,
+      });
+      setLocalSavedAt(now);
+    }, LOCAL_BACKUP_DEBOUNCE_MS);
     return () => clearTimeout(id);
-  }, [editingSlug, saveState, save, body, title, summary, slug, tags, category]);
+  }, [
+    editingSlug,
+    saveState,
+    pendingRecovery,
+    title,
+    summary,
+    slug,
+    category,
+    tags,
+    body,
+    visibility,
+  ]);
 
   const wordCount = body.replace(/\s+/g, "").length;
   const readTime = Math.max(1, Math.round(wordCount / 500));
@@ -321,6 +489,8 @@ function StudioEditor() {
     };
   }, [body]);
 
+  const now = useNowTicker(localSavedAt !== null);
+
   if (loadError) {
     return (
       <EditorFallback message={`로딩 실패: ${loadError}`} />
@@ -333,9 +503,9 @@ function StudioEditor() {
   const statusLabel: Record<SaveState, string> = {
     idle: "수정 안 됨",
     typing: "입력 중…",
-    saving: "저장 중…",
+    saving: "서버 저장 중…",
     saved: editingSlug
-      ? `저장됨 · ${wordCount}자 · ${readTime}분`
+      ? `서버 저장됨 · ${wordCount}자 · ${readTime}분`
       : `미저장 · ${wordCount}자 · ${readTime}분`,
     error: `오류: ${saveError ?? "알 수 없음"}`,
   };
@@ -346,6 +516,10 @@ function StudioEditor() {
     saved: "#7da75e",
     error: "#c95c5c",
   };
+  const localBackupLabel =
+    localSavedAt !== null
+      ? `자동백업 ${formatRelative(localSavedAt, now)}`
+      : null;
 
   return (
     <main>
@@ -365,6 +539,18 @@ function StudioEditor() {
           />
           {statusLabel[saveState]}
         </div>
+        {localBackupLabel && (
+          <div
+            className="inline-flex items-center gap-1.5 font-mono text-[11px] text-ink-muted"
+            title="입력 내용은 브라우저 로컬에 자동 백업됩니다 (서버 발행과 무관)"
+          >
+            <span
+              className="h-1.5 w-1.5 rounded-full"
+              style={{ background: "#8a8a8a" }}
+            />
+            {localBackupLabel}
+          </div>
+        )}
         {editingSlug && (
           <span
             className="rounded font-mono text-[10.5px] font-bold uppercase tracking-[0.05em]"
@@ -414,6 +600,15 @@ function StudioEditor() {
           alreadyPublished={visibility === "published"}
           onConfirm={() => void handlePublish()}
           onCancel={() => setConfirmingPublish(false)}
+        />
+      )}
+
+      {pendingRecovery && (
+        <RecoveryPromptModal
+          draft={pendingRecovery}
+          isNewPost={!editingSlug}
+          onApply={applyRecovery}
+          onDiscard={discardRecovery}
         />
       )}
 
@@ -777,6 +972,94 @@ function ConfirmPublishModal({
             }}
           >
             발행하기 →
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RecoveryPromptModal({
+  draft,
+  isNewPost,
+  onApply,
+  onDiscard,
+}: {
+  draft: LocalDraft;
+  isNewPost: boolean;
+  onApply: () => void;
+  onDiscard: () => void;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onDiscard();
+      if (e.key === "Enter") onApply();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onApply, onDiscard]);
+
+  const savedAtLabel = new Date(draft.savedAt).toLocaleString();
+  const charCount = draft.body.length;
+
+  return (
+    <div
+      onClick={onDiscard}
+      className="fixed inset-0 z-[100] flex items-center justify-center"
+      style={{ background: "rgba(0,0,0,0.42)", backdropFilter: "blur(4px)" }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-[min(460px,92vw)] overflow-hidden rounded-2xl border border-border-token bg-surface"
+        style={{ boxShadow: "0 20px 50px rgba(0,0,0,0.25)" }}
+      >
+        <div className="px-6 pt-6 pb-2">
+          <div className="mb-2 font-mono text-[11px] font-bold uppercase tracking-[0.1em] text-ink-muted">
+            임시 저장본 발견
+          </div>
+          <h2 className="m-0 font-sans text-[20px] font-semibold tracking-[-0.02em] text-ink">
+            {isNewPost
+              ? "이전에 쓰던 새 글을 이어서 쓸까요?"
+              : "이 글에 저장되지 않은 변경이 있어요"}
+          </h2>
+          <div className="mt-3 rounded-md border border-border-token bg-surface-alt px-3 py-2.5">
+            <div className="font-sans text-[14px] font-medium text-ink">
+              {draft.title || "(제목 없음)"}
+            </div>
+            <div className="mt-1 font-mono text-[12px] text-ink-muted">
+              /posts/{draft.slug || "—"} · {charCount}자
+            </div>
+            <div className="mt-1 font-mono text-[11px] text-ink-muted">
+              백업 시각: {savedAtLabel}
+            </div>
+          </div>
+          <p className="mt-3 text-[13px] leading-[1.65] text-ink-muted">
+            {isNewPost
+              ? "이전 세션에서 쓰다가 저장하지 않은 임시본입니다. 이어서 쓰면 현재 편집 화면이 임시본 내용으로 교체돼요."
+              : "서버에 반영된 본문과 다른 로컬 백업이 있습니다. 이어서 쓰면 백업 내용으로 교체되며, 버리면 서버 버전으로 진행돼요."}
+          </p>
+        </div>
+        <div className="flex justify-end gap-2 border-t border-border-token px-6 py-3.5">
+          <button
+            type="button"
+            onClick={onDiscard}
+            className="rounded-md border border-border-token bg-transparent px-3 py-1.5 font-sans text-[13px] font-medium text-ink"
+          >
+            버리기
+          </button>
+          <button
+            type="button"
+            onClick={onApply}
+            autoFocus
+            className="rounded-md border-none px-3.5 py-1.5 font-sans text-[13px] font-semibold"
+            style={{
+              background: "var(--accent)",
+              color: "var(--accent-ink)",
+              boxShadow:
+                "inset 0 0.5px 0 rgba(255,255,255,0.18), inset 0 0 0 0.5px rgba(0,0,0,0.25)",
+            }}
+          >
+            이어서 쓰기 →
           </button>
         </div>
       </div>
