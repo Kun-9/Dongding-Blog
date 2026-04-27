@@ -422,8 +422,7 @@ function SettingsView() {
               type="button"
               onClick={reset}
               disabled={!dirty || status === "saving"}
-              className="rounded-md border border-border-token bg-transparent px-3 py-1.5 font-sans text-[12.5px] font-medium text-ink disabled:opacity-40"
-              style={{ cursor: dirty ? "pointer" : "not-allowed" }}
+              className="cursor-pointer rounded-md border border-border-token bg-transparent px-3 py-1.5 font-sans text-[12.5px] font-medium text-ink disabled:cursor-not-allowed disabled:opacity-40"
             >
               되돌리기
             </button>

@@ -237,7 +237,7 @@ function SeriesEditor({ onClose }: { onClose: () => void }) {
         <button
           type="button"
           onClick={onClose}
-          className="rounded-md border border-border-token bg-transparent px-3.5 py-[7px] font-sans text-[13px] font-medium text-ink-soft"
+          className="cursor-pointer rounded-md border border-border-token bg-transparent px-3.5 py-[7px] font-sans text-[13px] font-medium text-ink-soft"
         >
           취소
         </button>

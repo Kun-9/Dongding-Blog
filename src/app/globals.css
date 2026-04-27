@@ -1,6 +1,15 @@
 @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css");
 @import "tailwindcss";
 
+/* Tailwind preflight leaves <button> with the OS default cursor. Restore the
+   pointer hint globally; utility classes (cursor-text, cursor-not-allowed)
+   live in @layer utilities and override this base rule. */
+@layer base {
+  button:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
 /* ============================================================
    Design Tokens — Light (cream) / Dark
    Faithfully ported from project/tokens.js (window.DD_TOKENS)

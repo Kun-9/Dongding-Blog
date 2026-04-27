@@ -173,7 +173,7 @@ export function ConfirmDialog({
           <button
             type="button"
             onClick={onCancel}
-            className="whitespace-nowrap rounded-[7px] border border-border-token bg-transparent px-3.5 py-2 font-sans text-[13.5px] font-medium tracking-[-0.005em] text-ink-soft transition-[border-color,color] duration-[120ms] hover:border-border-strong hover:text-ink"
+            className="cursor-pointer whitespace-nowrap rounded-[7px] border border-border-token bg-transparent px-3.5 py-2 font-sans text-[13.5px] font-medium tracking-[-0.005em] text-ink-soft transition-[border-color,color] duration-[120ms] hover:border-border-strong hover:text-ink"
           >
             {cancelLabel}
           </button>
