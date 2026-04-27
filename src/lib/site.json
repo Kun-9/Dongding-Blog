@@ -1,17 +1,19 @@
 {
   "url": "https://dongding.dev",
-  "title": "Dong-Ding · 백엔드 노트",
+  "title": "Dong-Ding · 개발 노트",
   "shortTitle": "Dong-Ding",
   "description": "자바·스프링·DB를 깊이, 천천히 따라가는 블로그.",
   "lang": "ko",
   "locale": "ko-KR",
-  "copyright": "© 2026 Dong-Ding · 백엔드 노트",
+  "copyright": "© 2026 Dong-Ding · 개발 노트",
   "author": "동딩",
   "handle": "dongding",
   "bio": "Spring · JPA · 시스템 설계를 깊게 파는 백엔드 개발자",
   "intro": "실무에서 마주친 문제를 끝까지 파보는 노트.",
   "og": {
-    "headline": ["백엔드 노트,", "다시 짓다."],
+    "headline": [
+      "백엔드 노트"
+    ],
     "tagline": "자바 · 스프링 · DB를 깊이, 천천히 따라가는 1인 기술 블로그",
     "label": "Dong-Ding"
   },
