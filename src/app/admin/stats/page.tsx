@@ -26,6 +26,66 @@ function statValue(s: Stat | undefined): number {
 }
 
 /**
+ * SVG area + line chart for the daily pageviews series.
+ * Uses viewBox so it fluidly scales to its container width.
+ */
+function PageviewChart({
+  data,
+  max,
+}: {
+  data: { x: string; y: number }[];
+  max: number;
+}) {
+  const W = 600;
+  const H = 96;
+  const padX = 4;
+  const padY = 8;
+  const innerW = W - padX * 2;
+  const innerH = H - padY * 2;
+  const n = data.length;
+  const stepX = n > 1 ? innerW / (n - 1) : 0;
+
+  const points = data.map((p, i) => {
+    const x = padX + i * stepX;
+    const y = padY + innerH - (p.y / max) * innerH;
+    return { x, y, v: p.y, k: p.x };
+  });
+  const linePath = points.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
+  const areaPath =
+    `M ${padX} ${padY + innerH} ` +
+    points.map((p) => `L ${p.x} ${p.y}`).join(" ") +
+    ` L ${padX + innerW} ${padY + innerH} Z`;
+
+  return (
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      preserveAspectRatio="none"
+      className="block h-24 w-full overflow-visible"
+      role="img"
+      aria-label="일별 페이지뷰 추이"
+    >
+      <line
+        x1={padX}
+        x2={padX + innerW}
+        y1={padY + innerH}
+        y2={padY + innerH}
+        stroke="var(--border-token)"
+        strokeWidth="1"
+      />
+      <path d={areaPath} fill="var(--ink)" opacity="0.07" />
+      <path d={linePath} fill="none" stroke="var(--ink)" strokeWidth="1.4" strokeLinejoin="round" strokeLinecap="round" />
+      {points.map((p) =>
+        p.v > 0 ? (
+          <circle key={p.k} cx={p.x} cy={p.y} r="2.4" fill="var(--ink)">
+            <title>{`${p.k}: ${p.v}`}</title>
+          </circle>
+        ) : null,
+      )}
+    </svg>
+  );
+}
+
+/**
  * Fill in zero-count entries for any day in [now-days, now] not present in
  * the Umami response, so the chart always shows the full range.
  */
@@ -180,40 +240,21 @@ export default function StatsPage() {
       </section>
 
       <section className="mb-8 rounded-xl border border-border-token bg-surface px-[22px] py-5">
-        <div className="mb-3.5 flex items-baseline justify-between">
+        <div className="mb-4 flex items-baseline justify-between">
           <div className="font-sans text-[13px] font-semibold text-ink">
             일별 페이지뷰
           </div>
-          <div className="font-mono text-[11px] text-ink-muted">
-            최근 {days}일
+          <div className="font-mono text-[11px] tabular-nums text-ink-muted">
+            최근 {days}일 · peak {max.toLocaleString()}
           </div>
         </div>
-        <div className="flex h-24 items-end gap-[3px]">
-          {filledPageviews.map((p, i) => {
-            const isLast = i === filledPageviews.length - 1;
-            const labelEvery = days <= 7 ? 1 : 5;
-            const showLabel = i === 0 || isLast || (i + 1) % labelEvery === 0;
-            return (
-              <div
-                key={p.x}
-                className="flex flex-1 flex-col items-center gap-1"
-              >
-                <div
-                  className="w-full rounded-sm"
-                  style={{
-                    height: `${Math.max((p.y / max) * 80, p.y > 0 ? 2 : 0)}px`,
-                    minHeight: p.y === 0 ? "2px" : undefined,
-                    background: p.y > 0 ? "var(--ink)" : "var(--border-strong)",
-                    opacity: p.y > 0 ? 0.75 : 0.25,
-                  }}
-                  title={`${p.x}: ${p.y}`}
-                />
-                <div className="font-mono text-[9.5px] text-ink-muted">
-                  {showLabel ? p.x.slice(5, 10) : ""}
-                </div>
-              </div>
-            );
-          })}
+        <PageviewChart data={filledPageviews} max={max} />
+        <div className="mt-2 flex justify-between font-mono text-[10px] tabular-nums text-ink-muted">
+          <span>{filledPageviews[0]?.x.slice(5, 10)}</span>
+          <span>
+            {filledPageviews[Math.floor(filledPageviews.length / 2)]?.x.slice(5, 10)}
+          </span>
+          <span>{filledPageviews[filledPageviews.length - 1]?.x.slice(5, 10)}</span>
         </div>
       </section>
 
