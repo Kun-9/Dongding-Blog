@@ -43,12 +43,8 @@
     "desc": "JPA · MySQL · 인덱스",
     "subs": [
       {
-        "id": "db-jpa",
-        "name": "JPA·Hibernate"
-      },
-      {
-        "id": "db-mysql",
-        "name": "MySQL·인덱스"
+        "id": "db-sql",
+        "name": "SQL·인덱스"
       },
       {
         "id": "db-design",
@@ -64,10 +60,6 @@
       {
         "id": "system-arch",
         "name": "아키텍처"
-      },
-      {
-        "id": "system-debug",
-        "name": "디버깅 일지"
       }
     ]
   },
@@ -94,7 +86,23 @@
       {
         "id": "algorithm-sovle",
         "name": "알고리즘 풀이"
+      },
+      {
+        "id": "algorithm-study",
+        "name": "알고리즘 공부"
       }
     ]
+  },
+  {
+    "id": "project",
+    "name": "프로젝트",
+    "desc": "재밌는 프로젝트",
+    "subs": []
+  },
+  {
+    "id": "cat-new-2",
+    "name": "AI",
+    "desc": "AI 학습 및 적용",
+    "subs": []
   }
 ]

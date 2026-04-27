@@ -4,7 +4,7 @@
  */
 import Link from "next/link";
 import type { PostMeta } from "@/lib/types";
-import { getCategory } from "@/lib/categories";
+import { categoryLabel } from "@/lib/categories";
 import { fmtDate } from "@/lib/tokens";
 import { TagChip } from "@/components/post/TagChip";
 
@@ -16,7 +16,7 @@ interface Props {
 }
 
 export function PostCard({ post, layout = "card" }: Props) {
-  const cat = getCategory(post.category);
+  const catLabel = categoryLabel(post.category);
   const href = `/posts/${post.slug}`;
 
   if (layout === "list") {
@@ -44,7 +44,7 @@ export function PostCard({ post, layout = "card" }: Props) {
     return (
       <article className="relative border-b border-border-token py-6">
         <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.08em] text-ink-muted">
-          {cat?.name} · {fmtDate(post.date)} · {post.readTime}분
+          {catLabel} · {fmtDate(post.date)} · {post.readTime}분
         </div>
         <h3 className="m-0 font-sans text-[24px] font-semibold leading-[1.25] tracking-[-0.03em] text-ink">
           <Link
@@ -74,7 +74,7 @@ export function PostCard({ post, layout = "card" }: Props) {
         <span className="opacity-40">·</span>
         <span>{post.readTime}분</span>
         <span className="opacity-40">·</span>
-        <span>{cat?.name}</span>
+        <span>{catLabel}</span>
       </div>
       <h3 className="my-2 font-sans text-[19px] font-semibold leading-[1.35] tracking-[-0.025em] text-ink">
         <Link

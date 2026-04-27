@@ -10,7 +10,7 @@ import {
   getPostsByCategory,
   getPostsByTag,
 } from "@/lib/posts";
-import { getCategory } from "@/lib/categories";
+import { resolveCategory } from "@/lib/categories";
 import type { PostMeta } from "@/lib/types";
 import {
   CategorySidebar,
@@ -38,10 +38,11 @@ export function PostList({ filter }: Props) {
 
   let eyebrow: string, title: string, sub: string;
   if (filter?.type === "category") {
-    const cat = getCategory(filter.value);
-    eyebrow = "CATEGORY";
-    title = cat?.name ?? filter.value;
-    sub = `${cat?.desc ?? ""} · ${filtered.length}편`;
+    const r = resolveCategory(filter.value);
+    eyebrow = r?.sub ? `CATEGORY · ${r.parent.name.toUpperCase()}` : "CATEGORY";
+    title = r?.sub?.name ?? r?.parent.name ?? filter.value;
+    const desc = r?.sub ? r.parent.desc : (r?.parent.desc ?? "");
+    sub = `${desc} · ${filtered.length}편`;
   } else if (filter?.type === "tag") {
     eyebrow = "TAG";
     title = `#${filter.value}`;

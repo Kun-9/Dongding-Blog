@@ -47,7 +47,10 @@ export function CategorySidebar({ filter }: Props) {
         </li>
 
         {categories.map((cat) => {
+          const activeSubId =
+            cat.subs?.find((s) => s.id === activeCatId)?.id ?? null;
           const isActive = activeCatId === cat.id;
+          const isExpanded = isActive || activeSubId !== null;
           return (
             <li key={cat.id}>
               <Link
@@ -64,21 +67,28 @@ export function CategorySidebar({ filter }: Props) {
                 </span>
               </Link>
 
-              {isActive && cat.subs && (
+              {isExpanded && cat.subs && (
                 <ul className="m-0 mb-1.5 mt-0.5 list-none p-0">
-                  {cat.subs.map((sub) => (
-                    <li key={sub.id}>
-                      <Link
-                        href={`/category/${cat.id}`}
-                        className="flex items-center justify-between rounded-md py-1 pl-6 pr-2.5 font-sans text-[12.5px] font-normal tracking-[-0.005em] text-ink-muted no-underline hover:text-ink"
-                      >
-                        <span>{sub.name}</span>
-                        <span className="text-[11.5px] tabular-nums text-ink-subtle">
-                          {sub.count ?? 0}
-                        </span>
-                      </Link>
-                    </li>
-                  ))}
+                  {cat.subs.map((sub) => {
+                    const isSubActive = activeSubId === sub.id;
+                    return (
+                      <li key={sub.id}>
+                        <Link
+                          href={`/category/${sub.id}`}
+                          className={`flex items-center justify-between rounded-md py-1 pl-6 pr-2.5 font-sans text-[12.5px] tracking-[-0.005em] no-underline ${
+                            isSubActive
+                              ? "bg-hover font-semibold text-ink"
+                              : "font-normal text-ink-muted hover:text-ink"
+                          }`}
+                        >
+                          <span>{sub.name}</span>
+                          <span className="text-[11.5px] tabular-nums text-ink-subtle">
+                            {sub.count ?? 0}
+                          </span>
+                        </Link>
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </li>

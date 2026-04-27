@@ -7,7 +7,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 
 import { getAllPosts, getPostBySlug } from "@/lib/posts";
-import { getCategory } from "@/lib/categories";
+import { resolveCategory } from "@/lib/categories";
 import { site } from "@/lib/site";
 import { fmtDate } from "@/lib/tokens";
 import { renderMarkdown } from "@/lib/markdown";
@@ -51,7 +51,7 @@ export default async function Page({
 
   const content = renderMarkdown(post.body);
 
-  const cat = getCategory(post.meta.category);
+  const cat = resolveCategory(post.meta.category);
   const all = getAllPosts();
   const idx = all.findIndex((p) => p.slug === slug);
   const prev = all[idx + 1];
@@ -70,12 +70,25 @@ export default async function Page({
             </Link>
             <span className="opacity-40">/</span>
             {cat && (
-              <Link
-                href={`/category/${cat.id}`}
-                className="text-ink-muted no-underline"
-              >
-                {cat.name}
-              </Link>
+              <>
+                <Link
+                  href={`/category/${cat.parent.id}`}
+                  className="text-ink-muted no-underline"
+                >
+                  {cat.parent.name}
+                </Link>
+                {cat.sub && (
+                  <>
+                    <span className="opacity-40">/</span>
+                    <Link
+                      href={`/category/${cat.sub.id}`}
+                      className="text-ink-muted no-underline"
+                    >
+                      {cat.sub.name}
+                    </Link>
+                  </>
+                )}
+              </>
             )}
           </div>
 

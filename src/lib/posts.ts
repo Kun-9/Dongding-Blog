@@ -12,6 +12,7 @@ import readingTime from "reading-time";
 import { z } from "zod";
 import type { PostMeta, Visibility } from "@/lib/types";
 import { extractTOC } from "@/lib/markdown";
+import { resolveCategory } from "@/lib/categories";
 
 const POSTS_DIR = path.join(process.cwd(), "content", "posts");
 
@@ -133,7 +134,10 @@ export function getFeaturedPost(): PostMeta | undefined {
 }
 
 export function getPostsByCategory(categoryId: string): PostMeta[] {
-  return getAllPosts().filter((p) => p.category === categoryId);
+  const r = resolveCategory(categoryId);
+  // Parent id matches its own posts + any subcategory posts; sub id matches exactly.
+  const ids = r && !r.sub ? new Set([r.parent.id, ...(r.parent.subs?.map((s) => s.id) ?? [])]) : new Set([categoryId]);
+  return getAllPosts().filter((p) => ids.has(p.category));
 }
 
 export function getPostsByTag(tag: string): PostMeta[] {

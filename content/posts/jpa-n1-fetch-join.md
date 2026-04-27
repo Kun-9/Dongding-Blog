@@ -3,7 +3,7 @@ title: JPA N+1 — fetch join은 정답이 아니다
 summary: >-
   fetch join을 쓰면 N+1은 사라지지만, paging이 깨지고 distinct가 필요해진다. BatchSize와의 진짜 차이를
   정리한다.
-category: db
+category: db-design
 tags:
   - jpa
   - hibernate
