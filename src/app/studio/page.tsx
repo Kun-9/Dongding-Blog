@@ -7,6 +7,7 @@
  * `?slug=`. Production builds render <DevOnlyNotice />.
  */
 import {
+  Fragment,
   Suspense,
   useCallback,
   useEffect,
@@ -17,9 +18,9 @@ import {
 } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { categories, getCategory } from "@/lib/categories";
+import { categories, categoryLabel } from "@/lib/categories";
 import type { Visibility } from "@/lib/types";
-import { renderMarkdown } from "@/lib/markdown";
+import { renderMarkdown, type ImageWidth } from "@/lib/markdown";
 import { safeReadJSON, safeRemove, safeWriteJSON } from "@/lib/storage";
 import { CTA } from "@/components/ui/CTA";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -50,8 +51,26 @@ type ToolbarAction =
   | "code"
   | "para"
   | "codeblock"
-  | "callout"
+  | "callout-info"
+  | "callout-warning"
+  | "callout-tip"
+  | "callout-note"
   | "divider";
+
+const TOOLBAR_TITLES: Record<ToolbarAction, string> = {
+  bold: "굵게",
+  italic: "기울임",
+  code: "인라인 코드",
+  para: "줄바꿈",
+  codeblock: "코드 블록",
+  "callout-info": "Callout — INFO",
+  "callout-warning": "Callout — WARNING",
+  "callout-tip": "Callout — TIP",
+  "callout-note": "Callout — NOTE",
+  divider: "수평선",
+};
+
+const IMAGE_MIME_PREFIX = "image/";
 const PUBLISH_REDIRECT_MS = 2000;
 
 export default function Page() {
@@ -87,6 +106,30 @@ function normalizeSlug(input: string): string {
     .replace(/\s+/g, "-")
     .replace(/[^a-z0-9-]+/g, "")
     .replace(/-+/g, "-");
+}
+
+const IMAGE_TOKEN_RE = /!\[([^\]]*)\]\(([^)]+)\)/g;
+const IMAGE_WIDTH_SUFFIX_RE = /\|(\d+%?)$/;
+
+function setImageWidthAt(
+  body: string,
+  imageIndex: number,
+  width: ImageWidth | null,
+): string {
+  let count = 0;
+  return body.replace(IMAGE_TOKEN_RE, (full, rawAlt: string, url: string) => {
+    if (count++ !== imageIndex) return full;
+    const cleanAlt = rawAlt.replace(IMAGE_WIDTH_SUFFIX_RE, "");
+    const newAlt = width != null ? `${cleanAlt}|${width}` : cleanAlt;
+    return `![${newAlt}](${url})`;
+  });
+}
+
+function altFromFilename(filename: string): string {
+  return filename
+    .replace(/\.[^./\\]+$/, "")
+    .replace(/[-_]+/g, " ")
+    .trim();
 }
 
 const DRAFT_STORAGE_PREFIX = "studio:draft:";
@@ -213,7 +256,7 @@ const VISIBILITY_OPTIONS = [
     glyph: "●",
     desc: "외부에 공개",
     badgeLabel: "PUBLISHED",
-    ctaLabel: "발행하기 →",
+    ctaLabel: "저장",
   },
   {
     v: "private" as const,
@@ -261,6 +304,7 @@ function StudioEditor() {
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [confirmingPublish, setConfirmingPublish] = useState(false);
+  const [confirmingDiscard, setConfirmingDiscard] = useState(false);
   const [toast, setToast] = useState<Toast | null>(null);
   const [localSavedAt, setLocalSavedAt] = useState<number | null>(null);
   const [pendingRecovery, setPendingRecovery] = useState<LocalDraft | null>(
@@ -271,6 +315,9 @@ function StudioEditor() {
   const dirtyRef = useRef(false);
   const hydratedSlugRef = useRef<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
 
   // Load existing post or initialize new draft.
   useEffect(() => {
@@ -467,6 +514,265 @@ function StudioEditor() {
     setTimeout(() => router.push(href), PUBLISH_REDIRECT_MS);
   }, [router, save]);
 
+  /**
+   * Cancel = discard local changes. New post → reset to a fresh sample;
+   * existing post → refetch the server snapshot and clear the local backup.
+   * The dirty guard means clicking 취소 on a clean page is a no-op.
+   */
+  const isDirty = saveState === "typing" || dirtyRef.current;
+
+  const handleCancelClick = useCallback(() => {
+    if (!isDirty) return;
+    setConfirmingDiscard(true);
+  }, [isDirty]);
+
+  const performDiscard = useCallback(async () => {
+    setConfirmingDiscard(false);
+    if (!editingSlug) {
+      dispatch({
+        type: "HYDRATE_NEW",
+        defaultCategory: categories[0]?.id ?? "",
+      });
+      clearDraft(draftKey(null));
+      dirtyRef.current = false;
+      setSaveState("idle");
+      setSaveError(null);
+      setLocalSavedAt(null);
+      return;
+    }
+    try {
+      setLoading(true);
+      const res = await fetch(`/api/posts/${encodeURIComponent(editingSlug)}/`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const serverVisibility: Visibility =
+        data.visibility === "published" ||
+        data.visibility === "private" ||
+        data.visibility === "draft"
+          ? data.visibility
+          : "draft";
+      dispatch({
+        type: "HYDRATE_FROM_SERVER",
+        snapshot: {
+          title: data.title ?? "",
+          summary: data.summary ?? "",
+          slug: data.slug ?? editingSlug,
+          category: data.category || (categories[0]?.id ?? ""),
+          tags: Array.isArray(data.tags) ? data.tags.join(", ") : "",
+          body: data.body ?? "",
+          visibility: serverVisibility,
+        },
+        date: data.date ?? "",
+      });
+      clearDraft(draftKey(editingSlug));
+      hydratedSlugRef.current = editingSlug;
+      dirtyRef.current = false;
+      setSaveState("saved");
+      setSaveError(null);
+      setLocalSavedAt(null);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setToast({ kind: "error", message: `취소 실패: ${msg}` });
+    } finally {
+      setLoading(false);
+    }
+  }, [editingSlug]);
+
+  /**
+   * For uploads on a brand-new post we need a real slug folder. Auto-derive
+   * a slug if missing, force visibility=draft so the auto-save can never
+   * accidentally publish, then POST to /api/posts/. The user's chosen
+   * visibility tab is left untouched — they still hit "발행하기" explicitly.
+   */
+  const ensureSlugSaved = useCallback(async (): Promise<string | null> => {
+    if (editingSlug) return editingSlug;
+    const titleTrim = title.trim();
+    let nextSlug = slug.trim();
+    if (!nextSlug) {
+      if (!titleTrim) {
+        setToast({
+          kind: "error",
+          message: "제목을 먼저 입력해주세요 — slug 폴더 생성에 필요해요",
+        });
+        return null;
+      }
+      nextSlug = slugifyTitle(titleTrim);
+      if (!nextSlug) {
+        setToast({
+          kind: "error",
+          message: "제목에서 slug를 만들 수 없어요. slug를 직접 입력해주세요",
+        });
+        return null;
+      }
+      patch({ slug: nextSlug });
+    }
+
+    setSaveState("saving");
+    setSaveError(null);
+    try {
+      const payload = {
+        slug: nextSlug,
+        title: titleTrim || "(제목 없음)",
+        summary: summary.trim() || titleTrim || "(요약 없음)",
+        category,
+        tags: tags
+          .split(",")
+          .map((t) => t.trim())
+          .filter(Boolean),
+        body,
+        visibility: "draft" as const,
+        ...(date ? { date } : {}),
+      };
+      const canonical = await persist(payload);
+      dirtyRef.current = false;
+      setSaveState("saved");
+      clearDraft(draftKey(null));
+      clearDraft(draftKey(canonical));
+      setLocalSavedAt(null);
+      return canonical;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setSaveError(msg);
+      setSaveState("error");
+      setToast({ kind: "error", message: `초안 저장 실패: ${msg}` });
+      return null;
+    }
+  }, [
+    body,
+    category,
+    date,
+    editingSlug,
+    patch,
+    persist,
+    slug,
+    summary,
+    tags,
+    title,
+  ]);
+
+  const insertImageMarkdown = useCallback(
+    (alt: string, url: string) => {
+      const ta = textareaRef.current;
+      const token = `![${alt}](${url})`;
+      if (!ta) {
+        // Fallback — append at end with a leading blank line.
+        const sep = body.length === 0 || body.endsWith("\n\n") ? "" : body.endsWith("\n") ? "\n" : "\n\n";
+        patch({ body: body + sep + token + "\n" });
+        markDirty();
+        return;
+      }
+      const start = ta.selectionStart;
+      const end = ta.selectionEnd;
+      const before = body.slice(0, start);
+      const after = body.slice(end);
+      const needsBlankBefore = before.length > 0 && !before.endsWith("\n\n");
+      const needsBlankAfter = after.length > 0 && !after.startsWith("\n\n");
+      const prefix = needsBlankBefore
+        ? before.endsWith("\n")
+          ? "\n"
+          : "\n\n"
+        : "";
+      const suffix = needsBlankAfter
+        ? after.startsWith("\n")
+          ? "\n"
+          : "\n\n"
+        : "";
+      const next = before + prefix + token + suffix + after;
+      patch({ body: next });
+      markDirty();
+      const cursor = before.length + prefix.length + token.length;
+      requestAnimationFrame(() => {
+        ta.focus();
+        ta.setSelectionRange(cursor, cursor);
+      });
+    },
+    [body, markDirty, patch],
+  );
+
+  const uploadFiles = useCallback(
+    async (files: File[]) => {
+      const images = files.filter((f) => f.type.startsWith(IMAGE_MIME_PREFIX));
+      if (images.length === 0) return;
+
+      const targetSlug = await ensureSlugSaved();
+      if (!targetSlug) return;
+
+      setUploading(true);
+      try {
+        for (const file of images) {
+          const fd = new FormData();
+          fd.append("file", file);
+          const res = await fetch(
+            `/api/posts/${encodeURIComponent(targetSlug)}/images/`,
+            { method: "POST", body: fd },
+          );
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            throw new Error(data?.error ?? `HTTP ${res.status}`);
+          }
+          const data = (await res.json()) as { url: string; filename: string };
+          insertImageMarkdown(altFromFilename(data.filename), data.url);
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        setToast({ kind: "error", message: `업로드 실패: ${msg}` });
+      } finally {
+        setUploading(false);
+      }
+    },
+    [ensureSlugSaved, insertImageMarkdown],
+  );
+
+  const handleFilePick = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
+  const handleEditorPaste = useCallback(
+    (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+      const items = Array.from(e.clipboardData?.items ?? []);
+      const files = items
+        .filter((it) => it.kind === "file" && it.type.startsWith(IMAGE_MIME_PREFIX))
+        .map((it) => it.getAsFile())
+        .filter((f): f is File => f !== null);
+      if (files.length === 0) return;
+      e.preventDefault();
+      void uploadFiles(files);
+    },
+    [uploadFiles],
+  );
+
+  const handleEditorDrop = useCallback(
+    (e: React.DragEvent<HTMLTextAreaElement>) => {
+      const files = Array.from(e.dataTransfer?.files ?? []);
+      if (files.length === 0) return;
+      e.preventDefault();
+      setDragOver(false);
+      void uploadFiles(files);
+    },
+    [uploadFiles],
+  );
+
+  const handleEditorDragOver = useCallback(
+    (e: React.DragEvent<HTMLTextAreaElement>) => {
+      if (!e.dataTransfer?.types?.includes("Files")) return;
+      e.preventDefault();
+      setDragOver(true);
+    },
+    [],
+  );
+
+  const handleEditorDragLeave = useCallback(() => {
+    setDragOver(false);
+  }, []);
+
+  const handlePreviewImageResize = useCallback(
+    (imageIndex: number, width: ImageWidth | null) => {
+      patch({ body: setImageWidthAt(body, imageIndex, width) });
+      markDirty();
+    },
+    [body, markDirty, patch],
+  );
+
   const applyRecovery = useCallback(() => {
     if (!pendingRecovery) return;
     dispatch({ type: "HYDRATE_FROM_DRAFT", draft: pendingRecovery });
@@ -528,8 +834,16 @@ function StudioEditor() {
   const wordCount = body.replace(/\s+/g, "").length;
   const readTime = Math.max(1, Math.round(wordCount / 500));
 
-  // Same parser as the post detail page → preview matches the published view.
-  const renderedBody = useMemo(() => renderMarkdown(body), [body]);
+  // Studio preview uses editable=true so EditableImage renders the slider
+  // panel; the post detail page renders ZoomableImage via the same parser.
+  const renderedBody = useMemo(
+    () =>
+      renderMarkdown(body, {
+        editable: true,
+        onImageResize: handlePreviewImageResize,
+      }),
+    [body, handlePreviewImageResize],
+  );
 
   const insertMd = useCallback(
     (action: ToolbarAction) => {
@@ -587,9 +901,14 @@ function StudioEditor() {
         case "codeblock":
           insertBlock("```java:File.java\n" + (sel || "// code") + "\n```");
           break;
-        case "callout":
-          insertBlock("> [!INFO] 제목\n> " + (sel || "본문 내용"));
+        case "callout-info":
+        case "callout-warning":
+        case "callout-tip":
+        case "callout-note": {
+          const kind = action.slice("callout-".length).toUpperCase();
+          insertBlock(`> [!${kind}] 제목\n> ` + (sel || "본문 내용"));
           break;
+        }
         case "divider":
           insertBlock("---");
           break;
@@ -770,6 +1089,15 @@ function StudioEditor() {
           </span>
         )}
         <div className="flex-1" />
+        <button
+          type="button"
+          onClick={handleCancelClick}
+          disabled={!isDirty}
+          className="rounded-md border border-border-token bg-transparent px-3 py-[6px] font-sans text-[12.5px] font-medium text-ink-soft transition-colors hover:bg-hover hover:text-ink disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-ink-soft"
+          title={isDirty ? "변경사항 폐기" : "변경사항 없음"}
+        >
+          취소
+        </button>
         <CTA
           size="sm"
           onClick={(e) => {
@@ -798,10 +1126,33 @@ function StudioEditor() {
             <div className="mt-1">/posts/{slug || "—"}</div>
           </>
         }
-        confirmLabel="발행하기 →"
+        confirmLabel="저장"
         cancelLabel="취소"
         onConfirm={() => void handleConfirmPublish()}
         onCancel={() => setConfirmingPublish(false)}
+      />
+
+      <ConfirmDialog
+        open={confirmingDiscard}
+        tone="danger"
+        title="변경사항을 폐기할까요?"
+        body={
+          editingSlug
+            ? "마지막으로 서버에 저장된 상태로 되돌리고, 로컬 자동백업도 함께 삭제됩니다."
+            : "지금까지 작성한 내용을 모두 버리고 빈 화면으로 되돌립니다. 로컬 자동백업도 함께 삭제됩니다."
+        }
+        meta={
+          <>
+            <div className="font-sans text-[14px] font-medium text-ink">
+              {title || "(제목 없음)"}
+            </div>
+            <div className="mt-1">/posts/{slug || "—"}</div>
+          </>
+        }
+        confirmLabel="폐기하기"
+        cancelLabel="계속 편집"
+        onConfirm={() => void performDiscard()}
+        onCancel={() => setConfirmingDiscard(false)}
       />
 
       <ConfirmDialog
@@ -939,9 +1290,14 @@ function StudioEditor() {
                 className="w-full rounded-md border border-border-token bg-surface px-2.5 py-[7px] font-sans text-[13px] tracking-[-0.005em] text-ink outline-none"
               >
                 {categories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.name}
-                  </option>
+                  <optgroup key={cat.id} label={cat.name}>
+                    <option value={cat.id}>{cat.name} (전체)</option>
+                    {cat.subs?.map((sub) => (
+                      <option key={sub.id} value={sub.id}>
+                        {sub.name}
+                      </option>
+                    ))}
+                  </optgroup>
                 ))}
               </select>
             </FieldRow>
@@ -969,49 +1325,75 @@ function StudioEditor() {
 
           {/* Toolbar */}
           <div className="mb-2 flex items-center gap-1.5">
-            <div className="flex w-fit gap-1 rounded-lg border border-border-token bg-surface-alt p-1.5">
+            <div className="flex w-fit items-center gap-1 rounded-lg border border-border-token bg-surface-alt p-1.5">
               {(
                 [
-                  ["B", "bold", "sans"],
-                  ["I", "italic", "sans"],
-                  ["‹/›", "code", "mono"],
-                  ["¶", "para", "sans"],
-                  ["{ }", "codeblock", "mono"],
-                  ["◐", "callout", "sans"],
-                  ["—", "divider", "sans"],
+                  ["B", "bold", "sans", "group-format"],
+                  ["I", "italic", "sans", "group-format"],
+                  ["‹/›", "code", "mono", "group-format"],
+                  ["¶", "para", "sans", "group-block"],
+                  ["{ }", "codeblock", "mono", "group-block"],
+                  ["i", "callout-info", "sans", "group-callout"],
+                  ["!", "callout-warning", "sans", "group-callout"],
+                  ["✓", "callout-tip", "sans", "group-callout"],
+                  ["※", "callout-note", "sans", "group-callout"],
+                  ["—", "divider", "sans", "group-block"],
                 ] as const
-              ).map(([g, k, font]) => (
-                <button
-                  key={k}
-                  type="button"
-                  title={k}
-                  onClick={() => insertMd(k)}
-                  className="h-7 w-7 rounded-[5px] border-none bg-transparent text-[12px] font-semibold text-ink-soft hover:bg-hover"
-                  style={{
-                    fontFamily:
-                      font === "mono"
-                        ? "var(--font-mono)"
-                        : "var(--font-sans)",
-                    fontStyle: k === "italic" ? "italic" : "normal",
-                  }}
-                >
-                  {g}
-                </button>
-              ))}
+              ).map(([g, k, font, group], idx, arr) => {
+                const prevGroup = idx > 0 ? arr[idx - 1][3] : null;
+                const showSep = prevGroup !== null && prevGroup !== group;
+                return (
+                  <Fragment key={k}>
+                    {showSep && (
+                      <span
+                        aria-hidden
+                        className="mx-0.5 h-4 w-px bg-border-token"
+                      />
+                    )}
+                    <button
+                      type="button"
+                      title={TOOLBAR_TITLES[k]}
+                      onClick={() => insertMd(k)}
+                      className="h-7 w-7 rounded-[5px] border-none bg-transparent text-[12px] font-semibold text-ink-soft hover:bg-hover"
+                      style={{
+                        fontFamily:
+                          font === "mono"
+                            ? "var(--font-mono)"
+                            : "var(--font-sans)",
+                        fontStyle: k === "italic" ? "italic" : "normal",
+                      }}
+                    >
+                      {g}
+                    </button>
+                  </Fragment>
+                );
+              })}
+              <span
+                aria-hidden
+                className="mx-0.5 h-4 w-px bg-border-token"
+              />
+              <button
+                type="button"
+                title="이미지 업로드 (드래그/붙여넣기도 가능)"
+                onClick={handleFilePick}
+                disabled={uploading}
+                className="inline-flex h-7 items-center rounded-[5px] border-none bg-transparent px-2 font-sans text-[12px] font-semibold text-ink-soft hover:bg-hover disabled:cursor-progress disabled:opacity-60"
+              >
+                {uploading ? "업로드 중…" : "이미지"}
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                hidden
+                onChange={(e) => {
+                  const files = Array.from(e.target.files ?? []);
+                  if (files.length > 0) void uploadFiles(files);
+                  e.target.value = "";
+                }}
+              />
             </div>
-            <div className="flex-1" />
-            <a
-              href="#md-cheatsheet"
-              onClick={(e) => {
-                e.preventDefault();
-                document
-                  .getElementById("md-cheatsheet")
-                  ?.scrollIntoView({ behavior: "smooth", block: "center" });
-              }}
-              className="font-mono text-[11px] text-ink-muted no-underline"
-            >
-              마크다운 문법 ↓
-            </a>
           </div>
 
           <textarea
@@ -1022,8 +1404,18 @@ function StudioEditor() {
               markDirty();
             }}
             onKeyDown={handleEditorKeyDown}
-            className="min-h-[540px] w-full rounded-lg border border-border-token bg-surface px-[18px] py-4 font-mono text-[13.5px] leading-[1.7] text-ink outline-none"
-            style={{ resize: "vertical" }}
+            onPaste={handleEditorPaste}
+            onDrop={handleEditorDrop}
+            onDragOver={handleEditorDragOver}
+            onDragLeave={handleEditorDragLeave}
+            className="min-h-[540px] w-full rounded-lg border bg-surface px-[18px] py-4 font-mono text-[13.5px] leading-[1.7] text-ink outline-none transition-colors"
+            style={{
+              resize: "vertical",
+              borderColor: dragOver ? "var(--ink)" : "var(--border)",
+              boxShadow: dragOver
+                ? "inset 0 0 0 2px var(--ink)"
+                : undefined,
+            }}
           />
 
           <MarkdownCheatsheet />
@@ -1036,7 +1428,7 @@ function StudioEditor() {
           </div>
           <div className="max-w-[640px]">
             <div className="mb-2 font-sans text-[11px] font-bold uppercase tracking-[0.08em] text-ink-muted">
-              {getCategory(category)?.name ?? "—"} ·{" "}
+              {category ? categoryLabel(category) : "—"} ·{" "}
               {VISIBILITY_META[visibility].label}
             </div>
             <h1 className="m-0 font-sans text-[36px] font-semibold leading-[1.15] tracking-[-0.035em] text-ink">
@@ -1215,6 +1607,14 @@ function MarkdownCheatsheet() {
               <CheatsheetRow syntax="`코드`" label="인라인 코드" />
               <CheatsheetRow syntax="[텍스트](url)" label="링크" />
               <CheatsheetRow syntax="![alt](url)" label="이미지" />
+              <CheatsheetRow
+                syntax="![alt|480](url)"
+                label="이미지 + 너비 (480px)"
+              />
+              <CheatsheetRow
+                syntax="![alt|50%](url)"
+                label="이미지 + 너비 (50%)"
+              />
             </tbody>
           </table>
           <div className="mt-3.5 rounded-lg border border-border-token bg-surface px-3 py-2.5 font-sans text-[12px] leading-[1.6] tracking-[-0.005em] text-ink-muted">
