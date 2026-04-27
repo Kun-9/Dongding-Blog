@@ -12,6 +12,7 @@ import { CTA } from "@/components/ui/CTA";
 import { TagChip } from "@/components/post/TagChip";
 import { PostCard } from "@/components/post/PostCard";
 import { InlineCode } from "@/components/prose/InlineCode";
+import { TopPosts } from "@/components/analytics/TopPosts";
 
 export default function Page() {
   const all = getAllPosts();
@@ -127,6 +128,8 @@ export default function Page() {
           ))}
         </div>
       </section>
+
+      <TopPosts posts={all.map((p) => ({ slug: p.slug, title: p.title }))} />
 
       {/* Categories */}
       <section className="mx-auto mt-16 max-w-[1180px] px-5 pb-12 md:px-8">
