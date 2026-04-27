@@ -310,12 +310,26 @@ function BookmarkEditor({
 
   async function submit() {
     setError(null);
+
+    const trimmedUrl = url.trim();
+    const trimmedTitle = title.trim();
+    const trimmedSource = source.trim();
+
+    const missing: string[] = [];
+    if (!trimmedUrl) missing.push("URL");
+    if (!trimmedTitle) missing.push("제목");
+    if (!trimmedSource) missing.push("출처");
+    if (missing.length > 0) {
+      setError(`${missing.join(", ")}을(를) 입력해주세요`);
+      return;
+    }
+
     setSubmitting(true);
     try {
       const payload = {
-        url: url.trim(),
-        title: title.trim(),
-        source: source.trim(),
+        url: trimmedUrl,
+        title: trimmedTitle,
+        source: trimmedSource,
         tag,
         note,
       };
@@ -334,7 +348,18 @@ function BookmarkEditor({
         return;
       }
       if (res.status === 400 || res.status === 422) {
-        setError("입력값을 확인해주세요");
+        const data = await res.json().catch(() => null);
+        const fieldErrors = data?.issues?.fieldErrors as
+          | Record<string, string[]>
+          | undefined;
+        if (fieldErrors && Object.keys(fieldErrors).length > 0) {
+          const summary = Object.entries(fieldErrors)
+            .map(([field, msgs]) => `${field}: ${msgs?.[0] ?? "invalid"}`)
+            .join(" / ");
+          setError(`입력값을 확인해주세요 — ${summary}`);
+        } else {
+          setError("입력값을 확인해주세요");
+        }
         return;
       }
       if (!res.ok) {
@@ -461,7 +486,7 @@ function BookmarkEditor({
           type="button"
           onClick={onClose}
           disabled={submitting}
-          className="rounded-md border border-border-token bg-transparent px-3.5 py-[7px] font-sans text-[13px] font-medium text-ink-soft"
+          className="cursor-pointer rounded-md border border-border-token bg-transparent px-3.5 py-[7px] font-sans text-[13px] font-medium text-ink-soft disabled:cursor-not-allowed disabled:opacity-40"
         >
           취소
         </button>
