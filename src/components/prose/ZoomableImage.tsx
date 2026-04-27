@@ -5,10 +5,18 @@ import { useEffect, useState } from "react";
 interface Props {
   src: string;
   alt?: string;
+  /** "480" → 480px, "50%" → 50%. Null/undefined ⇒ natural max-width. */
+  width?: string | null;
 }
 
-export function ZoomableImage({ src, alt = "" }: Props) {
+function parseWidth(width: string | null | undefined): string | undefined {
+  if (!width) return undefined;
+  return /%$/.test(width) ? width : `${width}px`;
+}
+
+export function ZoomableImage({ src, alt = "", width }: Props) {
   const [open, setOpen] = useState(false);
+  const cssWidth = parseWidth(width);
 
   useEffect(() => {
     if (!open) return;
@@ -32,6 +40,7 @@ export function ZoomableImage({ src, alt = "" }: Props) {
         alt={alt}
         onClick={() => setOpen(true)}
         className="my-2 block max-w-full cursor-zoom-in rounded-lg transition-opacity hover:opacity-90"
+        style={cssWidth ? { width: cssWidth } : undefined}
       />
       {open && (
         <div

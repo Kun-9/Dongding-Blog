@@ -2,7 +2,8 @@
  * Shared markdown parser — used by Studio preview AND post detail page.
  * Block: # ## ### ####, ```lang:filename, > [!KIND] title (multi-line),
  *        - / 1. lists, ---, blank lines.
- * Inline: **bold**, *italic*, `code`, [text](url), ![alt](url).
+ * Inline: **bold**, *italic*, `code`, [text](url), ![alt|width](url).
+ * Image width syntax: `![alt|480](url)` (px) or `![alt|50%](url)` (percent).
  * `>` is RESERVED for callouts. Plain blockquote is not supported.
  */
 import { Fragment, type ReactNode } from "react";
@@ -10,6 +11,7 @@ import BananaSlug from "github-slugger";
 import type { TocItem } from "@/lib/types";
 import { Callout, type CalloutKind } from "@/components/prose/Callout";
 import { CodeBlock } from "@/components/prose/CodeBlock";
+import { EditableImage } from "@/components/prose/EditableImage";
 import { InlineCode } from "@/components/prose/InlineCode";
 import { ZoomableImage } from "@/components/prose/ZoomableImage";
 
@@ -19,8 +21,29 @@ function isCalloutKind(s: string): s is CalloutKind {
   return (CALLOUT_KINDS as readonly string[]).includes(s);
 }
 
+export type ImageWidth = `${number}` | `${number}%`;
+
+export type RenderOptions = {
+  editable?: boolean;
+  onImageResize?: (imageIndex: number, width: ImageWidth | null) => void;
+};
+
 interface InlineCtx {
   keyBase: string;
+  imageCounter: { value: number };
+  editable: boolean;
+  onImageResize?: (imageIndex: number, width: ImageWidth | null) => void;
+}
+
+const WIDTH_RE = /^(.*)\|(\d+%?)$/;
+
+function parseImageAlt(rawAlt: string): {
+  alt: string;
+  width: ImageWidth | null;
+} {
+  const m = rawAlt.match(WIDTH_RE);
+  if (!m) return { alt: rawAlt, width: null };
+  return { alt: m[1], width: m[2] as ImageWidth };
 }
 
 function renderInline(text: string, ctx: InlineCtx): ReactNode {
@@ -46,16 +69,37 @@ function renderInline(text: string, ctx: InlineCtx): ReactNode {
     const rest = text.slice(i);
     const ch = text[i];
 
-    // Image ![alt](url)
+    // Image ![alt](url)  — alt may carry a width modifier: "label|480" or "label|50%"
     let m = rest.match(/^!\[([^\]]*)\]\(([^)]+)\)/);
     if (m) {
-      push(
-        <ZoomableImage
-          key={`${ctx.keyBase}-img-${n}`}
-          src={m[2]}
-          alt={m[1]}
-        />,
-      );
+      const { alt, width } = parseImageAlt(m[1]);
+      const src = m[2];
+      const imageIndex = ctx.imageCounter.value++;
+      const onImageResize = ctx.onImageResize;
+      if (ctx.editable) {
+        push(
+          <EditableImage
+            key={`${ctx.keyBase}-img-${n}`}
+            src={src}
+            alt={alt}
+            width={width}
+            onResize={
+              onImageResize
+                ? (next) => onImageResize(imageIndex, next)
+                : undefined
+            }
+          />,
+        );
+      } else {
+        push(
+          <ZoomableImage
+            key={`${ctx.keyBase}-img-${n}`}
+            src={src}
+            alt={alt}
+            width={width}
+          />,
+        );
+      }
       i += m[0].length;
       continue;
     }
@@ -74,7 +118,7 @@ function renderInline(text: string, ctx: InlineCtx): ReactNode {
             : {})}
           className="text-ink underline decoration-ink-subtle decoration-1 underline-offset-2 hover:decoration-ink"
         >
-          {renderInline(m[1], { keyBase: `${ctx.keyBase}-a-${n}-i` })}
+          {renderInline(m[1], { ...ctx, keyBase: `${ctx.keyBase}-a-${n}-i` })}
         </a>,
       );
       i += m[0].length;
@@ -105,6 +149,7 @@ function renderInline(text: string, ctx: InlineCtx): ReactNode {
             className="font-semibold text-ink"
           >
             {renderInline(text.slice(i + 2, end), {
+              ...ctx,
               keyBase: `${ctx.keyBase}-b-${n}-i`,
             })}
           </strong>,
@@ -121,6 +166,7 @@ function renderInline(text: string, ctx: InlineCtx): ReactNode {
         push(
           <em key={`${ctx.keyBase}-i-${n}`} className="italic">
             {renderInline(text.slice(i + 1, end), {
+              ...ctx,
               keyBase: `${ctx.keyBase}-i-${n}-i`,
             })}
           </em>,
@@ -155,14 +201,27 @@ const HEADER_CLASS: Record<1 | 2 | 3 | 4, string> = {
 /**
  * Render markdown source to React nodes. Pure function (no hooks) — safe in
  * both server components (PostDetail) and client (Studio preview).
+ *
+ * `opts.editable` swaps the image renderer to `EditableImage` and threads
+ * a per-image index through `opts.onImageResize` so the Studio can update
+ * the matching `![…](…)` token in the source body.
  */
-export function renderMarkdown(src: string): ReactNode[] {
+export function renderMarkdown(
+  src: string,
+  opts?: RenderOptions,
+): ReactNode[] {
   const slugger = new BananaSlug();
   const lines = String(src ?? "").split("\n");
   const out: ReactNode[] = [];
   let i = 0;
   let key = 0;
   const k = () => `md-${key++}`;
+  const imageCounter = { value: 0 };
+  const inlineBase = {
+    imageCounter,
+    editable: opts?.editable ?? false,
+    onImageResize: opts?.onImageResize,
+  };
 
   while (i < lines.length) {
     const ln = lines[i];
@@ -188,7 +247,10 @@ export function renderMarkdown(src: string): ReactNode[] {
       const text = hMatch[2].trim();
       const id = slugger.slug(text);
       const baseKey = k();
-      const inner = renderInline(text, { keyBase: `${baseKey}-h` });
+      const inner = renderInline(text, {
+        ...inlineBase,
+        keyBase: `${baseKey}-h`,
+      });
       const className = HEADER_CLASS[level];
       const style = { scrollMarginTop: 80 };
       const headerNode =
@@ -277,7 +339,10 @@ export function renderMarkdown(src: string): ReactNode[] {
         <Callout key={calloutKey} kind={kind} title={title || undefined}>
           {paragraphs.map((p, idx) => (
             <p key={idx}>
-              {renderInline(p, { keyBase: `${calloutKey}-co-${idx}` })}
+              {renderInline(p, {
+                ...inlineBase,
+                keyBase: `${calloutKey}-co-${idx}`,
+              })}
             </p>
           ))}
         </Callout>,
@@ -300,7 +365,10 @@ export function renderMarkdown(src: string): ReactNode[] {
         >
           {items.map((it, idx) => (
             <li key={idx} className="mb-[0.3em]">
-              {renderInline(it, { keyBase: `${baseKey}-li-${idx}` })}
+              {renderInline(it, {
+                ...inlineBase,
+                keyBase: `${baseKey}-li-${idx}`,
+              })}
             </li>
           ))}
         </ul>,
@@ -352,12 +420,16 @@ export function renderMarkdown(src: string): ReactNode[] {
         >
           {items.map((it, idx) => (
             <li key={idx} className="mb-[0.3em]">
-              {renderInline(it.text, { keyBase: `${baseKey}-oli-${idx}` })}
+              {renderInline(it.text, {
+                ...inlineBase,
+                keyBase: `${baseKey}-oli-${idx}`,
+              })}
               {it.subs.length > 0 && (
                 <ul className="mt-[0.3em] list-disc pl-[1.3em]">
                   {it.subs.map((sub, sidx) => (
                     <li key={sidx} className="mb-[0.2em]">
                       {renderInline(sub, {
+                        ...inlineBase,
                         keyBase: `${baseKey}-oli-${idx}-sub-${sidx}`,
                       })}
                     </li>
@@ -393,7 +465,10 @@ export function renderMarkdown(src: string): ReactNode[] {
         key={baseKey}
         className="mb-5 font-sans text-[17px] leading-[1.85] tracking-[-0.005em] text-ink-soft"
       >
-        {renderInline(paraLines.join(" "), { keyBase: `${baseKey}-p` })}
+        {renderInline(paraLines.join(" "), {
+          ...inlineBase,
+          keyBase: `${baseKey}-p`,
+        })}
       </p>,
     );
   }
