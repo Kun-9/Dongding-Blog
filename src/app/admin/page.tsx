@@ -51,21 +51,39 @@ export default async function Page() {
 
   return (
     <main className="mx-auto max-w-[1180px] px-5 pt-8 md:px-8 md:pt-10">
-      <header className="mb-8">
-        <div className="mb-2 font-sans text-[11px] font-bold uppercase tracking-[0.1em] text-ink-muted">
-          ADMIN
+      <header className="mb-8 flex items-start justify-between gap-4">
+        <div>
+          <div className="mb-2 font-sans text-[11px] font-bold uppercase tracking-[0.1em] text-ink-muted">
+            ADMIN
+          </div>
+          <h1 className="m-0 font-sans text-[36px] font-semibold tracking-[-0.03em] text-ink">
+            대시보드
+          </h1>
+          <p className="mt-2 whitespace-nowrap text-sm text-ink-muted">
+            {dateStr} · {weekCopy}
+          </p>
         </div>
-        <h1 className="m-0 font-sans text-[36px] font-semibold tracking-[-0.03em] text-ink">
-          대시보드
-        </h1>
-        <p className="mt-2 whitespace-nowrap text-sm text-ink-muted">
-          {dateStr} · {weekCopy}
-        </p>
         <Link
           href="/admin/stats"
-          className="mt-2 inline-block font-mono text-[12px] text-ink-muted no-underline"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border-token bg-surface px-4 py-2 font-sans text-[13px] font-medium text-ink no-underline transition-[border-color] hover:border-border-strong"
         >
-          → 통계 보기
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <line x1="18" y1="20" x2="18" y2="10" />
+            <line x1="12" y1="20" x2="12" y2="4" />
+            <line x1="6" y1="20" x2="6" y2="14" />
+          </svg>
+          방문 통계
+          <span className="text-ink-muted">→</span>
         </Link>
       </header>
 

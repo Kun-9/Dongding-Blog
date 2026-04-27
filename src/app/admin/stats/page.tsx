@@ -25,6 +25,29 @@ function statValue(s: Stat | undefined): number {
   return typeof s === "number" ? s : (s.value ?? 0);
 }
 
+/**
+ * Fill in zero-count entries for any day in [now-days, now] not present in
+ * the Umami response, so the chart always shows the full range.
+ */
+function fillDays(
+  series: { x: string; y: number }[] | undefined,
+  days: number,
+): { x: string; y: number }[] {
+  const map = new Map<string, number>();
+  for (const p of series ?? []) {
+    map.set(p.x.slice(0, 10), p.y);
+  }
+  const today = new Date();
+  const out: { x: string; y: number }[] = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    out.push({ x: key, y: map.get(key) ?? 0 });
+  }
+  return out;
+}
+
 interface Series {
   pageviews: { x: string; y: number }[];
   sessions: { x: string; y: number }[];
@@ -112,7 +135,8 @@ export default function StatsPage() {
       })()
     : [];
 
-  const max = series ? Math.max(1, ...series.pageviews.map((p) => p.y)) : 1;
+  const filledPageviews = fillDays(series?.pageviews, days);
+  const max = Math.max(1, ...filledPageviews.map((p) => p.y));
 
   return (
     <main className="mx-auto max-w-[1180px] px-5 pt-8 md:px-8 md:pt-10">
@@ -155,13 +179,21 @@ export default function StatsPage() {
         ))}
       </section>
 
-      {series && (
-        <section className="mb-8 rounded-xl border border-border-token bg-surface px-[22px] py-5">
-          <div className="mb-3.5 font-sans text-[13px] font-semibold text-ink">
+      <section className="mb-8 rounded-xl border border-border-token bg-surface px-[22px] py-5">
+        <div className="mb-3.5 flex items-baseline justify-between">
+          <div className="font-sans text-[13px] font-semibold text-ink">
             일별 페이지뷰
           </div>
-          <div className="flex h-24 items-end gap-1.5">
-            {series.pageviews.map((p) => (
+          <div className="font-mono text-[11px] text-ink-muted">
+            최근 {days}일
+          </div>
+        </div>
+        <div className="flex h-24 items-end gap-[3px]">
+          {filledPageviews.map((p, i) => {
+            const isLast = i === filledPageviews.length - 1;
+            const labelEvery = days <= 7 ? 1 : 5;
+            const showLabel = i === 0 || isLast || (i + 1) % labelEvery === 0;
+            return (
               <div
                 key={p.x}
                 className="flex flex-1 flex-col items-center gap-1"
@@ -169,20 +201,21 @@ export default function StatsPage() {
                 <div
                   className="w-full rounded-sm"
                   style={{
-                    height: `${(p.y / max) * 80}px`,
-                    background: "var(--ink)",
-                    opacity: 0.7,
+                    height: `${Math.max((p.y / max) * 80, p.y > 0 ? 2 : 0)}px`,
+                    minHeight: p.y === 0 ? "2px" : undefined,
+                    background: p.y > 0 ? "var(--ink)" : "var(--border-strong)",
+                    opacity: p.y > 0 ? 0.75 : 0.25,
                   }}
                   title={`${p.x}: ${p.y}`}
                 />
                 <div className="font-mono text-[9.5px] text-ink-muted">
-                  {p.x.slice(5, 10)}
+                  {showLabel ? p.x.slice(5, 10) : ""}
                 </div>
               </div>
-            ))}
-          </div>
-        </section>
-      )}
+            );
+          })}
+        </div>
+      </section>
 
       <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {[
