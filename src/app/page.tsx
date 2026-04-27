@@ -5,7 +5,7 @@
  */
 import Link from "next/link";
 import { getAllPosts, getFeaturedPost } from "@/lib/posts";
-import { categories } from "@/lib/categories";
+import { getCategoriesWithCounts } from "@/lib/category-stats";
 import { site } from "@/lib/site";
 import { fmtDate } from "@/lib/tokens";
 import { CTA } from "@/components/ui/CTA";
@@ -13,15 +13,12 @@ import { TagChip } from "@/components/post/TagChip";
 import { PostCard } from "@/components/post/PostCard";
 import { InlineCode } from "@/components/prose/InlineCode";
 
-export const metadata = {
-  title: "Dong-Ding · 백엔드 노트",
-};
-
 export default function Page() {
   const featured = getFeaturedPost() ?? getAllPosts()[0];
   const recent = getAllPosts()
     .filter((p) => p.slug !== featured?.slug)
     .slice(0, 6);
+  const categories = getCategoriesWithCounts();
 
   if (!featured) {
     return (
@@ -153,7 +150,7 @@ export default function Page() {
                 </div>
               </div>
               <div className="mt-3 text-xs tabular-nums text-ink-muted">
-                {cat.count} 편 →
+                {cat.count ?? 0} 편 →
               </div>
             </Link>
           ))}

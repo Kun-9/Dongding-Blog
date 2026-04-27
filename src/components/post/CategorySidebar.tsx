@@ -4,7 +4,7 @@
  * Active state is decided server-side via the `filter` prop.
  */
 import Link from "next/link";
-import { categories } from "@/lib/categories";
+import { getCategoriesWithCounts } from "@/lib/category-stats";
 import { getAllPosts, getAllTags } from "@/lib/posts";
 import { TagChip } from "@/components/post/TagChip";
 
@@ -23,6 +23,7 @@ export function CategorySidebar({ filter }: Props) {
   const activeTag = filter?.type === "tag" ? filter.value : null;
   const totalPosts = getAllPosts().length;
   const allTags = getAllTags();
+  const categories = getCategoriesWithCounts();
 
   return (
     <nav className="sticky top-[90px] self-start">
@@ -59,7 +60,7 @@ export function CategorySidebar({ filter }: Props) {
               >
                 <span>{cat.name}</span>
                 <span className="text-xs tabular-nums text-ink-muted">
-                  {cat.count}
+                  {cat.count ?? 0}
                 </span>
               </Link>
 
@@ -73,7 +74,7 @@ export function CategorySidebar({ filter }: Props) {
                       >
                         <span>{sub.name}</span>
                         <span className="text-[11.5px] tabular-nums text-ink-subtle">
-                          {sub.count}
+                          {sub.count ?? 0}
                         </span>
                       </Link>
                     </li>
