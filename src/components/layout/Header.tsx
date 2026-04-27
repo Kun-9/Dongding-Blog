@@ -10,7 +10,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import { CommandPalette } from "@/components/command/CommandPalette";
-import { useMounted } from "@/lib/hooks";
+import { useAdmin, useMounted } from "@/lib/hooks";
+import { site } from "@/lib/site";
 import type { Category, PostMeta } from "@/lib/types";
 
 interface Props {
@@ -23,6 +24,7 @@ export function Header({ categories, posts }: Props) {
   const { resolvedTheme, setTheme } = useTheme();
   const [openK, setOpenK] = useState(false);
   const mounted = useMounted();
+  const isAdmin = useAdmin();
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -38,7 +40,10 @@ export function Header({ categories, posts }: Props) {
   }, []);
 
   const isPostsActive = pathname?.startsWith("/posts") ?? false;
+  const isSeriesActive = pathname?.startsWith("/series") ?? false;
+  const isBookmarksActive = pathname?.startsWith("/bookmarks") ?? false;
   const isAboutActive = pathname === "/about";
+  const isAdminPageActive = pathname?.startsWith("/admin") ?? false;
 
   const navLink = (href: string, label: string, isActive: boolean) => (
     <Link
@@ -81,13 +86,15 @@ export function Header({ categories, posts }: Props) {
               동
             </div>
             <span className="whitespace-nowrap font-sans text-[17px] font-bold tracking-[-0.025em] text-ink">
-              Dong-Ding
+              {site.shortTitle}
             </span>
           </Link>
 
           <div className="flex items-center gap-1">
             <div className="hidden items-center gap-1 md:flex">
               {navLink("/posts", "Posts", isPostsActive)}
+              {navLink("/series", "Series", isSeriesActive)}
+              {navLink("/bookmarks", "Linkroll", isBookmarksActive)}
               {navLink("/about", "About", isAboutActive)}
             </div>
 
@@ -113,6 +120,37 @@ export function Header({ categories, posts }: Props) {
             >
               {mounted ? (isDark ? "☼" : "☾") : "☾"}
             </button>
+
+            {isAdmin && (
+              <>
+                <span
+                  aria-hidden
+                  className="mx-2 hidden h-[18px] w-px bg-border-token md:inline-block"
+                />
+                <Link
+                  href="/studio"
+                  title="새 글 쓰기"
+                  className="hidden whitespace-nowrap rounded-full border-none px-2.5 py-[5px] pl-[9px] font-sans text-[12.5px] font-semibold tracking-[-0.005em] no-underline md:inline-flex md:items-center md:gap-1.5"
+                  style={{ background: "var(--ink)", color: "var(--bg)" }}
+                >
+                  <span className="text-[14px] font-normal leading-none">＋</span>
+                  새 글
+                </Link>
+                <Link
+                  href="/admin"
+                  aria-label="관리자"
+                  title="관리자 대시보드"
+                  className="ml-1 inline-flex h-8 w-8 items-center justify-center rounded-full border border-border-token bg-transparent font-mono text-[13px] font-bold no-underline"
+                  style={{
+                    color: isAdminPageActive
+                      ? "var(--ink)"
+                      : "var(--ink-muted)",
+                  }}
+                >
+                  ▣
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </header>
