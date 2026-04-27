@@ -2,10 +2,10 @@
  * Bookmarks (Linkroll) — port of project/page-extras.jsx#BookmarksPage.
  */
 import { getAllBookmarks } from "@/lib/bookmarks";
-import { fmtDate } from "@/lib/tokens";
+import { BookmarkList } from "@/components/bookmarks/BookmarkList";
 
 export const metadata = {
-  title: "Linkroll · Dong-Ding",
+  title: "Linkroll",
 };
 
 export default function Page() {
@@ -25,49 +25,7 @@ export default function Page() {
         </p>
       </header>
 
-      <ul className="m-0 list-none p-0">
-        {items.map((b, i) => (
-          <li
-            key={b.url}
-            className="grid grid-cols-[90px_1fr] gap-[18px] py-5"
-            style={{
-              borderTop: i === 0 ? "none" : "1px solid var(--border)",
-            }}
-          >
-            <div className="pt-0.5">
-              <div className="font-mono text-[11px] tabular-nums text-ink-muted">
-                {fmtDate(b.date)}
-              </div>
-              <div className="mt-1">
-                <span className="rounded border border-border-token bg-surface-alt px-1.5 py-0.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.05em] text-ink-muted">
-                  {b.tag}
-                </span>
-              </div>
-            </div>
-            <div>
-              <a
-                href={`https://${b.url}`}
-                target="_blank"
-                rel="noopener"
-                className="font-sans text-[17px] font-semibold leading-[1.35] tracking-[-0.02em] text-ink no-underline"
-              >
-                {b.title}
-                <span className="ml-1 text-[13px] text-ink-muted">↗</span>
-              </a>
-              <div className="mt-0.5 font-mono text-xs text-ink-muted">
-                {b.source} · {b.url}
-              </div>
-              <p
-                className="mt-2.5 pl-3 text-sm leading-[1.7] text-ink-soft"
-                style={{ borderLeft: "2px solid var(--border)" }}
-              >
-                {b.note}
-              </p>
-            </div>
-          </li>
-        ))}
-      </ul>
-      <div className="h-16" />
+      <BookmarkList items={items} />
     </main>
   );
 }
