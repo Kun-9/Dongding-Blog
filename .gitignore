@@ -44,3 +44,8 @@ next-env.d.ts
 # IDE / Editor
 .idea/
 .vscode/
+
+# Local agent / scratch
+.claude/
+.omc/
+tmp/
