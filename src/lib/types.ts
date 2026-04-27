@@ -17,6 +17,8 @@ export interface Category {
   subs?: Subcategory[];
 }
 
+export type Visibility = "published" | "private" | "draft";
+
 export interface PostMeta {
   slug: string;
   title: string;
@@ -26,6 +28,8 @@ export interface PostMeta {
   date: string;
   readTime: number;
   featured?: boolean;
+  visibility: Visibility;
+  /** @deprecated `visibility === 'draft'`로 대체 — 마이그레이션 후 제거 예정 */
   draft?: boolean;
   toc?: TocItem[];
 }
@@ -59,7 +63,7 @@ export interface Draft {
   title: string;
   updated: string;
   words: number;
-  status: "draft" | "review";
+  status: "draft" | "review" | "private";
 }
 
 export interface SiteMeta {

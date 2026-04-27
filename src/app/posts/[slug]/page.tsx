@@ -47,7 +47,7 @@ export default async function Page({
 }) {
   const { slug } = await params;
   const post = getPostBySlug(slug);
-  if (!post || post.meta.draft) notFound();
+  if (!post || post.meta.visibility !== "published") notFound();
 
   const { content } = await compileMDX({
     source: post.body,
@@ -87,7 +87,11 @@ export default async function Page({
             )}
           </div>
 
-          <AdminBar slug={slug} />
+          <AdminBar
+            slug={slug}
+            title={post.meta.title}
+            status={post.meta.visibility}
+          />
 
           <header className="mb-9">
             <h1 className="m-0 font-sans text-[40px] font-semibold leading-[1.15] tracking-[-0.035em] text-ink">

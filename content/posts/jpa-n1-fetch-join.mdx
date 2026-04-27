@@ -1,37 +1,32 @@
 ---
-title: "JPA N+1 — fetch join은 정답이 아니다"
-summary: "fetch join을 쓰면 N+1은 사라지지만, paging이 깨지고 distinct가 필요해진다. BatchSize와의 진짜 차이를 정리한다."
-category: "db"
-tags: ["jpa", "hibernate", "performance"]
-date: "2026-04-20"
-readTime: 12
-featured: true
-toc:
-  - id: problem
-    label: 문제 상황
-    level: 2
-  - id: lazy
-    label: LAZY 로딩과 N+1
-    level: 2
-  - id: fetch-join
-    label: fetch join의 한계
-    level: 2
-  - id: paging
-    label: 페이징과의 충돌
-    level: 3
-  - id: batch-size
-    label: BatchSize 전략
-    level: 2
-  - id: wrap
-    label: 정리
-    level: 2
+title: JPA N+1 — fetch join은 정답이 아니다
+summary: >-
+  fetch join을 쓰면 N+1은 사라지지만, paging이 깨지고 distinct가 필요해진다. BatchSize와의 진짜 차이를
+  정리한다.
+category: db
+tags:
+  - jpa
+  - hibernate
+  - performance
+date: '2026-04-20'
+visibility: published
 ---
-
 ## 문제 상황
 
 주문 목록 화면에서 갑자기 응답이 8초로 늘었다는 알람이 왔다. 페이지당 20건을 보여주는 단순한 화면이었는데, 쿼리 로그를 켜 보니 한 페이지를 그릴 때마다 `SELECT` 쿼리가 60번 넘게 나가고 있었다. 우리 모두가 한 번씩은 만나는, 이름도 친절하게 붙여둔 **N+1 문제**다.
 
 첫 본능은 당연히 `fetch join`이다. 사람들이 가장 먼저 권하는 답이고, 실제로 쿼리는 1개로 줄어든다. 그런데 그게 정말로 정답인가? 이 글은 그 질문에 대한 1년간의 시행착오를 정리한 것이다.
+
+>hello
+
+> hello
+
+
+### hello
+<Callout>
+hello
+</Callout>
+
 
 <Callout kind="info" title="이 글이 다루는 범위">
 Hibernate 6.x 기준이며, `OneToMany` 관계 위주로 본다. ManyToOne LAZY는 별도 장에서 다룰 것이다.

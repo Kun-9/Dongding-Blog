@@ -4,17 +4,17 @@
  */
 import "server-only";
 
-import { getAllPostsIncludingDrafts } from "@/lib/posts";
+import { getAllPostsWithBody } from "@/lib/posts";
 import type { Draft } from "@/lib/types";
 
 export function getAllDrafts(): Draft[] {
-  return getAllPostsIncludingDrafts()
-    .filter((p) => p.draft)
+  return getAllPostsWithBody()
+    .filter((p) => p.meta.visibility !== "published")
     .map((p) => ({
-      slug: p.slug,
-      title: p.title,
-      updated: p.date,
-      words: 0,
-      status: "draft" as const,
+      slug: p.meta.slug,
+      title: p.meta.title,
+      updated: p.meta.date,
+      words: p.body.replace(/\s+/g, "").length,
+      status: p.meta.visibility === "private" ? "private" : "draft",
     }));
 }
