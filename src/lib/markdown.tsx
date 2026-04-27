@@ -308,22 +308,62 @@ export function renderMarkdown(src: string): ReactNode[] {
       continue;
     }
 
-    // Ordered list
+    // Ordered list — absorbs blank-line-separated sub-bullets as children
+    // of the preceding numbered item, and starts numbering from the source
+    // value (so `2. ...` renders as "2." even after a sub-list break).
     if (/^\d+\.\s+/.test(ln)) {
-      const items: string[] = [];
-      while (i < lines.length && /^\d+\.\s+/.test(lines[i])) {
-        items.push(lines[i].replace(/^\d+\.\s+/, ""));
-        i++;
+      type OrderedItem = { text: string; subs: string[] };
+      const items: OrderedItem[] = [];
+      const startNum = parseInt(ln.match(/^(\d+)\./)?.[1] ?? "1", 10);
+
+      while (i < lines.length) {
+        const cur = lines[i];
+        if (/^\d+\.\s+/.test(cur)) {
+          items.push({ text: cur.replace(/^\d+\.\s+/, ""), subs: [] });
+          i++;
+          continue;
+        }
+        if (/^-\s+/.test(cur) && items.length > 0) {
+          items[items.length - 1].subs.push(cur.replace(/^-\s+/, ""));
+          i++;
+          continue;
+        }
+        if (cur.trim() === "") {
+          let j = i + 1;
+          while (j < lines.length && lines[j].trim() === "") j++;
+          if (
+            j < lines.length &&
+            (/^\d+\.\s+/.test(lines[j]) ||
+              (/^-\s+/.test(lines[j]) && items.length > 0))
+          ) {
+            i = j;
+            continue;
+          }
+        }
+        break;
       }
+
       const baseKey = k();
       out.push(
         <ol
           key={baseKey}
+          start={startNum}
           className="mb-5 list-decimal pl-[1.5em] font-sans text-[15.5px] leading-[1.85] text-ink-soft"
         >
           {items.map((it, idx) => (
             <li key={idx} className="mb-[0.3em]">
-              {renderInline(it, { keyBase: `${baseKey}-oli-${idx}` })}
+              {renderInline(it.text, { keyBase: `${baseKey}-oli-${idx}` })}
+              {it.subs.length > 0 && (
+                <ul className="mt-[0.3em] list-disc pl-[1.3em]">
+                  {it.subs.map((sub, sidx) => (
+                    <li key={sidx} className="mb-[0.2em]">
+                      {renderInline(sub, {
+                        keyBase: `${baseKey}-oli-${idx}-sub-${sidx}`,
+                      })}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </li>
           ))}
         </ol>,
