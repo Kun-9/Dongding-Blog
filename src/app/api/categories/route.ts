@@ -8,6 +8,7 @@ import { NextResponse } from "next/server";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { z } from "zod";
+import { SLUG_RE, devGuard } from "@/app/api/posts/_shared";
 
 const CATEGORIES_PATH = path.join(
   process.cwd(),
@@ -16,28 +17,19 @@ const CATEGORIES_PATH = path.join(
   "categories.json",
 );
 
-const ID_RE = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
-
 const SubSchema = z.object({
-  id: z.string().regex(ID_RE, "id는 영소문자/숫자/하이픈만 허용"),
+  id: z.string().regex(SLUG_RE, "id는 영소문자/숫자/하이픈만 허용"),
   name: z.string().min(1),
 });
 
 const CategorySchema = z.object({
-  id: z.string().regex(ID_RE, "id는 영소문자/숫자/하이픈만 허용"),
+  id: z.string().regex(SLUG_RE, "id는 영소문자/숫자/하이픈만 허용"),
   name: z.string().min(1),
   desc: z.string(),
   subs: z.array(SubSchema).default([]),
 });
 
 const CategoriesSchema = z.array(CategorySchema);
-
-function devGuard(): NextResponse | null {
-  if (process.env.NODE_ENV !== "development") {
-    return new NextResponse("Not Found", { status: 404 });
-  }
-  return null;
-}
 
 export async function GET() {
   const blocked = devGuard();

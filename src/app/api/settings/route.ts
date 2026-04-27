@@ -8,6 +8,7 @@ import { NextResponse } from "next/server";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { z } from "zod";
+import { devGuard } from "@/app/api/posts/_shared";
 
 const SETTINGS_PATH = path.join(process.cwd(), "src", "lib", "site.json");
 
@@ -37,13 +38,6 @@ const SiteSchema = z.object({
     rssLimit: z.number().int().min(1).max(100),
   }),
 });
-
-function devGuard(): NextResponse | null {
-  if (process.env.NODE_ENV !== "development") {
-    return new NextResponse("Not Found", { status: 404 });
-  }
-  return null;
-}
 
 export async function GET() {
   const blocked = devGuard();

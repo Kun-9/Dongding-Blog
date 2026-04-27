@@ -5,10 +5,10 @@
  */
 import { NextResponse } from "next/server";
 import { getCategoriesWithCounts } from "@/lib/category-stats";
+import { devGuard } from "@/app/api/posts/_shared";
 
 export async function GET() {
-  if (process.env.NODE_ENV !== "development") {
-    return new NextResponse("Not Found", { status: 404 });
-  }
+  const blocked = devGuard();
+  if (blocked) return blocked;
   return NextResponse.json(getCategoriesWithCounts());
 }

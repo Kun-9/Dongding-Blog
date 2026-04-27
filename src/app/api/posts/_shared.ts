@@ -1,8 +1,8 @@
 /**
- * Shared helpers for the dev-only posts API. Owns frontmatter shape,
- * slug normalization, and on-disk path resolution. Production builds
- * (`BUILD_TARGET=static`) exclude API routes entirely; the runtime guard
- * here is belt-and-suspenders.
+ * Shared helpers for the dev-only API surface. Owns the dev guard, slug
+ * regex, frontmatter shape, and on-disk path resolution for posts.
+ * Production builds (`BUILD_TARGET=static`) exclude API routes entirely;
+ * the runtime guard here is belt-and-suspenders.
  */
 import "server-only";
 
