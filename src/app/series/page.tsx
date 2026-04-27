@@ -1,19 +1,12 @@
 /**
  * Series — port of project/page-extras.jsx#SeriesPage.
  */
-import Link from "next/link";
 import { getAllSeries } from "@/lib/series";
+import { SeriesGrid } from "@/components/series/SeriesGrid";
 
 export const metadata = {
-  title: "Series · Dong-Ding",
+  title: "Series",
 };
-
-// Map a series id to a category route — used for card click-through.
-function seriesCategoryHref(id: string): string {
-  if (id.startsWith("jpa") || id.startsWith("mysql")) return "/category/db";
-  if (id.startsWith("tx")) return "/category/spring";
-  return "/category/system";
-}
 
 export default function Page() {
   const series = getAllSeries();
@@ -33,45 +26,7 @@ export default function Page() {
         </p>
       </header>
 
-      <div className="grid grid-cols-1 gap-3.5 pb-16 sm:grid-cols-2">
-        {series.map((s) => (
-          <Link
-            key={s.id}
-            href={seriesCategoryHref(s.id)}
-            className="flex min-h-[200px] flex-col gap-3.5 rounded-xl border border-border-token bg-surface p-5 no-underline transition-[border-color,transform] duration-200 hover:border-border-strong hover:-translate-y-0.5"
-          >
-            <div className="flex items-center justify-between">
-              <div
-                className="inline-flex h-9 w-9 items-center justify-center rounded-[10px] font-mono text-[11px] font-bold tracking-[0.02em] text-white opacity-85"
-                style={{ background: s.color }}
-              >
-                {s.count}편
-              </div>
-              <div className="whitespace-nowrap font-mono text-[11px] text-ink-muted">
-                {s.posts.length}/{s.count} 발행됨
-              </div>
-            </div>
-            <div>
-              <div className="mb-1.5 font-sans text-[22px] font-semibold tracking-[-0.025em] text-ink">
-                {s.title}
-              </div>
-              <div className="text-sm leading-[1.6] text-ink-soft">{s.desc}</div>
-            </div>
-            <div className="mt-auto flex gap-1">
-              {Array.from({ length: s.count }).map((_, i) => (
-                <div
-                  key={i}
-                  className="h-1 flex-1 rounded-sm"
-                  style={{
-                    background:
-                      i < s.posts.length ? s.color : "var(--surface-alt)",
-                  }}
-                />
-              ))}
-            </div>
-          </Link>
-        ))}
-      </div>
+      <SeriesGrid series={series} />
     </main>
   );
 }
