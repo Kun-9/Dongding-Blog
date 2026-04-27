@@ -1,7 +1,8 @@
 /**
- * TagChip — tag pill with hash glyph.
- * Port of components.jsx#TagChip.
+ * TagChip — tag pill with hash glyph. Tracks 'Tag Click' to Umami.
  */
+"use client";
+
 import Link from "next/link";
 
 interface Props {
@@ -23,10 +24,15 @@ export function TagChip({ tag, size = "md", filled = false, href }: Props) {
     fontSize,
   ].join(" ");
 
+  const handleClick = () => {
+    window.umami?.track("Tag Click", { tag });
+  };
+
   if (filled) {
     return (
       <Link
         href={target}
+        onClick={handleClick}
         className={baseClass}
         style={{
           background: "var(--accent)",
@@ -42,6 +48,7 @@ export function TagChip({ tag, size = "md", filled = false, href }: Props) {
   return (
     <Link
       href={target}
+      onClick={handleClick}
       className={`${baseClass} border border-border-token text-ink-muted`}
     >
       <span className="opacity-55">#</span>
