@@ -10,7 +10,12 @@ import { useMemo, useState, useSyncExternalStore } from "react";
 import type { ChangeEvent, ReactNode } from "react";
 import { site } from "@/lib/site";
 import siteJson from "@/lib/site.json";
+import categoriesJson from "@/lib/categories.json";
 import { DevOnlyNotice } from "@/components/layout/DevOnlyNotice";
+import {
+  CategoryManager,
+  type CatNode,
+} from "@/components/settings/CategoryManager";
 
 const isDev = process.env.NODE_ENV === "development";
 
@@ -69,6 +74,7 @@ function parsePrefs(raw: string): EditorPrefs {
 const SECTIONS: ReadonlyArray<readonly [string, string]> = [
   ["profile", "프로필"],
   ["social", "소셜 링크"],
+  ["categories", "카테고리"],
   ["comments", "댓글"],
   ["seo", "SEO · 메타"],
   ["publish", "발행"],
@@ -246,6 +252,23 @@ function SettingsView() {
               mono
             />
           </Row>
+        </Card>
+
+        {/* CATEGORIES — categories.json */}
+        <Card
+          id="settings-categories"
+          title="카테고리"
+          source="src/lib/categories.json"
+        >
+          <p className="mb-2 text-[12.5px] leading-[1.55] text-ink-muted">
+            대분류 + 서브카테고리 트리. 헤더 메뉴와{" "}
+            <code className="rounded bg-surface-alt px-1 py-px font-mono text-[11.5px]">
+              /category/[id]
+            </code>
+            {" "}라우팅에 직결됩니다. 글이 매핑된 카테고리는 삭제 시 한번 더
+            확인합니다.
+          </p>
+          <CategoryManager initial={categoriesJson as CatNode[]} />
         </Card>
 
         {/* COMMENTS — env-driven, read-only */}

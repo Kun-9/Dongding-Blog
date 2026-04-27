@@ -44,6 +44,7 @@ export function Header({ categories, posts }: Props) {
   const isBookmarksActive = pathname?.startsWith("/bookmarks") ?? false;
   const isAboutActive = pathname === "/about";
   const isAdminPageActive = pathname?.startsWith("/admin") ?? false;
+  const isSettingsActive = pathname?.startsWith("/settings") ?? false;
 
   const navLink = (href: string, label: string, isActive: boolean) => (
     <Link
@@ -148,6 +149,19 @@ export function Header({ categories, posts }: Props) {
                   }}
                 >
                   ▣
+                </Link>
+                <Link
+                  href="/settings"
+                  aria-label="설정"
+                  title="설정"
+                  className="ml-1 inline-flex h-8 w-8 items-center justify-center rounded-full border border-border-token bg-transparent text-sm no-underline transition-transform duration-[600ms] hover:rotate-[60deg]"
+                  style={{
+                    color: isSettingsActive
+                      ? "var(--ink)"
+                      : "var(--ink-muted)",
+                  }}
+                >
+                  ⚙
                 </Link>
               </>
             )}
