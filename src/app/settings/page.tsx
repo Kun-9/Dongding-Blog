@@ -195,7 +195,7 @@ function SettingsView() {
               src/lib/site.json
             </code>
             에 저장됩니다. 저장하면 자동으로 페이지가 다시 로드되고, git diff로
-            변경 내용을 확인 후 commit·push하면 배포에 반영됩니다.
+            변경 내용을 확인 후 commit하고 push하면 배포에 반영됩니다.
           </p>
         </header>
 

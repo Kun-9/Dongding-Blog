@@ -1116,7 +1116,7 @@ function StudioEditor() {
         body={
           visibility === "published"
             ? "이미 발행된 글입니다. 변경 사항을 다시 발행하면 즉시 반영돼요."
-            : "발행하면 공개 범위가 published로 바뀌고 공개 목록·RSS·sitemap에 노출됩니다."
+            : "발행하면 공개 범위가 published로 바뀌고 공개 목록과 RSS, sitemap에 노출됩니다."
         }
         meta={
           <>
@@ -1265,7 +1265,7 @@ function StudioEditor() {
                   </button>
                 </div>
                 <span className="font-mono text-[10.5px] text-ink-muted">
-                  영소문자 · 숫자 · 하이픈만 (한글은 자동으로 제거됩니다)
+                  영소문자, 숫자, 하이픈만 (한글은 자동으로 제거됩니다)
                 </span>
               </div>
             </FieldRow>
@@ -1276,7 +1276,7 @@ function StudioEditor() {
                   patch({ summary: e.target.value });
                   markDirty();
                 }}
-                placeholder="목록·OG에서 보일 한 줄 요약"
+                placeholder="목록과 OG에 보일 한 줄 요약"
                 className="w-full rounded-md border border-border-token bg-surface px-2.5 py-[7px] font-sans text-[13px] tracking-[-0.005em] text-ink outline-none"
               />
             </FieldRow>
@@ -1618,11 +1618,11 @@ function MarkdownCheatsheet() {
             </tbody>
           </table>
           <div className="mt-3.5 rounded-lg border border-border-token bg-surface px-3 py-2.5 font-sans text-[12px] leading-[1.6] tracking-[-0.005em] text-ink-muted">
-            <strong className="font-semibold text-ink">규칙</strong> ·{" "}
-            <code className="font-mono">{"> "}</code>는 callout 전용 (일반
-            인용문 없음). · 헤더와 마커 뒤엔{" "}
+            <strong className="font-semibold text-ink">규칙</strong>{" "}
+            — <code className="font-mono">{"> "}</code>는 callout 전용 (일반
+            인용문 없음). 헤더와 마커 뒤엔{" "}
             <strong className="font-semibold text-ink">공백 한 칸</strong>{" "}
-            필수. · <code className="font-mono">{"<Callout>"}</code> 같은 JSX
+            필수. <code className="font-mono">{"<Callout>"}</code> 같은 JSX
             태그는 인식하지 않는다.
           </div>
         </div>

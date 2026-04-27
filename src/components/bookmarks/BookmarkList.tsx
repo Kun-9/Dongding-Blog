@@ -425,7 +425,7 @@ function BookmarkEditor({
             style={{ background: "var(--bg)" }}
           />
           <div className="mt-1.5 font-mono text-[11px] text-ink-muted">
-            제목·출처는 og:tag에서 자동 파싱됩니다.
+            제목과 출처는 og:tag에서 자동 파싱됩니다.
           </div>
         </label>
         <label>
@@ -475,7 +475,7 @@ function BookmarkEditor({
             value={note}
             onChange={(e) => setNote(e.target.value)}
             rows={3}
-            placeholder="이 글이 왜 좋았는지 한·두 문장으로."
+            placeholder="이 글이 왜 좋았는지 한두 문장으로."
             className={`${inp} min-h-[80px] leading-[1.7]`}
             style={{ background: "var(--bg)", resize: "vertical" }}
           />

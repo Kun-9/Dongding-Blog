@@ -47,8 +47,8 @@ export default function Page() {
           </h1>
           <p className="mb-7 mt-4 max-w-[580px] font-sans text-[18px] leading-[1.7] tracking-[-0.005em] text-ink-soft">
             <InlineCode>Spring</InlineCode>, <InlineCode>Oracle</InlineCode>,
-            MSA 공통관리, 그리고 AI를 실무에 녹이는 실험까지 — 끝까지 파고든
-            기록을 천천히 읽히도록 씁니다.
+            분산 서비스 공통 계층 설계, 그리고 AI를 실무에 녹이는 실험까지 —
+            끝까지 파고든 기록을 천천히 읽히도록 씁니다.
           </p>
           <div className="flex gap-2.5">
             <CTA href="/posts">최근 글 →</CTA>

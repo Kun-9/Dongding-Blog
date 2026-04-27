@@ -9,14 +9,14 @@ export const metadata = {
 };
 
 const CAREER: ReadonlyArray<readonly [string, string, string]> = [
-  ["2024.08 — 현재", "백엔드 엔지니어 · 한경정보기술", "MSA 시스템 공통관리 · 사내 AI 도입 실험"],
+  ["2024.08 — 현재", "한경정보기술 백엔드 엔지니어", "분산 서비스 공통 계층을 설계하고 운영, 업무에 AI 도구를 적극 활용"],
 ];
 
 const INTERESTS = [
   "Java",
   "Spring",
   "Oracle",
-  "MSA",
+  "분산 서비스",
   "공통 모듈 설계",
   "AI 활용 개발",
   "LLM 워크플로우",
@@ -38,9 +38,9 @@ export default function Page() {
 
       <section className="mb-10">
         <p className="mb-5 font-sans text-[17px] leading-[1.85] tracking-[-0.005em] text-ink-soft">
-          2년차 백엔드 개발자입니다. Java · Spring · Oracle로 일하고, MSA
-          환경의 공통관리 영역을 맡으면서 시스템이 어떻게 맞물려 돌아가는지
-          익히고 있어요.
+          2년차 백엔드 개발자입니다. Java, Spring, Oracle로 일하고, 분산
+          서비스가 공유하는 공통 계층을 만들고 운영하면서 시스템이 어떻게
+          맞물려 돌아가는지 익히고 있어요.
         </p>
         <p className="mb-5 font-sans text-[17px] leading-[1.85] tracking-[-0.005em] text-ink-soft">
           요즘은 AI를 학습하고 실제 업무에 어떻게 녹여낼지 실험하는 게
