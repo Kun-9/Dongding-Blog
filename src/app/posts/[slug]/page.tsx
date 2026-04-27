@@ -13,6 +13,7 @@ import { fmtDate } from "@/lib/tokens";
 import { renderMarkdown } from "@/lib/markdown";
 
 import { TagChip } from "@/components/post/TagChip";
+import { PostViews } from "@/components/analytics/PostViews";
 import { TOC } from "@/components/prose/TOC";
 import { ReadingProgress } from "@/components/prose/ReadingProgress";
 import { Comments } from "@/components/comments/Comments";
@@ -111,8 +112,12 @@ export default async function Page({
               </div>
               <div className="flex-1 text-[13.5px]">
                 <div className="font-medium text-ink">{site.author}</div>
-                <div className="mt-px font-mono tabular-nums text-ink-muted">
-                  {fmtDate(post.meta.date)} · {post.meta.readTime}분 읽기
+                <div className="mt-px flex flex-wrap items-center gap-1.5 font-mono tabular-nums text-ink-muted">
+                  <span>{fmtDate(post.meta.date)}</span>
+                  <span className="opacity-40">·</span>
+                  <span>{post.meta.readTime}분 읽기</span>
+                  <span className="opacity-40">·</span>
+                  <PostViews slug={slug} />
                 </div>
               </div>
               <div className="flex gap-1.5">
