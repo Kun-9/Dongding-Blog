@@ -122,6 +122,17 @@ export default async function Page({
             status={post.meta.visibility}
           />
 
+          {seriesCtx && (
+            <SeriesBanner
+              seriesId={seriesCtx.id}
+              seriesTitle={seriesCtx.title}
+              color={seriesCtx.color}
+              currentOrder={seriesCtx.currentOrder}
+              total={seriesCtx.total}
+              publishedCount={seriesCtx.publishedCount}
+            />
+          )}
+
           <header className="mb-9">
             <h1 className="m-0 font-sans text-[40px] font-semibold leading-[1.15] tracking-[-0.035em] text-ink">
               {post.meta.title}
@@ -153,6 +164,19 @@ export default async function Page({
 
           {content}
 
+          {seriesCtx && (
+            <div className="mt-10">
+              <SeriesStepNav
+                seriesId={seriesCtx.id}
+                seriesTitle={seriesCtx.title}
+                color={seriesCtx.color}
+                publishedCount={seriesCtx.publishedCount}
+                prev={seriesCtx.seriesPrev}
+                next={seriesCtx.seriesNext}
+              />
+            </div>
+          )}
+
           <Comments />
         </article>
 
@@ -173,13 +197,36 @@ export default async function Page({
         </aside>
       </div>
 
-      {/* Prev/Next */}
-      <section className="mx-auto mt-8 max-w-[1180px] px-5 pb-12 md:px-8 md:pb-16">
+      {/* Series step nav (시리즈 글일 때만) */}
+      {seriesCtx && (
+        <section className="mx-auto mt-8 max-w-[1180px] px-5 md:px-8">
+          <SeriesStepNav
+            seriesId={seriesCtx.id}
+            seriesTitle={seriesCtx.title}
+            color={seriesCtx.color}
+            publishedCount={seriesCtx.publishedCount}
+            prev={seriesCtx.seriesPrev}
+            next={seriesCtx.seriesNext}
+          />
+        </section>
+      )}
+
+      {/* Prev/Next (chronological) */}
+      <section
+        className={`mx-auto max-w-[1180px] px-5 pb-12 md:px-8 md:pb-16 ${
+          seriesCtx ? "mt-4" : "mt-8"
+        }`}
+      >
+        {seriesCtx && (
+          <div className="mb-3 font-sans text-[10.5px] font-bold uppercase tracking-[0.14em] text-ink-muted">
+            시간순 글 탐색
+          </div>
+        )}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {prev ? (
             <Link
               href={`/posts/${prev.slug}`}
-              className="block rounded-xl border border-border-token bg-surface p-[18px] text-inherit no-underline"
+              className="block rounded-xl border border-border-token bg-surface p-[18px] text-inherit no-underline transition-colors duration-200 hover:border-border-strong"
             >
               <div className="mb-1.5 font-sans text-[11px] font-bold uppercase tracking-[0.08em] text-ink-muted">
                 ← Previous
@@ -194,7 +241,7 @@ export default async function Page({
           {next ? (
             <Link
               href={`/posts/${next.slug}`}
-              className="block rounded-xl border border-border-token bg-surface p-[18px] text-right text-inherit no-underline"
+              className="block rounded-xl border border-border-token bg-surface p-[18px] text-right text-inherit no-underline transition-colors duration-200 hover:border-border-strong"
             >
               <div className="mb-1.5 font-sans text-[11px] font-bold uppercase tracking-[0.08em] text-ink-muted">
                 Next →
