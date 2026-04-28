@@ -13,23 +13,24 @@ import { z } from "zod";
 import type { PostMeta, Visibility } from "@/lib/types";
 import { extractTOC } from "@/lib/markdown";
 import { resolveCategory } from "@/lib/categories";
+import { DATE_RE } from "@/lib/api-shared";
 
 const POSTS_DIR = path.join(process.cwd(), "content", "posts");
 
-const TocItemSchema = z.object({
+export const TocItemSchema = z.object({
   id: z.string(),
   label: z.string(),
   level: z.union([z.literal(2), z.literal(3)]),
 });
 
-const VisibilitySchema = z.enum(["published", "private", "draft"]);
+export const VisibilitySchema = z.enum(["published", "private", "draft"]);
 
 const FrontmatterSchema = z.object({
   title: z.string(),
   summary: z.string(),
   category: z.string(),
   tags: z.array(z.string()).default([]),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  date: z.string().regex(DATE_RE),
   readTime: z.number().int().positive().optional(),
   featured: z.boolean().optional(),
   visibility: VisibilitySchema.optional(),

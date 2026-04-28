@@ -69,7 +69,7 @@ export interface Draft {
   title: string;
   updated: string;
   words: number;
-  status: "draft" | "review" | "private";
+  status: Exclude<Visibility, "published">;
 }
 
 export interface SiteMeta {

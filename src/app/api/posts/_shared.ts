@@ -8,15 +8,14 @@ import "server-only";
 
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { NextResponse } from "next/server";
 import matter from "gray-matter";
 import { z } from "zod";
+import { DATE_RE, SLUG_RE, todayISO } from "@/lib/api-shared";
+import { VisibilitySchema } from "@/lib/posts";
+
+export { devGuard, todayISO, SLUG_RE } from "@/lib/api-shared";
 
 export const POSTS_DIR = path.join(process.cwd(), "content", "posts");
-
-export const SLUG_RE = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
-
-const VisibilitySchema = z.enum(["published", "private", "draft"]);
 
 export const PostBodySchema = z.object({
   slug: z.string().regex(SLUG_RE, "slug은 영소문자/숫자/하이픈만 허용"),
@@ -24,10 +23,7 @@ export const PostBodySchema = z.object({
   summary: z.string().min(1),
   category: z.string().min(1),
   tags: z.array(z.string()).default([]),
-  date: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .optional(),
+  date: z.string().regex(DATE_RE).optional(),
   body: z.string(),
   visibility: VisibilitySchema.default("draft"),
   featured: z.boolean().optional(),
@@ -41,13 +37,6 @@ export const PostBodySchema = z.object({
 
 export type PostBody = z.infer<typeof PostBodySchema>;
 
-export function devGuard(): NextResponse | null {
-  if (process.env.NODE_ENV !== "development") {
-    return new NextResponse("Not Found", { status: 404 });
-  }
-  return null;
-}
-
 export function postPath(slug: string): string {
   return path.join(POSTS_DIR, `${slug}.md`);
 }
@@ -59,10 +48,6 @@ export async function postExists(slug: string): Promise<boolean> {
   } catch {
     return false;
   }
-}
-
-export function todayISO(): string {
-  return new Date().toISOString().slice(0, 10);
 }
 
 export function serializePost(input: PostBody): string {

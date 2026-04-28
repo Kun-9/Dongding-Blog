@@ -2,9 +2,11 @@ import "server-only";
 
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { NextResponse } from "next/server";
 import { z } from "zod";
 import type { Bookmark } from "@/lib/types";
+import { DATE_RE } from "@/lib/api-shared";
+
+export { devGuard, todayISO } from "@/lib/api-shared";
 
 export const BOOKMARKS_FILE = path.join(
   process.cwd(),
@@ -18,10 +20,7 @@ export const BookmarkInputSchema = z.object({
   source: z.string().min(1),
   tag: z.string().min(1),
   note: z.string(),
-  date: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .optional(),
+  date: z.string().regex(DATE_RE).optional(),
 });
 
 export type BookmarkInput = z.infer<typeof BookmarkInputSchema>;
@@ -33,19 +32,8 @@ const BookmarkSchema = z.object({
   source: z.string(),
   tag: z.string(),
   note: z.string(),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  date: z.string().regex(DATE_RE),
 });
-
-export function devGuard(): NextResponse | null {
-  if (process.env.NODE_ENV !== "development") {
-    return new NextResponse("Not Found", { status: 404 });
-  }
-  return null;
-}
-
-export function todayISO(): string {
-  return new Date().toISOString().slice(0, 10);
-}
 
 export async function readBookmarks(): Promise<Bookmark[]> {
   try {

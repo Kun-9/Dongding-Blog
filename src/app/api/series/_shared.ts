@@ -7,8 +7,10 @@ import "server-only";
 
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { NextResponse } from "next/server";
 import { z } from "zod";
+import { SLUG_RE } from "@/lib/api-shared";
+
+export { devGuard } from "@/lib/api-shared";
 
 export const SERIES_FILE = path.join(
   process.cwd(),
@@ -16,10 +18,8 @@ export const SERIES_FILE = path.join(
   "series.json",
 );
 
-export const SERIES_ID_RE = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
-
 export const SeriesEntrySchema = z.object({
-  id: z.string().regex(SERIES_ID_RE, "id는 영소문자/숫자/하이픈만 허용"),
+  id: z.string().regex(SLUG_RE, "id는 영소문자/숫자/하이픈만 허용"),
   title: z.string().min(1),
   desc: z.string().min(1),
   count: z.number().int().positive(),
@@ -32,13 +32,6 @@ export const SeriesPatchSchema = SeriesEntrySchema.omit({
 
 export type SeriesEntry = z.infer<typeof SeriesEntrySchema>;
 export type SeriesPatch = z.infer<typeof SeriesPatchSchema>;
-
-export function devGuard(): NextResponse | null {
-  if (process.env.NODE_ENV !== "development") {
-    return new NextResponse("Not Found", { status: 404 });
-  }
-  return null;
-}
 
 export async function readSeriesFile(): Promise<SeriesEntry[]> {
   let raw: string;
