@@ -48,13 +48,7 @@ export default async function Page({
   return (
     <main className="mx-auto max-w-[760px] px-5 pt-10 md:px-8 md:pt-16">
       <header className="mb-10">
-        <div className="mb-3 flex items-center gap-2.5">
-          <div
-            className="inline-flex h-7 items-center rounded-md px-2 font-mono text-[11px] font-bold tracking-[0.02em] text-white opacity-90"
-            style={{ background: s.color }}
-          >
-            {s.count}편 시리즈
-          </div>
+        <div className="mb-3">
           <Link
             href="/series"
             className="font-sans text-[11px] font-bold uppercase tracking-[0.1em] text-ink-muted no-underline hover:text-ink-soft"
@@ -105,8 +99,11 @@ export default async function Page({
                 <span className="font-mono text-[12px] text-ink-muted opacity-60">
                   {num}
                 </span>
-                <span className="text-[14px] text-ink-muted opacity-70">
-                  예정
+                <span
+                  aria-label="예정"
+                  className="font-mono text-[14px] leading-none text-ink-muted opacity-50"
+                >
+                  —
                 </span>
               </li>
             );
