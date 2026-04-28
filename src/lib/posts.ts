@@ -134,6 +134,15 @@ export function getPostBySlug(
   return loadAll().find((p) => p.meta.slug === slug);
 }
 
+export function getAdjacentPosts(
+  slug: string,
+): { prev?: PostMeta; next?: PostMeta } {
+  const all = getAllPosts();
+  const idx = all.findIndex((p) => p.slug === slug);
+  if (idx === -1) return {};
+  return { prev: all[idx + 1], next: all[idx - 1] };
+}
+
 export function getFeaturedPost(): PostMeta | undefined {
   return getAllPosts().find((p) => p.featured);
 }

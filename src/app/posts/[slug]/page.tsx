@@ -6,7 +6,8 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 
-import { getAllPosts, getPostBySlug } from "@/lib/posts";
+import { getAdjacentPosts, getAllPosts, getPostBySlug } from "@/lib/posts";
+import { getSeriesByIdWithPosts } from "@/lib/series";
 import { resolveCategory } from "@/lib/categories";
 import { site } from "@/lib/site";
 import { fmtDate } from "@/lib/tokens";
@@ -18,6 +19,8 @@ import { TOC } from "@/components/prose/TOC";
 import { ReadingProgress } from "@/components/prose/ReadingProgress";
 import { Comments } from "@/components/comments/Comments";
 import { AdminBar } from "@/components/post/AdminBar";
+import { SeriesBanner } from "@/components/post/SeriesBanner";
+import { SeriesStepNav } from "@/components/post/SeriesStepNav";
 
 const ARTICLE_ID = "article-body";
 const isDev = process.env.NODE_ENV === "development";
@@ -53,11 +56,31 @@ export default async function Page({
   const content = renderMarkdown(post.body);
 
   const cat = resolveCategory(post.meta.category);
-  const all = getAllPosts();
-  const idx = all.findIndex((p) => p.slug === slug);
-  const prev = all[idx + 1];
-  const next = all[idx - 1];
+  const { prev, next } = getAdjacentPosts(slug);
   const toc = post.meta.toc ?? [];
+
+  const seriesCtx = (() => {
+    if (!post.meta.series) return null;
+    const series = getSeriesByIdWithPosts(post.meta.series, {
+      includeDrafts: isDev,
+    });
+    if (!series) return null;
+    const idx = series.posts.findIndex((p) => p.slug === slug);
+    if (idx < 0) return null;
+    const total = Math.max(series.count, series.posts.length);
+    const currentOrder = post.meta.seriesOrder ?? idx + 1;
+    return {
+      id: series.id,
+      title: series.title,
+      color: series.color,
+      currentOrder,
+      total,
+      publishedCount: series.posts.length,
+      seriesPrev: idx > 0 ? series.posts[idx - 1] : undefined,
+      seriesNext:
+        idx < series.posts.length - 1 ? series.posts[idx + 1] : undefined,
+    };
+  })();
 
   return (
     <main>
