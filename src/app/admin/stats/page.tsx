@@ -7,6 +7,7 @@
 
 import { useEffect, useState } from "react";
 import { DevOnlyNotice } from "@/components/layout/DevOnlyNotice";
+import { API } from "@/lib/api-routes";
 
 const isDev = process.env.NODE_ENV === "development";
 
@@ -131,15 +132,15 @@ export default function StatsPage() {
     if (!isDev) return;
     setError(null);
     Promise.all([
-      fetch(`/api/stats/summary?days=${days}`).then((r) => r.json()),
-      fetch(`/api/stats/pageviews?days=${days}&unit=day`).then((r) => r.json()),
-      fetch(`/api/stats/metrics?days=${days}&type=url&limit=10`).then((r) =>
+      fetch(`${API.stats.summary}?days=${days}`).then((r) => r.json()),
+      fetch(`${API.stats.pageviews}?days=${days}&unit=day`).then((r) => r.json()),
+      fetch(`${API.stats.metrics}?days=${days}&type=url&limit=10`).then((r) =>
         r.json(),
       ),
-      fetch(`/api/stats/metrics?days=${days}&type=referrer&limit=10`).then(
+      fetch(`${API.stats.metrics}?days=${days}&type=referrer&limit=10`).then(
         (r) => r.json(),
       ),
-      fetch(`/api/stats/metrics?days=${days}&type=event&limit=10`).then((r) =>
+      fetch(`${API.stats.metrics}?days=${days}&type=event&limit=10`).then((r) =>
         r.json(),
       ),
     ])

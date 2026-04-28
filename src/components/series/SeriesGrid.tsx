@@ -4,11 +4,12 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAdmin } from "@/lib/hooks";
+import { API } from "@/lib/api-routes";
+import { SLUG_RE } from "@/lib/slug-utils";
 import type { Series, SeriesWithPosts } from "@/lib/types";
 
 const ADMIN_ACCENT_DELETE = { light: "#a04a3a", dark: "#d99a8c" };
 const PALETTE = ["#7a8a5a", "#a8814a", "#5a7480", "#8a7355", "#6a5a8a"];
-const SLUG_RE = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
 
 type EditorMode =
   | { kind: "create" }
@@ -89,7 +90,7 @@ function SeriesCard({
     setError("");
     try {
       const res = await fetch(
-        `/api/series/${encodeURIComponent(s.id)}/`,
+        API.seriesItem(s.id),
         { method: "DELETE" },
       );
       if (!res.ok) {
@@ -289,7 +290,7 @@ function SeriesEditor({
     setError("");
     try {
       if (mode.kind === "create") {
-        const res = await fetch("/api/series/", {
+        const res = await fetch(API.series, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ id, title, desc, count, color }),
@@ -302,7 +303,7 @@ function SeriesEditor({
         }
       } else {
         const res = await fetch(
-          `/api/series/${encodeURIComponent(mode.existing.id)}/`,
+          API.seriesItem(mode.existing.id),
           {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },

@@ -5,12 +5,17 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useAdmin, useMounted } from "@/lib/hooks";
+import { API } from "@/lib/api-routes";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import type { Visibility } from "@/lib/types";
+
+const TOAST_DURATION_MS = 2400;
+const DELETE_REDIRECT_MS = 1200;
 
 interface Props {
   slug: string;
   title?: string;
-  status?: "published" | "private" | "draft";
+  status?: Visibility;
 }
 
 const STATUS_TONE = {
@@ -71,7 +76,10 @@ export function AdminBar({ slug, title, status = "published" }: Props) {
       window.clearTimeout(toastTimerRef.current);
     }
     setToast({ kind, text });
-    toastTimerRef.current = window.setTimeout(() => setToast(null), 2400);
+    toastTimerRef.current = window.setTimeout(
+      () => setToast(null),
+      TOAST_DURATION_MS,
+    );
   };
 
   const onDuplicate = () => {
@@ -81,7 +89,7 @@ export function AdminBar({ slug, title, status = "published" }: Props) {
   const onConfirmDelete = async () => {
     setDeleteOpen(false);
     try {
-      const res = await fetch(`/api/posts/${encodeURIComponent(slug)}/`, {
+      const res = await fetch(API.post(slug), {
         method: "DELETE",
       });
       if (!res.ok) {
@@ -91,7 +99,7 @@ export function AdminBar({ slug, title, status = "published" }: Props) {
         throw new Error(data.error ?? `HTTP ${res.status}`);
       }
       showToast("warn", "삭제됨 — 잠시 후 목록으로 이동");
-      window.setTimeout(() => router.push("/posts"), 1200);
+      window.setTimeout(() => router.push("/posts"), DELETE_REDIRECT_MS);
     } catch (e) {
       showToast(
         "warn",

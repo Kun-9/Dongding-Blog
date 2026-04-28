@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAdmin } from "@/lib/hooks";
 import { fmtDate } from "@/lib/tokens";
+import { API } from "@/lib/api-routes";
 import type { Bookmark } from "@/lib/types";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
@@ -80,7 +81,7 @@ export function BookmarkList({ items }: { items: Bookmark[] }) {
     setPendingDelete(null);
     setPatches((cur) => [...cur, { kind: "delete", id: b.id }]);
     try {
-      const res = await fetch(`/api/bookmarks/${b.id}`, { method: "DELETE" });
+      const res = await fetch(API.bookmark(b.id), { method: "DELETE" });
       if (!res.ok) {
         setPatches((cur) => cur.filter((p) => !(p.kind === "delete" && p.id === b.id)));
         return;
@@ -295,7 +296,7 @@ function BookmarkEditor({
     debounceTimer.current = setTimeout(async () => {
       try {
         const res = await fetch(
-          `/api/bookmarks/preview?url=${encodeURIComponent(trimmed)}`,
+          API.bookmarkPreview(trimmed),
         );
         if (!res.ok) return;
         const data = (await res.json()) as { title?: string; source?: string };
@@ -335,8 +336,8 @@ function BookmarkEditor({
       };
       const endpoint =
         mode === "edit" && initial
-          ? `/api/bookmarks/${initial.id}`
-          : "/api/bookmarks";
+          ? API.bookmark(initial.id)
+          : API.bookmarks;
       const method = mode === "edit" ? "PUT" : "POST";
       const res = await fetch(endpoint, {
         method,

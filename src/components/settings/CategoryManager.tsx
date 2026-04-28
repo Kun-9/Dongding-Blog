@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { useTheme } from "next-themes";
 import { useMounted } from "@/lib/hooks";
+import { API } from "@/lib/api-routes";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 export interface CatNode {
@@ -65,7 +66,7 @@ export function CategoryManager({ initial, onDirty }: Props) {
   // Stats fetch (post counts).
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/categories/stats")
+    fetch(API.categoryStats)
       .then((r) => (r.ok ? r.json() : []))
       .then((data: Array<{ id: string; count?: number; subs?: Array<{ id: string; count?: number }> }>) => {
         if (cancelled) return;
@@ -233,7 +234,7 @@ export function CategoryManager({ initial, onDirty }: Props) {
   const save = async () => {
     setSaveStatus("saving");
     try {
-      const res = await fetch("/api/categories", {
+      const res = await fetch(API.categories, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(cats),

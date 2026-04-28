@@ -13,6 +13,7 @@ import siteJson from "@/lib/site.json";
 import categoriesJson from "@/lib/categories.json";
 import { DevOnlyNotice } from "@/components/layout/DevOnlyNotice";
 import { safeWriteJSON } from "@/lib/storage";
+import { API } from "@/lib/api-routes";
 import {
   CategoryManager,
   type CatNode,
@@ -126,7 +127,7 @@ function SettingsView() {
   const save = async () => {
     setStatus("saving");
     try {
-      const res = await fetch("/api/settings", {
+      const res = await fetch(API.settings, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),

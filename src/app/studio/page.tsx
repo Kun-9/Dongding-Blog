@@ -19,6 +19,8 @@ import {
 import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { categories, categoryLabel } from "@/lib/categories";
+import { API } from "@/lib/api-routes";
+import { normalizeSlug, slugifyTitle } from "@/lib/slug-utils";
 import type { Series, Visibility } from "@/lib/types";
 
 type StudioSeriesPost = {
@@ -96,24 +98,6 @@ function EditorFallback({ message }: { message: string }) {
       {message}
     </main>
   );
-}
-
-function slugifyTitle(title: string): string {
-  return title
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]+/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 60);
-}
-
-function normalizeSlug(input: string): string {
-  return input
-    .toLowerCase()
-    .replace(/\s+/g, "-")
-    .replace(/[^a-z0-9-]+/g, "")
-    .replace(/-+/g, "-");
 }
 
 const IMAGE_TOKEN_RE = /!\[([^\]]*)\]\(([^)]+)\)/g;
@@ -355,7 +339,7 @@ function StudioEditor() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/series/")
+    fetch(API.series)
       .then((res) => (res.ok ? res.json() : []))
       .then((data: unknown) => {
         if (cancelled) return;
@@ -376,7 +360,7 @@ function StudioEditor() {
       // Skip refetch when we hydrated this slug ourselves (e.g. just saved).
       if (hydratedSlugRef.current === editingSlug) return;
       setLoading(true);
-      fetch(`/api/posts/${encodeURIComponent(editingSlug)}/`)
+      fetch(API.post(editingSlug))
         .then(async (res) => {
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           return res.json();
@@ -494,9 +478,7 @@ function StudioEditor() {
         throw new Error("slug이 비어있습니다");
       }
       const isNew = !editingSlug;
-      const url = isNew
-        ? "/api/posts/"
-        : `/api/posts/${encodeURIComponent(editingSlug)}/`;
+      const url = isNew ? API.posts : API.post(editingSlug);
       const res = await fetch(url, {
         method: isNew ? "POST" : "PUT",
         headers: { "Content-Type": "application/json" },
@@ -612,7 +594,7 @@ function StudioEditor() {
     }
     try {
       setLoading(true);
-      const res = await fetch(`/api/posts/${encodeURIComponent(editingSlug)}/`);
+      const res = await fetch(API.post(editingSlug));
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       const serverVisibility: Visibility =
@@ -783,10 +765,10 @@ function StudioEditor() {
         for (const file of images) {
           const fd = new FormData();
           fd.append("file", file);
-          const res = await fetch(
-            `/api/posts/${encodeURIComponent(targetSlug)}/images/`,
-            { method: "POST", body: fd },
-          );
+          const res = await fetch(API.postImages(targetSlug), {
+            method: "POST",
+            body: fd,
+          });
           if (!res.ok) {
             const data = await res.json().catch(() => ({}));
             throw new Error(data?.error ?? `HTTP ${res.status}`);
@@ -1796,7 +1778,7 @@ function NewSeriesInline({
     setSubmitting(true);
     setError("");
     try {
-      const res = await fetch("/api/series/", {
+      const res = await fetch(API.series, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, title, desc, count, color }),
