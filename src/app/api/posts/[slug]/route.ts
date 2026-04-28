@@ -63,6 +63,9 @@ export async function GET(_req: Request, { params }: Ctx) {
     date: typeof data.date === "string" ? data.date : "",
     visibility,
     featured: data.featured === true,
+    series: typeof data.series === "string" ? data.series : "",
+    seriesOrder:
+      typeof data.seriesOrder === "number" ? data.seriesOrder : null,
     body: content.replace(/^\n+/, ""),
   });
 }

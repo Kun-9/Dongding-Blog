@@ -36,6 +36,8 @@ const FrontmatterSchema = z.object({
   /** @deprecated 호환을 위해 유지 — visibility로 자동 매핑 */
   draft: z.boolean().optional(),
   toc: z.array(TocItemSchema).optional(),
+  series: z.string().optional(),
+  seriesOrder: z.number().int().positive().optional(),
 });
 
 function resolveVisibility(
@@ -96,6 +98,8 @@ function loadAll(): CachedPost[] {
       visibility,
       draft: visibility === "draft",
       toc,
+      series: fm.series,
+      seriesOrder: fm.seriesOrder,
     };
     return { meta, body: content };
   });

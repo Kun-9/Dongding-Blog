@@ -32,6 +32,8 @@ export interface PostMeta {
   /** @deprecated `visibility === 'draft'`로 대체 — 마이그레이션 후 제거 예정 */
   draft?: boolean;
   toc?: TocItem[];
+  series?: string;
+  seriesOrder?: number;
 }
 
 export interface TocItem {
@@ -46,7 +48,10 @@ export interface Series {
   desc: string;
   count: number;
   color: string;
-  posts: string[];
+}
+
+export interface SeriesWithPosts extends Series {
+  posts: PostMeta[];
 }
 
 export interface Bookmark {

@@ -31,6 +31,12 @@ export const PostBodySchema = z.object({
   body: z.string(),
   visibility: VisibilitySchema.default("draft"),
   featured: z.boolean().optional(),
+  series: z
+    .string()
+    .min(1)
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
+  seriesOrder: z.number().int().positive().optional(),
 });
 
 export type PostBody = z.infer<typeof PostBodySchema>;
@@ -72,6 +78,10 @@ export function serializePost(input: PostBody): string {
   if (meta.featured) data.featured = true;
   // 항상 명시적으로 기록 — published 도 포함. 기존 `draft` 키는 더 이상 쓰지 않음.
   data.visibility = meta.visibility;
+  if (meta.series) {
+    data.series = meta.series;
+    if (meta.seriesOrder) data.seriesOrder = meta.seriesOrder;
+  }
 
   return matter.stringify(body.endsWith("\n") ? body : `${body}\n`, data);
 }

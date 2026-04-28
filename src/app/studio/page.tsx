@@ -19,7 +19,15 @@ import {
 import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { categories, categoryLabel } from "@/lib/categories";
-import type { Visibility } from "@/lib/types";
+import type { Series, Visibility } from "@/lib/types";
+
+type StudioSeriesPost = {
+  slug: string;
+  title: string;
+  seriesOrder?: number;
+  visibility: Visibility;
+};
+type StudioSeries = Series & { posts: StudioSeriesPost[] };
 import { renderMarkdown, type ImageWidth } from "@/lib/markdown";
 import { safeReadJSON, safeRemove, safeWriteJSON } from "@/lib/storage";
 import { CTA } from "@/components/ui/CTA";
@@ -144,6 +152,8 @@ type LocalDraft = {
   tags: string;
   body: string;
   visibility: Visibility;
+  series: string;
+  seriesOrder: number;
   savedAt: number;
 };
 type DraftSnapshot = Omit<LocalDraft, "savedAt">;
@@ -178,7 +188,9 @@ function snapshotsEqual(a: DraftSnapshot, b: DraftSnapshot): boolean {
     a.category === b.category &&
     a.tags === b.tags &&
     a.body === b.body &&
-    a.visibility === b.visibility
+    a.visibility === b.visibility &&
+    a.series === b.series &&
+    a.seriesOrder === b.seriesOrder
   );
 }
 
@@ -218,6 +230,8 @@ function newDraftState(defaultCategory: string): FormState {
     tags: "",
     body: SAMPLE_BODY,
     visibility: "draft",
+    series: "",
+    seriesOrder: 0,
     date: "",
   };
 }
@@ -244,6 +258,11 @@ function formReducer(state: FormState, action: FormAction): FormState {
         tags: action.draft.tags ?? "",
         body: action.draft.body,
         visibility: action.draft.visibility ?? "draft",
+        series: action.draft.series ?? "",
+        seriesOrder:
+          typeof action.draft.seriesOrder === "number"
+            ? action.draft.seriesOrder
+            : 0,
         date: state.date,
       };
   }
@@ -295,7 +314,19 @@ function StudioEditor() {
     categories[0]?.id ?? "",
     newDraftState,
   );
-  const { title, summary, slug, slugLocked, category, tags, body, visibility, date } = form;
+  const {
+    title,
+    summary,
+    slug,
+    slugLocked,
+    category,
+    tags,
+    body,
+    visibility,
+    series,
+    seriesOrder,
+    date,
+  } = form;
   const patch = useCallback(
     (p: Partial<FormState>) => dispatch({ type: "PATCH", patch: p }),
     [],
@@ -318,6 +349,25 @@ function StudioEditor() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+
+  const [seriesList, setSeriesList] = useState<StudioSeries[]>([]);
+  const [newSeriesOpen, setNewSeriesOpen] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/series/")
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data: unknown) => {
+        if (cancelled) return;
+        if (Array.isArray(data)) setSeriesList(data as StudioSeries[]);
+      })
+      .catch(() => {
+        // 시리즈 목록 로드 실패해도 글 작성 자체는 가능 — 조용히 무시.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Load existing post or initialize new draft.
   useEffect(() => {
@@ -347,6 +397,9 @@ function StudioEditor() {
             tags: Array.isArray(data.tags) ? data.tags.join(", ") : "",
             body: data.body ?? "",
             visibility: serverVisibility,
+            series: typeof data.series === "string" ? data.series : "",
+            seriesOrder:
+              typeof data.seriesOrder === "number" ? data.seriesOrder : 0,
           };
           dispatch({
             type: "HYDRATE_FROM_SERVER",
@@ -414,8 +467,25 @@ function StudioEditor() {
       body,
       visibility,
       ...(date ? { date } : {}),
+      ...(series.trim()
+        ? {
+            series: series.trim(),
+            ...(seriesOrder > 0 ? { seriesOrder } : {}),
+          }
+        : {}),
     }),
-    [body, category, date, visibility, slug, summary, tags, title],
+    [
+      body,
+      category,
+      date,
+      visibility,
+      slug,
+      summary,
+      tags,
+      title,
+      series,
+      seriesOrder,
+    ],
   );
 
   const persist = useCallback(
@@ -561,6 +631,9 @@ function StudioEditor() {
           tags: Array.isArray(data.tags) ? data.tags.join(", ") : "",
           body: data.body ?? "",
           visibility: serverVisibility,
+          series: typeof data.series === "string" ? data.series : "",
+          seriesOrder:
+            typeof data.seriesOrder === "number" ? data.seriesOrder : 0,
         },
         date: data.date ?? "",
       });
@@ -622,6 +695,12 @@ function StudioEditor() {
         body,
         visibility: "draft" as const,
         ...(date ? { date } : {}),
+        ...(series.trim()
+          ? {
+              series: series.trim(),
+              ...(seriesOrder > 0 ? { seriesOrder } : {}),
+            }
+          : {}),
       };
       const canonical = await persist(payload);
       dirtyRef.current = false;
@@ -648,6 +727,8 @@ function StudioEditor() {
     summary,
     tags,
     title,
+    series,
+    seriesOrder,
   ]);
 
   const insertImageMarkdown = useCallback(
@@ -813,6 +894,8 @@ function StudioEditor() {
         tags,
         body,
         visibility,
+        series,
+        seriesOrder,
         savedAt: now,
       });
       setLocalSavedAt(now);
@@ -829,6 +912,8 @@ function StudioEditor() {
     tags,
     body,
     visibility,
+    series,
+    seriesOrder,
   ]);
 
   const wordCount = body.replace(/\s+/g, "").length;
@@ -1312,6 +1397,30 @@ function StudioEditor() {
                 className="w-full rounded-md border border-border-token bg-surface px-2.5 py-[7px] font-sans text-[13px] tracking-[-0.005em] text-ink outline-none"
               />
             </FieldRow>
+            <FieldRow label="series">
+              <SeriesField
+                seriesList={seriesList}
+                value={series}
+                order={seriesOrder}
+                currentSlug={editingSlug}
+                newOpen={newSeriesOpen}
+                onChange={(next) => {
+                  patch(next);
+                  markDirty();
+                }}
+                onToggleNew={() => setNewSeriesOpen((v) => !v)}
+                onCreated={(s) => {
+                  setSeriesList((prev) =>
+                    prev.some((x) => x.id === s.id)
+                      ? prev
+                      : [...prev, { ...s, posts: [] }],
+                  );
+                  patch({ series: s.id, seriesOrder: 0 });
+                  setNewSeriesOpen(false);
+                  markDirty();
+                }}
+              />
+            </FieldRow>
             <FieldRow label="공개 범위">
               <VisibilityField
                 value={visibility}
@@ -1517,6 +1626,289 @@ function FieldRow({
       <span className="pt-[9px] font-mono text-xs text-ink-muted">{label}</span>
       {children}
     </label>
+  );
+}
+
+const SERIES_PALETTE = [
+  "#7a8a5a",
+  "#a8814a",
+  "#5a7480",
+  "#8a7355",
+  "#6a5a8a",
+];
+
+function SeriesField({
+  seriesList,
+  value,
+  order,
+  currentSlug,
+  newOpen,
+  onChange,
+  onToggleNew,
+  onCreated,
+}: {
+  seriesList: StudioSeries[];
+  value: string;
+  order: number;
+  currentSlug: string | null;
+  newOpen: boolean;
+  onChange: (next: { series?: string; seriesOrder?: number }) => void;
+  onToggleNew: () => void;
+  onCreated: (s: Series) => void;
+}) {
+  const known = seriesList.some((s) => s.id === value);
+  const current = seriesList.find((s) => s.id === value);
+  const targetTotal = current?.count;
+
+  const occupied = new Map<number, StudioSeriesPost>();
+  if (current) {
+    for (const p of current.posts) {
+      if (p.slug === currentSlug) continue;
+      if (typeof p.seriesOrder === "number") occupied.set(p.seriesOrder, p);
+    }
+  }
+  const slotMax = current
+    ? Math.max(
+        current.count,
+        ...current.posts.map((p) => p.seriesOrder ?? 0),
+        order,
+      )
+    : 0;
+  const slotCount = current ? slotMax + 1 : 0;
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <select
+          value={value}
+          onChange={(e) => {
+            const next = e.target.value;
+            onChange({ series: next, ...(next ? {} : { seriesOrder: 0 }) });
+          }}
+          className="flex-1 min-w-[160px] rounded-md border border-border-token bg-surface px-2.5 py-[7px] font-sans text-[13px] tracking-[-0.005em] text-ink outline-none"
+        >
+          <option value="">없음</option>
+          {seriesList.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.title}
+            </option>
+          ))}
+          {value && !known && (
+            <option value={value}>(미정의: {value})</option>
+          )}
+        </select>
+        {value && current && (
+          <select
+            value={order > 0 ? String(order) : ""}
+            onChange={(e) =>
+              onChange({ seriesOrder: Number(e.target.value) || 0 })
+            }
+            className="rounded-md border border-border-token bg-surface px-2.5 py-[7px] font-sans text-[13px] tracking-[-0.005em] text-ink outline-none"
+          >
+            <option value="">순서…</option>
+            {Array.from({ length: slotCount }).map((_, i) => {
+              const n = i + 1;
+              const taken = occupied.get(n);
+              const isOver = n > current.count;
+              const label = taken
+                ? `${n}편 — ${taken.title}${taken.visibility !== "published" ? " (초안)" : ""}`
+                : isOver
+                  ? `${n}편 — 목표 초과 슬롯`
+                  : `${n}편 — 비어있음`;
+              return (
+                <option key={n} value={n}>
+                  {label}
+                </option>
+              );
+            })}
+          </select>
+        )}
+        {value && !current && (
+          <input
+            type="text"
+            inputMode="numeric"
+            placeholder="순서"
+            value={order > 0 ? String(order) : ""}
+            onChange={(e) => {
+              const n = Number(e.target.value.replace(/\D/g, ""));
+              onChange({ seriesOrder: Number.isFinite(n) ? n : 0 });
+            }}
+            className="w-20 rounded-md border border-border-token bg-surface px-2.5 py-[7px] font-mono text-[13px] text-ink outline-none"
+          />
+        )}
+        <button
+          type="button"
+          onClick={onToggleNew}
+          className="inline-flex h-[31px] items-center gap-1 rounded-md border border-border-token bg-transparent px-2.5 font-sans text-[12px] font-medium text-ink-soft hover:border-border-strong"
+        >
+          <span aria-hidden>＋</span>
+          새 시리즈
+        </button>
+      </div>
+      {value && current && order > 0 && occupied.has(order) && (
+        <div className="font-sans text-[11.5px] text-[#a04a3a]">
+          {order}편은 이미 “{occupied.get(order)?.title}”가 차지하고 있습니다.
+        </div>
+      )}
+      {value && targetTotal !== undefined && order > targetTotal && (
+        <div className="font-sans text-[11.5px] text-ink-muted">
+          시리즈 목표 {targetTotal}편을 넘는 순서입니다 — 시리즈에서 자동 확장됩니다.
+        </div>
+      )}
+      {newOpen && (
+        <NewSeriesInline
+          existingIds={seriesList.map((s) => s.id)}
+          onCancel={onToggleNew}
+          onCreated={onCreated}
+        />
+      )}
+    </div>
+  );
+}
+
+function NewSeriesInline({
+  existingIds,
+  onCancel,
+  onCreated,
+}: {
+  existingIds: string[];
+  onCancel: () => void;
+  onCreated: (s: Series) => void;
+}) {
+  const [id, setId] = useState("");
+  const [title, setTitle] = useState("");
+  const [desc, setDesc] = useState("");
+  const [count, setCount] = useState(5);
+  const [color, setColor] = useState(SERIES_PALETTE[0]);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  const idClash = existingIds.includes(id);
+  const canSubmit =
+    !submitting &&
+    /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(id) &&
+    !idClash &&
+    title.trim().length > 0 &&
+    desc.trim().length > 0 &&
+    count > 0;
+
+  const submit = async () => {
+    setSubmitting(true);
+    setError("");
+    try {
+      const res = await fetch("/api/series/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, title, desc, count, color }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(
+          (data as { error?: string }).error ?? `HTTP ${res.status}`,
+        );
+      }
+      const created = (await res.json()) as Series;
+      onCreated(created);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const inp =
+    "w-full rounded-md border border-border-token bg-surface px-2.5 py-[7px] font-sans text-[13px] tracking-[-0.005em] text-ink outline-none";
+
+  return (
+    <div className="rounded-md border border-border-token bg-surface-alt p-3">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <label className="flex flex-col gap-1">
+          <span className="font-mono text-[10.5px] text-ink-muted">id</span>
+          <input
+            value={id}
+            onChange={(e) => setId(e.target.value)}
+            placeholder="concurrency"
+            className={`${inp} font-mono text-[12.5px]`}
+          />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="font-mono text-[10.5px] text-ink-muted">title</span>
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="동시성 제대로 보기"
+            className={inp}
+          />
+        </label>
+        <label className="flex flex-col gap-1 sm:col-span-2">
+          <span className="font-mono text-[10.5px] text-ink-muted">desc</span>
+          <input
+            value={desc}
+            onChange={(e) => setDesc(e.target.value)}
+            placeholder="한 문장으로 이 시리즈가 무엇을 다루는지"
+            className={inp}
+          />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="font-mono text-[10.5px] text-ink-muted">count</span>
+          <input
+            type="text"
+            inputMode="numeric"
+            value={count > 0 ? String(count) : ""}
+            onChange={(e) => {
+              const n = Number(e.target.value.replace(/\D/g, ""));
+              setCount(Number.isFinite(n) ? n : 0);
+            }}
+            placeholder="목표 편수"
+            className={`${inp} font-mono text-[13px]`}
+          />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="font-mono text-[10.5px] text-ink-muted">color</span>
+          <div className="flex h-[31px] items-center gap-1.5">
+            {SERIES_PALETTE.map((co) => (
+              <button
+                key={co}
+                type="button"
+                onClick={() => setColor(co)}
+                className="h-6 w-6 cursor-pointer rounded-full p-0"
+                aria-label={co}
+                style={{
+                  background: co,
+                  border:
+                    color === co
+                      ? "2px solid var(--ink)"
+                      : "1px solid var(--border)",
+                }}
+              />
+            ))}
+          </div>
+        </label>
+      </div>
+      {(error || idClash) && (
+        <div className="mt-2 font-sans text-[11.5px] text-[#a04a3a]">
+          {idClash ? `이미 존재하는 id: ${id}` : error}
+        </div>
+      )}
+      <div className="mt-3 flex justify-end gap-2">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-md border border-border-token bg-transparent px-3 py-[6px] font-sans text-[12.5px] text-ink-soft"
+        >
+          취소
+        </button>
+        <button
+          type="button"
+          onClick={submit}
+          disabled={!canSubmit}
+          className="rounded-md border-none px-3 py-[6px] font-sans text-[12.5px] font-semibold disabled:opacity-50"
+          style={{ background: "var(--ink)", color: "var(--bg)" }}
+        >
+          {submitting ? "생성 중…" : "시리즈 생성"}
+        </button>
+      </div>
+    </div>
   );
 }
 

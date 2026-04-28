@@ -1,7 +1,7 @@
 /**
  * Series — port of project/page-extras.jsx#SeriesPage.
  */
-import { getAllSeries } from "@/lib/series";
+import { getAllSeriesWithPosts } from "@/lib/series";
 import { SeriesGrid } from "@/components/series/SeriesGrid";
 
 export const metadata = {
@@ -9,7 +9,7 @@ export const metadata = {
 };
 
 export default function Page() {
-  const series = getAllSeries();
+  const series = getAllSeriesWithPosts();
 
   return (
     <main className="mx-auto max-w-[880px] px-5 pt-10 md:px-8 md:pt-16">
