@@ -74,16 +74,15 @@ export function Header({ categories, posts }: Props) {
             href="/"
             className="flex shrink-0 items-center gap-2.5 no-underline"
           >
-            <div
-              className="flex h-[30px] w-[30px] items-center justify-center rounded-lg font-sans text-sm font-bold tracking-[-0.02em] text-accent-ink"
-              style={{
-                background: "var(--accent)",
-                boxShadow:
-                  "inset 0 0.5px 0 rgba(255,255,255,0.18), inset 0 0 0 0.5px rgba(0,0,0,0.2)",
-              }}
-            >
-              동
-            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/mark.svg"
+              alt=""
+              width={30}
+              height={30}
+              className="h-[30px] w-[30px] rounded-full"
+              style={{ boxShadow: "inset 0 0 0 0.5px rgba(0,0,0,0.2)" }}
+            />
             <span className="whitespace-nowrap font-sans text-[17px] font-bold tracking-[-0.025em] text-ink">
               {site.shortTitle}
             </span>
