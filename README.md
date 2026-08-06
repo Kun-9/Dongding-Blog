@@ -2,7 +2,7 @@
 
 Java, Spring, DB, 시스템 설계 등을 정리해두는 개인 기술 블로그.
 
-[https://dongding-blog.vercel.app](https://dongding-blog.vercel.app)
+[https://blog.dongding.dev](https://blog.dongding.dev)
 
 ## 구성
 
