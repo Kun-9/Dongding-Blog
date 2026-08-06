@@ -24,6 +24,7 @@ import { TOC } from "@/components/prose/TOC";
 import { ReadingProgress } from "@/components/prose/ReadingProgress";
 import { Comments } from "@/components/comments/Comments";
 import { AdminBar } from "@/components/post/AdminBar";
+import { LikeButton } from "@/components/post/LikeButton";
 import { SeriesBanner } from "@/components/post/SeriesBanner";
 import { SeriesStepNav } from "@/components/post/SeriesStepNav";
 
@@ -214,6 +215,10 @@ export default async function Page({
               />
             </div>
           )}
+
+          <div className="mt-10 flex justify-center border-t border-border-token pt-8">
+            <LikeButton slug={slug} />
+          </div>
 
           <Comments />
         </article>

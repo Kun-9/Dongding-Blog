@@ -76,6 +76,35 @@ export type Database = {
           },
         ]
       }
+      post_stats: {
+        Row: {
+          likes: number
+          post_id: string
+          updated_at: string
+          views: number
+        }
+        Insert: {
+          likes?: number
+          post_id: string
+          updated_at?: string
+          views?: number
+        }
+        Update: {
+          likes?: number
+          post_id?: string
+          updated_at?: string
+          views?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_stats_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: true
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       posts: {
         Row: {
           body: string
@@ -177,7 +206,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      increment_view: { Args: { p_slug: string }; Returns: undefined }
+      toggle_like: {
+        Args: { p_delta: number; p_slug: string }
+        Returns: number
+      }
     }
     Enums: {
       [_ in never]: never
