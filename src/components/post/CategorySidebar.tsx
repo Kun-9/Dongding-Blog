@@ -17,13 +17,16 @@ interface Props {
   filter?: SidebarFilter;
 }
 
-export function CategorySidebar({ filter }: Props) {
+export async function CategorySidebar({ filter }: Props) {
   const isAll = !filter;
   const activeCatId = filter?.type === "category" ? filter.value : null;
   const activeTag = filter?.type === "tag" ? filter.value : null;
-  const totalPosts = getAllPosts().length;
-  const allTags = getAllTags();
-  const categories = getCategoriesWithCounts();
+  const [posts, allTags, categories] = await Promise.all([
+    getAllPosts(),
+    getAllTags(),
+    getCategoriesWithCounts(),
+  ]);
+  const totalPosts = posts.length;
 
   return (
     <nav className="sticky top-[90px] self-start">

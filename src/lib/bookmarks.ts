@@ -1,40 +1,17 @@
 /**
- * Bookmark (linkroll) loader — reads `content/bookmarks.json`.
+ * 북마크(링크롤) 로더 — Supabase `bookmarks`, 최신순.
  */
 import "server-only";
 
-import fs from "node:fs";
-import path from "node:path";
-import { z } from "zod";
+import { cache } from "react";
 import type { Bookmark } from "@/lib/types";
+import { db } from "@/lib/supabase";
 
-const BookmarkSchema = z.object({
-  id: z.number().int().positive(),
-  url: z.string(),
-  title: z.string(),
-  source: z.string(),
-  tag: z.string(),
-  note: z.string(),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+export const getAllBookmarks = cache(async (): Promise<Bookmark[]> => {
+  const { data, error } = await db()
+    .from("bookmarks")
+    .select("id, url, title, source, tag, note, date")
+    .order("date", { ascending: false });
+  if (error) throw new Error(`북마크 조회 실패: ${error.message}`);
+  return data ?? [];
 });
-
-const FILE = path.join(process.cwd(), "content", "bookmarks.json");
-
-let cache: Bookmark[] | null = null;
-
-export function invalidateBookmarksCache(): void {
-  cache = null;
-}
-
-export function getAllBookmarks(): Bookmark[] {
-  if (cache) return cache;
-  if (!fs.existsSync(FILE)) {
-    cache = [];
-    return cache;
-  }
-  const raw = JSON.parse(fs.readFileSync(FILE, "utf8"));
-  const items = z.array(BookmarkSchema).parse(raw);
-  // Sort newest first
-  cache = items.sort((a, b) => b.date.localeCompare(a.date));
-  return cache;
-}

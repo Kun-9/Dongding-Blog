@@ -1,20 +1,20 @@
+/**
+ * 북마크 단건 API — 수정(PUT) / 삭제(DELETE).
+ */
 import { NextResponse } from "next/server";
-import { invalidateBookmarksCache } from "@/lib/bookmarks";
+import { dbAdmin } from "@/lib/supabase";
 import {
   BookmarkInputSchema,
+  UNIQUE_VIOLATION,
   devGuard,
-  readBookmarks,
+  parseId,
+  revalidateContent,
   todayISO,
-  writeBookmarks,
 } from "../_shared";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-function parseId(raw: string): number | null {
-  const n = Number(raw);
-  if (!Number.isInteger(n) || n <= 0) return null;
-  return n;
-}
+const COLUMNS = "id, url, title, source, tag, note, date";
 
 export async function PUT(req: Request, { params }: Ctx) {
   const blocked = devGuard();
@@ -41,41 +41,27 @@ export async function PUT(req: Request, { params }: Ctx) {
     );
   }
 
-  const items = await readBookmarks();
-  const idx = items.findIndex((b) => b.id === id);
-  if (idx < 0) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
-
   const input = parsed.data;
-  const current = items[idx];
+  const { data, error } = await dbAdmin()
+    .from("bookmarks")
+    .update({ ...input, date: input.date ?? todayISO() })
+    .eq("id", id)
+    .select(COLUMNS)
+    .maybeSingle();
 
-  if (
-    input.url !== current.url &&
-    items.some((b) => b.id !== id && b.url === input.url)
-  ) {
-    return NextResponse.json(
-      { error: "이미 등록된 URL입니다", url: input.url },
-      { status: 409 },
-    );
+  if (error) {
+    if (error.code === UNIQUE_VIOLATION) {
+      return NextResponse.json(
+        { error: "이미 등록된 URL입니다", url: input.url },
+        { status: 409 },
+      );
+    }
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
+  if (!data) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const updated = {
-    id,
-    url: input.url,
-    title: input.title,
-    source: input.source,
-    tag: input.tag,
-    note: input.note,
-    date: input.date ?? current.date ?? todayISO(),
-  };
-
-  const next = [...items];
-  next[idx] = updated;
-  await writeBookmarks(next);
-  invalidateBookmarksCache();
-
-  return NextResponse.json(updated);
+  revalidateContent();
+  return NextResponse.json(data);
 }
 
 export async function DELETE(_req: Request, { params }: Ctx) {
@@ -88,15 +74,16 @@ export async function DELETE(_req: Request, { params }: Ctx) {
     return NextResponse.json({ error: "Invalid id" }, { status: 400 });
   }
 
-  const items = await readBookmarks();
-  const idx = items.findIndex((b) => b.id === id);
-  if (idx < 0) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
+  const { data, error } = await dbAdmin()
+    .from("bookmarks")
+    .delete()
+    .eq("id", id)
+    .select("id")
+    .maybeSingle();
 
-  const next = items.filter((b) => b.id !== id);
-  await writeBookmarks(next);
-  invalidateBookmarksCache();
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (!data) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  revalidateContent();
   return NextResponse.json({ id });
 }

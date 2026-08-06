@@ -1,40 +1,58 @@
 /**
- * Category tree — sourced from `categories.json` so the dev-only Settings
- * page can persist edits via PUT /api/categories. The JSON is the single
- * source of truth; this module just types and re-exports it.
+ * 카테고리 트리 — Supabase `categories` 를 정본으로 읽는다.
  *
- * Post counts are computed at build time from `content/posts/*.md` frontmatter
- * by `getCategoriesWithCounts()` in `category-stats.ts` (server-only).
+ * DB 는 parent_id 로 평평하게 저장하고, 여기서 기존 UI 가 기대하는
+ * 부모 → subs 2계층 구조로 조립한다. React `cache()` 로 감싸 한 요청 안에서는
+ * 몇 번을 불러도 쿼리는 한 번만 나간다.
+ *
+ * 클라이언트 컴포넌트는 이 모듈을 import 할 수 없다 — 서버에서 props 로 받은
+ * 배열과 `lib/category-utils` 의 순수 함수를 쓸 것.
  */
-import type { Category, Subcategory } from "@/lib/types";
-import data from "@/lib/categories.json";
+import "server-only";
 
-export const categories: Category[] = data as Category[];
+import { cache } from "react";
+import { db } from "@/lib/supabase";
+import type { Category } from "@/lib/types";
+import {
+  categoryIdsFor,
+  categoryLabelIn,
+  resolveCategoryIn,
+} from "@/lib/category-utils";
 
-/**
- * Resolve any category id (parent or subcategory) to its parent Category.
- * Existing call sites that show `cat.name` keep working when a post is
- * mapped to a sub id — they fall back to the parent's name.
- */
-export function getCategory(id: string): Category | undefined {
-  return resolveCategory(id)?.parent;
+export const getCategories = cache(async (): Promise<Category[]> => {
+  const { data, error } = await db()
+    .from("categories")
+    .select("id, name, description, parent_id, sort")
+    .order("sort");
+  if (error) throw new Error(`카테고리 조회 실패: ${error.message}`);
+
+  const rows = data ?? [];
+  return rows
+    .filter((r) => !r.parent_id)
+    .map((parent) => ({
+      id: parent.id,
+      name: parent.name,
+      desc: parent.description,
+      subs: rows
+        .filter((r) => r.parent_id === parent.id)
+        .map((sub) => ({ id: sub.id, name: sub.name })),
+    }));
+});
+
+export async function getCategory(id: string): Promise<Category | undefined> {
+  return resolveCategoryIn(await getCategories(), id)?.parent;
 }
 
-/** Returns both parent and (if id refers to a subcategory) the matched sub. */
-export function resolveCategory(
-  id: string,
-): { parent: Category; sub?: Subcategory } | undefined {
-  for (const parent of categories) {
-    if (parent.id === id) return { parent };
-    const sub = parent.subs?.find((s) => s.id === id);
-    if (sub) return { parent, sub };
-  }
-  return undefined;
+export async function resolveCategory(id: string) {
+  return resolveCategoryIn(await getCategories(), id);
 }
 
-/** Display label like "DB" or "DB / JPA·Hibernate". */
-export function categoryLabel(id: string): string {
-  const r = resolveCategory(id);
-  if (!r) return id;
-  return r.sub ? `${r.parent.name} / ${r.sub.name}` : r.parent.name;
+/** "DB" 또는 "DB / SQL·인덱스" 형태의 표시용 라벨. */
+export async function categoryLabel(id: string): Promise<string> {
+  return categoryLabelIn(await getCategories(), id);
+}
+
+/** 부모 id 면 서브 카테고리 id 까지 포함한 집합. */
+export async function categoryIds(id: string): Promise<Set<string>> {
+  return categoryIdsFor(await getCategories(), id);
 }

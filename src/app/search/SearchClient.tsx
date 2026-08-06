@@ -9,19 +9,20 @@ import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useTheme } from "next-themes";
-import type { PostMeta } from "@/lib/types";
-import { getCategory } from "@/lib/categories";
+import type { Category, PostMeta } from "@/lib/types";
+import { resolveCategoryIn } from "@/lib/category-utils";
 import { TagChip } from "@/components/post/TagChip";
 import { fmtDate } from "@/lib/tokens";
 import { useMounted } from "@/lib/hooks";
 
 interface Props {
   posts: PostMeta[];
+  categories: Category[];
 }
 
 type Scope = "all" | "title" | "tag" | "body";
 
-export function SearchClient({ posts }: Props) {
+export function SearchClient({ posts, categories }: Props) {
   const params = useSearchParams();
   const initial = params?.get("q") ?? "";
   const [q, setQ] = useState(initial);
@@ -151,7 +152,9 @@ export function SearchClient({ posts }: Props) {
                 className="block text-inherit no-underline"
               >
                 <div className="mb-1 font-mono text-[11px] font-semibold tabular-nums text-ink-muted">
-                  {getCategory(p.category)?.name ?? p.category} · {fmtDate(p.date)}
+                  {resolveCategoryIn(categories, p.category)?.parent.name ??
+                    p.category}{" "}
+                  · {fmtDate(p.date)}
                 </div>
                 <div className="font-sans text-[18px] font-semibold leading-[1.35] tracking-[-0.025em] text-ink">
                   {highlight(p.title)}

@@ -6,7 +6,12 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 
-import { getAdjacentPosts, getAllPosts, getPostBySlug } from "@/lib/posts";
+import {
+  getAdjacentPosts,
+  getAllPosts,
+  getPostBySlug,
+  getPostBySlugIncludingDrafts,
+} from "@/lib/posts";
 import { getSeriesByIdWithPosts } from "@/lib/series";
 import { resolveCategory } from "@/lib/categories";
 import { site } from "@/lib/site";
@@ -25,8 +30,11 @@ import { SeriesStepNav } from "@/components/post/SeriesStepNav";
 const ARTICLE_ID = "article-body";
 const isDev = process.env.NODE_ENV === "development";
 
-export function generateStaticParams() {
-  return getAllPosts().map((p) => ({ slug: p.slug }));
+// 공개된 글은 빌드 시 미리 만들고, 이후 발행분은 요청 시 생성된다.
+export const revalidate = 3600;
+
+export async function generateStaticParams() {
+  return (await getAllPosts()).map((p) => ({ slug: p.slug }));
 }
 
 export async function generateMetadata({
@@ -35,7 +43,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const post = getPostBySlug(slug);
+  const post = await getPostBySlug(slug);
   if (!post) return { title: "404" };
   return {
     title: post.meta.title,
@@ -49,19 +57,23 @@ export default async function Page({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const post = getPostBySlug(slug);
-  // dev: draft·private도 조회 허용 (admin/local). prod 빌드는 published만.
-  if (!post || (!isDev && post.meta.visibility !== "published")) notFound();
+  // dev 에서만 draft·private 도 열어 본다. 배포판은 published 만 조회된다.
+  const post = isDev
+    ? await getPostBySlugIncludingDrafts(slug)
+    : await getPostBySlug(slug);
+  if (!post) notFound();
 
   const content = renderMarkdown(post.body);
 
-  const cat = resolveCategory(post.meta.category);
-  const { prev, next } = getAdjacentPosts(slug);
+  const [cat, { prev, next }] = await Promise.all([
+    resolveCategory(post.meta.category),
+    getAdjacentPosts(slug),
+  ]);
   const toc = post.meta.toc ?? [];
 
-  const seriesCtx = (() => {
+  const seriesCtx = await (async () => {
     if (!post.meta.series) return null;
-    const series = getSeriesByIdWithPosts(post.meta.series, {
+    const series = await getSeriesByIdWithPosts(post.meta.series, {
       includeDrafts: isDev,
     });
     if (!series) return null;
@@ -69,6 +81,28 @@ export default async function Page({
     if (idx < 0) return null;
     const total = Math.max(series.count, series.posts.length);
     const currentOrder = post.meta.seriesOrder ?? idx + 1;
+
+    type Slot =
+      | { kind: "post"; order: number; post: (typeof series.posts)[number] }
+      | { kind: "empty"; order: number };
+    const slots: Slot[] = [];
+    const usedSlugs = new Set<string>();
+    for (let i = 0; i < total; i++) {
+      const order = i + 1;
+      const found = series.posts.find((p) => p.seriesOrder === order);
+      if (found) {
+        slots.push({ kind: "post", order, post: found });
+        usedSlugs.add(found.slug);
+      } else {
+        slots.push({ kind: "empty", order });
+      }
+    }
+    series.posts
+      .filter((p) => !usedSlugs.has(p.slug))
+      .forEach((p, i) =>
+        slots.push({ kind: "post", order: total + i + 1, post: p }),
+      );
+
     return {
       id: series.id,
       title: series.title,
@@ -79,6 +113,8 @@ export default async function Page({
       seriesPrev: idx > 0 ? series.posts[idx - 1] : undefined,
       seriesNext:
         idx < series.posts.length - 1 ? series.posts[idx + 1] : undefined,
+      slots,
+      currentSlug: slug,
     };
   })();
 
@@ -173,6 +209,8 @@ export default async function Page({
                 publishedCount={seriesCtx.publishedCount}
                 prev={seriesCtx.seriesPrev}
                 next={seriesCtx.seriesNext}
+                slots={seriesCtx.slots}
+                currentSlug={seriesCtx.currentSlug}
               />
             </div>
           )}
@@ -197,26 +235,8 @@ export default async function Page({
         </aside>
       </div>
 
-      {/* Series step nav (시리즈 글일 때만) */}
-      {seriesCtx && (
-        <section className="mx-auto mt-8 max-w-[1180px] px-5 md:px-8">
-          <SeriesStepNav
-            seriesId={seriesCtx.id}
-            seriesTitle={seriesCtx.title}
-            color={seriesCtx.color}
-            publishedCount={seriesCtx.publishedCount}
-            prev={seriesCtx.seriesPrev}
-            next={seriesCtx.seriesNext}
-          />
-        </section>
-      )}
-
       {/* Prev/Next (chronological) */}
-      <section
-        className={`mx-auto max-w-[1180px] px-5 pb-12 md:px-8 md:pb-16 ${
-          seriesCtx ? "mt-4" : "mt-8"
-        }`}
-      >
+      <section className="mx-auto mt-8 max-w-[1180px] px-5 pb-12 md:px-8 md:pb-16">
         {seriesCtx && (
           <div className="mb-3 font-sans text-[10.5px] font-bold uppercase tracking-[0.14em] text-ink-muted">
             시간순 글 탐색

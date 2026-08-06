@@ -1,8 +1,10 @@
 import { PostList } from "@/components/post/PostList";
-import { categories, categoryLabel } from "@/lib/categories";
+import { getCategories, categoryLabel } from "@/lib/categories";
 
-export function generateStaticParams() {
-  return categories.flatMap((c) => [
+export const revalidate = 3600;
+
+export async function generateStaticParams() {
+  return (await getCategories()).flatMap((c) => [
     { id: c.id },
     ...(c.subs?.map((s) => ({ id: s.id })) ?? []),
   ]);
@@ -15,7 +17,7 @@ export async function generateMetadata({
 }) {
   const { id } = await params;
   return {
-    title: categoryLabel(id),
+    title: await categoryLabel(id),
   };
 }
 

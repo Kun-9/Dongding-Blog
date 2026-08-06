@@ -8,8 +8,10 @@ export const metadata = {
   title: "Linkroll",
 };
 
-export default function Page() {
-  const items = getAllBookmarks();
+export const revalidate = 3600;
+
+export default async function Page() {
+  const items = await getAllBookmarks();
 
   return (
     <main className="mx-auto max-w-[760px] px-8 pt-16">

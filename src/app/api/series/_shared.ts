@@ -1,22 +1,13 @@
 /**
- * Shared helpers for the dev-only series API. Reads/writes
- * `content/series.json`. Production builds exclude API routes; the runtime
- * devGuard is a belt-and-suspenders safety net.
+ * 시리즈 편집 API 공용 스키마.
+ * `count` 는 저자가 잡아 둔 계획 편수로 DB 의 planned_count 에 대응한다.
  */
 import "server-only";
 
-import { promises as fs } from "node:fs";
-import path from "node:path";
 import { z } from "zod";
 import { SLUG_RE } from "@/lib/api-shared";
 
-export { devGuard } from "@/lib/api-shared";
-
-export const SERIES_FILE = path.join(
-  process.cwd(),
-  "content",
-  "series.json",
-);
+export { devGuard, revalidateContent } from "@/lib/api-shared";
 
 export const SeriesEntrySchema = z.object({
   id: z.string().regex(SLUG_RE, "id는 영소문자/숫자/하이픈만 허용"),
@@ -26,37 +17,24 @@ export const SeriesEntrySchema = z.object({
   color: z.string().min(1),
 });
 
-export const SeriesPatchSchema = SeriesEntrySchema.omit({
-  id: true,
-}).partial();
+export const SeriesPatchSchema = SeriesEntrySchema.omit({ id: true }).partial();
 
 export type SeriesEntry = z.infer<typeof SeriesEntrySchema>;
 export type SeriesPatch = z.infer<typeof SeriesPatchSchema>;
 
-export async function readSeriesFile(): Promise<SeriesEntry[]> {
-  let raw: string;
-  try {
-    raw = await fs.readFile(SERIES_FILE, "utf8");
-  } catch (err) {
-    if (
-      err instanceof Error &&
-      (err as NodeJS.ErrnoException).code === "ENOENT"
-    ) {
-      return [];
-    }
-    throw err;
-  }
-  const parsed = z.array(SeriesEntrySchema.passthrough()).parse(JSON.parse(raw));
-  return parsed.map(({ id, title, desc, count, color }) => ({
-    id,
-    title,
-    desc,
-    count,
-    color,
-  }));
+interface SeriesRow {
+  title?: string;
+  description?: string;
+  color?: string;
+  planned_count?: number;
 }
 
-export async function writeSeriesFile(items: SeriesEntry[]): Promise<void> {
-  const json = JSON.stringify(items, null, 2);
-  await fs.writeFile(SERIES_FILE, `${json}\n`, "utf8");
+/** 편집 폼 입력 → series 행(부분 갱신에도 쓰이도록 정의된 키만 담는다). */
+export function toRow(input: SeriesPatch): SeriesRow {
+  const row: SeriesRow = {};
+  if (input.title !== undefined) row.title = input.title;
+  if (input.desc !== undefined) row.description = input.desc;
+  if (input.color !== undefined) row.color = input.color;
+  if (input.count !== undefined) row.planned_count = input.count;
+  return row;
 }

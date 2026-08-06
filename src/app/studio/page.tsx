@@ -18,10 +18,10 @@ import {
 } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { categories, categoryLabel } from "@/lib/categories";
+import { categoryLabelIn } from "@/lib/category-utils";
 import { API } from "@/lib/api-routes";
 import { normalizeSlug, slugifyTitle } from "@/lib/slug-utils";
-import type { Series, Visibility } from "@/lib/types";
+import type { Category, Series, Visibility } from "@/lib/types";
 
 type StudioSeriesPost = {
   slug: string;
@@ -293,11 +293,9 @@ function StudioEditor() {
   const [loading, setLoading] = useState<boolean>(!!editingSlug);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const [form, dispatch] = useReducer(
-    formReducer,
-    categories[0]?.id ?? "",
-    newDraftState,
-  );
+  // 카테고리는 API 로 뒤늦게 도착하므로 빈 값으로 시작하고, 목록이 오면
+  // 아래 effect 가 첫 카테고리를 기본값으로 채운다.
+  const [form, dispatch] = useReducer(formReducer, "", newDraftState);
   const {
     title,
     summary,
@@ -336,6 +334,9 @@ function StudioEditor() {
 
   const [seriesList, setSeriesList] = useState<StudioSeries[]>([]);
   const [newSeriesOpen, setNewSeriesOpen] = useState(false);
+  // 카테고리 정본이 DB 로 옮겨가 정적 import 가 불가능해졌다 — 시리즈와 같은
+  // 방식으로 API 에서 받아온다.
+  const [categories, setCategories] = useState<Category[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -352,6 +353,29 @@ function StudioEditor() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(API.categories)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data: unknown) => {
+        if (cancelled) return;
+        if (Array.isArray(data)) setCategories(data as Category[]);
+      })
+      .catch(() => {
+        // 카테고리를 못 받으면 select 가 비지만 나머지 편집은 계속 가능하다.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // 새 글의 기본 카테고리 — 목록이 도착한 뒤 한 번만 채운다.
+  useEffect(() => {
+    if (!category && categories.length > 0) {
+      patch({ category: categories[0].id });
+    }
+  }, [categories, category, patch]);
 
   // Load existing post or initialize new draft.
   useEffect(() => {
@@ -377,7 +401,8 @@ function StudioEditor() {
             title: data.title ?? "",
             summary: data.summary ?? "",
             slug: data.slug ?? editingSlug,
-            category: data.category || (categories[0]?.id ?? ""),
+            // 서버가 카테고리를 안 주는 예외 상황은 기본값 effect 가 메운다.
+            category: data.category || "",
             tags: Array.isArray(data.tags) ? data.tags.join(", ") : "",
             body: data.body ?? "",
             visibility: serverVisibility,
@@ -414,10 +439,8 @@ function StudioEditor() {
       // Effect-driven setState here mirrors a URL change; the alternative
       // would be remounting StudioEditor with a `key` prop. Either is fine.
       /* eslint-disable react-hooks/set-state-in-effect */
-      dispatch({
-        type: "HYDRATE_NEW",
-        defaultCategory: categories[0]?.id ?? "",
-      });
+      // 카테고리 목록은 아직 안 왔을 수 있다 — 기본값 채우기는 전용 effect 담당.
+      dispatch({ type: "HYDRATE_NEW", defaultCategory: "" });
       setSaveState("idle");
       setLocalSavedAt(null);
       initializedRef.current = true;
@@ -631,7 +654,7 @@ function StudioEditor() {
     } finally {
       setLoading(false);
     }
-  }, [editingSlug]);
+  }, [editingSlug, categories]);
 
   /**
    * For uploads on a brand-new post we need a real slug folder. Auto-derive
@@ -1519,7 +1542,7 @@ function StudioEditor() {
           </div>
           <div className="max-w-[640px]">
             <div className="mb-2 font-sans text-[11px] font-bold uppercase tracking-[0.08em] text-ink-muted">
-              {category ? categoryLabel(category) : "—"} ·{" "}
+              {category ? categoryLabelIn(categories, category) : "—"} ·{" "}
               {VISIBILITY_META[visibility].label}
             </div>
             <h1 className="m-0 font-sans text-[36px] font-semibold leading-[1.15] tracking-[-0.035em] text-ink">

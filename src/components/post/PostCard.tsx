@@ -15,8 +15,8 @@ interface Props {
   layout?: Layout;
 }
 
-export function PostCard({ post, layout = "card" }: Props) {
-  const catLabel = categoryLabel(post.category);
+export async function PostCard({ post, layout = "card" }: Props) {
+  const catLabel = await categoryLabel(post.category);
   const href = `/posts/${post.slug}`;
 
   if (layout === "list") {

@@ -14,11 +14,14 @@ import { PostCard } from "@/components/post/PostCard";
 import { InlineCode } from "@/components/prose/InlineCode";
 import { TopPosts } from "@/components/analytics/TopPosts";
 
-export default function Page() {
-  const all = getAllPosts();
-  const featured = getFeaturedPost() ?? all[0];
+export default async function Page() {
+  const [all, featuredPost, categories] = await Promise.all([
+    getAllPosts(),
+    getFeaturedPost(),
+    getCategoriesWithCounts(),
+  ]);
+  const featured = featuredPost ?? all[0];
   const recent = all.filter((p) => p.slug !== featured?.slug).slice(0, 6);
-  const categories = getCategoriesWithCounts();
 
   if (!featured) {
     return (

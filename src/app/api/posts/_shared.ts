@@ -1,21 +1,20 @@
 /**
- * Shared helpers for the dev-only API surface. Owns the dev guard, slug
- * regex, frontmatter shape, and on-disk path resolution for posts.
- * Production builds (`BUILD_TARGET=static`) exclude API routes entirely;
- * the runtime guard here is belt-and-suspenders.
+ * 글 편집 API 공용 헬퍼. 입력 스키마와 DB 행 변환을 담당한다.
+ * 정본이 Supabase 이므로 쓰기는 전부 secret 키(`dbAdmin`)로 나간다.
  */
 import "server-only";
 
-import { promises as fs } from "node:fs";
-import path from "node:path";
-import matter from "gray-matter";
 import { z } from "zod";
 import { DATE_RE, SLUG_RE, todayISO } from "@/lib/api-shared";
 import { VisibilitySchema } from "@/lib/posts";
+import { dbAdmin } from "@/lib/supabase";
 
-export { devGuard, todayISO, SLUG_RE } from "@/lib/api-shared";
-
-export const POSTS_DIR = path.join(process.cwd(), "content", "posts");
+export {
+  devGuard,
+  todayISO,
+  revalidateContent,
+  SLUG_RE,
+} from "@/lib/api-shared";
 
 export const PostBodySchema = z.object({
   slug: z.string().regex(SLUG_RE, "slug은 영소문자/숫자/하이픈만 허용"),
@@ -37,36 +36,29 @@ export const PostBodySchema = z.object({
 
 export type PostBody = z.infer<typeof PostBodySchema>;
 
-export function postPath(slug: string): string {
-  return path.join(POSTS_DIR, `${slug}.md`);
+/** 편집 폼 입력 → posts 행. */
+export function toRow(input: PostBody) {
+  return {
+    slug: input.slug,
+    title: input.title,
+    summary: input.summary,
+    category_id: input.category,
+    tags: input.tags,
+    date: input.date ?? todayISO(),
+    featured: input.featured === true,
+    visibility: input.visibility,
+    series_id: input.series ?? null,
+    series_order: input.series ? (input.seriesOrder ?? null) : null,
+    body: input.body.endsWith("\n") ? input.body : `${input.body}\n`,
+  };
 }
 
 export async function postExists(slug: string): Promise<boolean> {
-  try {
-    await fs.access(postPath(slug));
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-export function serializePost(input: PostBody): string {
-  const { body, ...meta } = input;
-
-  const data: Record<string, unknown> = {
-    title: meta.title,
-    summary: meta.summary,
-    category: meta.category,
-    tags: meta.tags,
-    date: meta.date ?? todayISO(),
-  };
-  if (meta.featured) data.featured = true;
-  // 항상 명시적으로 기록 — published 도 포함. 기존 `draft` 키는 더 이상 쓰지 않음.
-  data.visibility = meta.visibility;
-  if (meta.series) {
-    data.series = meta.series;
-    if (meta.seriesOrder) data.seriesOrder = meta.seriesOrder;
-  }
-
-  return matter.stringify(body.endsWith("\n") ? body : `${body}\n`, data);
+  const { data, error } = await dbAdmin()
+    .from("posts")
+    .select("slug")
+    .eq("slug", slug)
+    .maybeSingle();
+  if (error) throw new Error(`글 조회 실패: ${error.message}`);
+  return data !== null;
 }

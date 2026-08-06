@@ -1,21 +1,19 @@
 /**
- * Post loader — reads `content/posts/*.md`, parses frontmatter with
- * gray-matter + zod, falls back to reading-time when readTime is omitted.
- * Body is plain markdown rendered by `lib/markdown` (no MDX/JSX).
+ * 글 로더 — Supabase `posts` 가 정본이다.
+ *
+ * 공개 경로(`db()`)는 RLS 때문에 published 만 읽는다. draft/private 이 필요한
+ * Studio·Admin 은 `*IncludingDrafts` 계열을 쓰고, 그쪽만 secret 키로 붙는다.
+ * 한 요청 안에서는 React `cache()` 가 쿼리를 한 번으로 접어준다.
  */
 import "server-only";
 
-import fs from "node:fs";
-import path from "node:path";
-import matter from "gray-matter";
+import { cache } from "react";
 import readingTime from "reading-time";
 import { z } from "zod";
-import type { PostMeta, Visibility } from "@/lib/types";
+import type { PostMeta } from "@/lib/types";
 import { extractTOC } from "@/lib/markdown";
-import { resolveCategory } from "@/lib/categories";
-import { DATE_RE } from "@/lib/api-shared";
-
-const POSTS_DIR = path.join(process.cwd(), "content", "posts");
+import { db, dbAdmin, type BlogClient } from "@/lib/supabase";
+import { categoryIds } from "@/lib/categories";
 
 export const TocItemSchema = z.object({
   id: z.string(),
@@ -25,139 +23,129 @@ export const TocItemSchema = z.object({
 
 export const VisibilitySchema = z.enum(["published", "private", "draft"]);
 
-const FrontmatterSchema = z.object({
-  title: z.string(),
-  summary: z.string(),
-  category: z.string(),
-  tags: z.array(z.string()).default([]),
-  date: z.string().regex(DATE_RE),
-  readTime: z.number().int().positive().optional(),
-  featured: z.boolean().optional(),
-  visibility: VisibilitySchema.optional(),
-  /** @deprecated 호환을 위해 유지 — visibility로 자동 매핑 */
-  draft: z.boolean().optional(),
-  toc: z.array(TocItemSchema).optional(),
-  series: z.string().optional(),
-  seriesOrder: z.number().int().positive().optional(),
-});
+/**
+ * ponytail: 목록 조회에도 body 를 딸려 온다 — readTime 과 TOC 가 본문에서
+ * 파생되기 때문. 글이 수백 건이 되면 그때 두 값을 컬럼으로 저장하고 목록
+ * 쿼리에서 body 를 빼면 된다.
+ */
+const COLUMNS =
+  "slug, title, summary, category_id, tags, date, read_time, featured, visibility, series_id, series_order, body";
 
-function resolveVisibility(
-  fm: z.infer<typeof FrontmatterSchema>,
-): Visibility {
-  if (fm.visibility) return fm.visibility;
-  if (fm.draft === true) return "draft";
-  return "published";
-}
-
-interface CachedPost {
-  meta: PostMeta;
+interface Row {
+  slug: string;
+  title: string;
+  summary: string;
+  category_id: string;
+  tags: string[];
+  date: string;
+  read_time: number | null;
+  featured: boolean;
+  visibility: string;
+  series_id: string | null;
+  series_order: number | null;
   body: string;
 }
 
-let cache: CachedPost[] | null = null;
+function toPost(row: Row): { meta: PostMeta; body: string } {
+  const derivedToc = extractTOC(row.body);
+  const visibility = VisibilitySchema.parse(row.visibility);
 
-const isDev = process.env.NODE_ENV === "development";
-
-export function invalidatePostsCache(): void {
-  cache = null;
-}
-
-function loadAll(): CachedPost[] {
-  if (cache && !isDev) return cache;
-  if (!fs.existsSync(POSTS_DIR)) {
-    cache = [];
-    return cache;
-  }
-
-  const files = fs
-    .readdirSync(POSTS_DIR)
-    .filter((f) => f.endsWith(".md"));
-
-  const items: CachedPost[] = files.map((file) => {
-    const slug = file.replace(/\.md$/, "");
-    const full = path.join(POSTS_DIR, file);
-    const raw = fs.readFileSync(full, "utf8");
-    const { data, content } = matter(raw);
-    const fm = FrontmatterSchema.parse(data);
-
-    const minutes =
-      fm.readTime ?? Math.max(1, Math.round(readingTime(content).minutes));
-
-    const derivedToc = extractTOC(content);
-    const toc = derivedToc.length >= 2 ? derivedToc : fm.toc;
-
-    const visibility = resolveVisibility(fm);
-    const meta: PostMeta = {
-      slug,
-      title: fm.title,
-      summary: fm.summary,
-      category: fm.category,
-      tags: fm.tags,
-      date: fm.date,
-      readTime: minutes,
-      featured: fm.featured,
+  return {
+    meta: {
+      slug: row.slug,
+      title: row.title,
+      summary: row.summary,
+      category: row.category_id,
+      tags: row.tags,
+      date: row.date,
+      readTime:
+        row.read_time ?? Math.max(1, Math.round(readingTime(row.body).minutes)),
+      featured: row.featured || undefined,
       visibility,
       draft: visibility === "draft",
-      toc,
-      series: fm.series,
-      seriesOrder: fm.seriesOrder,
-    };
-    return { meta, body: content };
-  });
-
-  // Sort newest first
-  items.sort((a, b) => b.meta.date.localeCompare(a.meta.date));
-  cache = items;
-  return cache;
+      toc: derivedToc.length >= 2 ? derivedToc : undefined,
+      series: row.series_id ?? undefined,
+      seriesOrder: row.series_order ?? undefined,
+    },
+    body: row.body,
+  };
 }
 
-/** All published posts (drafts/private excluded), newest first. */
-export function getAllPosts(): PostMeta[] {
-  return loadAll()
-    .filter((p) => p.meta.visibility === "published")
-    .map((p) => p.meta);
+async function query(client: BlogClient, onlyPublished: boolean) {
+  const base = client.from("posts").select(COLUMNS);
+  // 같은 날짜의 글은 slug 로 안정 정렬한다.
+  const { data, error } = await (onlyPublished
+    ? base.eq("visibility", "published")
+    : base
+  )
+    .order("date", { ascending: false })
+    .order("slug");
+  if (error) throw new Error(`글 조회 실패: ${error.message}`);
+  return ((data ?? []) as unknown as Row[]).map(toPost);
 }
 
-/** Includes drafts — used by admin views. */
-export function getAllPostsIncludingDrafts(): PostMeta[] {
-  return loadAll().map((p) => p.meta);
+const loadPublished = cache(() => query(db(), true));
+const loadAll = cache(() => query(dbAdmin(), false));
+
+/** 공개된 글만, 최신순. */
+export async function getAllPosts(): Promise<PostMeta[]> {
+  return (await loadPublished()).map((p) => p.meta);
 }
 
-/** Includes drafts AND body — used by drafts/Studio. */
-export function getAllPostsWithBody(): { meta: PostMeta; body: string }[] {
+/** draft/private 포함 — Admin 전용. */
+export async function getAllPostsIncludingDrafts(): Promise<PostMeta[]> {
+  return (await loadAll()).map((p) => p.meta);
+}
+
+/** draft 포함 + 본문 — Studio/Drafts 전용. */
+export async function getAllPostsWithBody(): Promise<
+  { meta: PostMeta; body: string }[]
+> {
   return loadAll();
 }
 
-export function getPostBySlug(
+/**
+ * 공개된 글 한 건. draft/private 은 여기서 안 나온다 — 정적 export 시절엔
+ * generateStaticParams 가 걸러줬지만 이제 URL 을 직접 찍을 수 있으므로
+ * 조회 단계에서 막는다.
+ */
+export async function getPostBySlug(
   slug: string,
-): { meta: PostMeta; body: string } | undefined {
-  return loadAll().find((p) => p.meta.slug === slug);
+): Promise<{ meta: PostMeta; body: string } | undefined> {
+  return (await loadPublished()).find((p) => p.meta.slug === slug);
 }
 
-export function getAdjacentPosts(
+/** draft/private 까지 포함해 한 건 — Studio 미리보기 전용. */
+export async function getPostBySlugIncludingDrafts(
   slug: string,
-): { prev?: PostMeta; next?: PostMeta } {
-  const all = getAllPosts();
+): Promise<{ meta: PostMeta; body: string } | undefined> {
+  return (await loadAll()).find((p) => p.meta.slug === slug);
+}
+
+export async function getAdjacentPosts(
+  slug: string,
+): Promise<{ prev?: PostMeta; next?: PostMeta }> {
+  const all = await getAllPosts();
   const idx = all.findIndex((p) => p.slug === slug);
   if (idx === -1) return {};
   return { prev: all[idx + 1], next: all[idx - 1] };
 }
 
-export function getFeaturedPost(): PostMeta | undefined {
-  return getAllPosts().find((p) => p.featured);
+export async function getFeaturedPost(): Promise<PostMeta | undefined> {
+  return (await getAllPosts()).find((p) => p.featured);
 }
 
-export function getPostsByCategory(categoryId: string): PostMeta[] {
-  const r = resolveCategory(categoryId);
-  // Parent id matches its own posts + any subcategory posts; sub id matches exactly.
-  const ids = r && !r.sub ? new Set([r.parent.id, ...(r.parent.subs?.map((s) => s.id) ?? [])]) : new Set([categoryId]);
-  return getAllPosts().filter((p) => ids.has(p.category));
+export async function getPostsByCategory(
+  categoryId: string,
+): Promise<PostMeta[]> {
+  const ids = await categoryIds(categoryId);
+  return (await getAllPosts()).filter((p) => ids.has(p.category));
 }
 
-export function getPostsByTag(tag: string): PostMeta[] {
-  return getAllPosts().filter((p) => p.tags.includes(tag));
+export async function getPostsByTag(tag: string): Promise<PostMeta[]> {
+  return (await getAllPosts()).filter((p) => p.tags.includes(tag));
 }
 
-export function getAllTags(): string[] {
-  return [...new Set(getAllPosts().flatMap((p) => p.tags))];
+export async function getAllTags(): Promise<string[]> {
+  return [...new Set((await getAllPosts()).flatMap((p) => p.tags))];
 }

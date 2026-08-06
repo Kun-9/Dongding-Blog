@@ -8,8 +8,10 @@ export const metadata = {
   title: "Series",
 };
 
-export default function Page() {
-  const series = getAllSeriesWithPosts();
+export const revalidate = 3600;
+
+export default async function Page() {
+  const series = await getAllSeriesWithPosts();
 
   return (
     <main className="mx-auto max-w-[880px] px-5 pt-10 md:px-8 md:pt-16">

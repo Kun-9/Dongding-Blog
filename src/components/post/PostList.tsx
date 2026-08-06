@@ -22,12 +22,12 @@ interface Props {
   filter?: SidebarFilter;
 }
 
-export function PostList({ filter }: Props) {
+export async function PostList({ filter }: Props) {
   const filtered = !filter
-    ? getAllPosts()
+    ? await getAllPosts()
     : filter.type === "category"
-      ? getPostsByCategory(filter.value)
-      : getPostsByTag(filter.value);
+      ? await getPostsByCategory(filter.value)
+      : await getPostsByTag(filter.value);
 
   const byYear: Record<string, PostMeta[]> = {};
   filtered.forEach((p) => {
@@ -38,7 +38,7 @@ export function PostList({ filter }: Props) {
 
   let eyebrow: string, title: string, sub: string;
   if (filter?.type === "category") {
-    const r = resolveCategory(filter.value);
+    const r = await resolveCategory(filter.value);
     eyebrow = r?.sub ? `CATEGORY · ${r.parent.name.toUpperCase()}` : "CATEGORY";
     title = r?.sub?.name ?? r?.parent.name ?? filter.value;
     const desc = r?.sub ? r.parent.desc : (r?.parent.desc ?? "");

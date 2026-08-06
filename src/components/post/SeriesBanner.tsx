@@ -21,9 +21,9 @@ export function SeriesBanner({
   total,
   publishedCount,
 }: Props) {
-  const totalDigits = String(total).length;
-  const cur = String(currentOrder).padStart(totalDigits, "0");
-  const tot = String(total).padStart(totalDigits, "0");
+  const pad = Math.max(2, String(total).length);
+  const cur = String(currentOrder).padStart(pad, "0");
+  const tot = String(total).padStart(pad, "0");
 
   return (
     <Link

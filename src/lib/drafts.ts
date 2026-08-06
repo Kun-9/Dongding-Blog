@@ -1,14 +1,14 @@
 /**
- * Draft listing — derived from posts with `draft: true` plus reading-time.
- * Studio/Admin pages use this; public lists never see drafts.
+ * 초안 목록 — visibility 가 published 가 아닌 글에서 파생한다.
+ * Studio/Admin 만 쓰며 공개 목록에는 노출되지 않는다.
  */
 import "server-only";
 
 import { getAllPostsWithBody } from "@/lib/posts";
 import type { Draft } from "@/lib/types";
 
-export function getAllDrafts(): Draft[] {
-  return getAllPostsWithBody()
+export async function getAllDrafts(): Promise<Draft[]> {
+  return (await getAllPostsWithBody())
     .filter((p) => p.meta.visibility !== "published")
     .map((p) => ({
       slug: p.meta.slug,

@@ -6,8 +6,10 @@ import {
 } from "@/lib/series";
 import { fmtDate } from "@/lib/tokens";
 
-export function generateStaticParams() {
-  return getAllSeries().map((s) => ({ id: s.id }));
+export const revalidate = 3600;
+
+export async function generateStaticParams() {
+  return (await getAllSeries()).map((s) => ({ id: s.id }));
 }
 
 export async function generateMetadata({
@@ -16,7 +18,7 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const s = getSeriesByIdWithPosts(id);
+  const s = await getSeriesByIdWithPosts(id);
   return { title: s ? s.title : "Series" };
 }
 
@@ -26,7 +28,7 @@ export default async function Page({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const s = getSeriesByIdWithPosts(id);
+  const s = await getSeriesByIdWithPosts(id);
   if (!s) notFound();
 
   const total = Math.max(s.count, s.posts.length);

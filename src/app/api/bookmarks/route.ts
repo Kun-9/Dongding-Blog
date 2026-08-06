@@ -1,12 +1,14 @@
+/**
+ * 북마크 생성 API. URL 중복은 DB unique 제약이 잡아 409 로 돌려준다.
+ */
 import { NextResponse } from "next/server";
-import { invalidateBookmarksCache } from "@/lib/bookmarks";
+import { dbAdmin } from "@/lib/supabase";
 import {
   BookmarkInputSchema,
+  UNIQUE_VIOLATION,
   devGuard,
-  nextId,
-  readBookmarks,
+  revalidateContent,
   todayISO,
-  writeBookmarks,
 } from "./_shared";
 
 export async function POST(req: Request) {
@@ -28,28 +30,23 @@ export async function POST(req: Request) {
     );
   }
 
-  const items = await readBookmarks();
   const input = parsed.data;
+  const { data, error } = await dbAdmin()
+    .from("bookmarks")
+    .insert({ ...input, date: input.date ?? todayISO() })
+    .select("id, url, title, source, tag, note, date")
+    .single();
 
-  if (items.some((b) => b.url === input.url)) {
-    return NextResponse.json(
-      { error: "이미 등록된 URL입니다", url: input.url },
-      { status: 409 },
-    );
+  if (error) {
+    if (error.code === UNIQUE_VIOLATION) {
+      return NextResponse.json(
+        { error: "이미 등록된 URL입니다", url: input.url },
+        { status: 409 },
+      );
+    }
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const created = {
-    id: nextId(items),
-    url: input.url,
-    title: input.title,
-    source: input.source,
-    tag: input.tag,
-    note: input.note,
-    date: input.date ?? todayISO(),
-  };
-
-  await writeBookmarks([...items, created]);
-  invalidateBookmarksCache();
-
-  return NextResponse.json(created, { status: 201 });
+  revalidateContent();
+  return NextResponse.json(data, { status: 201 });
 }

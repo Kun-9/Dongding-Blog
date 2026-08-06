@@ -1,8 +1,10 @@
 import { PostList } from "@/components/post/PostList";
 import { getAllTags } from "@/lib/posts";
 
-export function generateStaticParams() {
-  return getAllTags().map((tag) => ({ tag }));
+export const revalidate = 3600;
+
+export async function generateStaticParams() {
+  return (await getAllTags()).map((tag) => ({ tag }));
 }
 
 export async function generateMetadata({

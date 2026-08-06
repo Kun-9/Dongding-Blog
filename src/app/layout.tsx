@@ -5,7 +5,7 @@ import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Umami } from "@/components/analytics/Umami";
-import { categories } from "@/lib/categories";
+import { getCategories } from "@/lib/categories";
 import { getAllPosts } from "@/lib/posts";
 import { site } from "@/lib/site";
 
@@ -24,13 +24,16 @@ export const metadata: Metadata = {
   description: site.description,
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   // Fetched server-side so the client Header can hand them to CommandPalette.
-  const posts = getAllPosts();
+  const [posts, categories] = await Promise.all([
+    getAllPosts(),
+    getCategories(),
+  ]);
 
   return (
     <html lang={site.lang} suppressHydrationWarning data-scroll-behavior="smooth" className={jetbrainsMono.variable}>

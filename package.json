@@ -4,11 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node scripts/static-build.mjs",
+    "build": "next build",
     "start": "next start",
     "lint": "eslint"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.112.1",
     "github-slugger": "^2.0.0",
     "gray-matter": "^4.0.3",
     "next": "16.2.4",

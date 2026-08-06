@@ -4,29 +4,29 @@ import { getCategory } from "@/lib/categories";
 import { site } from "@/lib/site";
 import { OG_COLORS, OG_SIZE } from "@/lib/og-tokens";
 
-export const runtime = "nodejs"; // need fs access via lib/posts
+export const runtime = "nodejs"; // Supabase 조회를 위해 node 런타임
 export const size = OG_SIZE;
 export const contentType = "image/png";
 
 const SITE_HOST = new URL(site.url).host;
 
-export function generateStaticParams() {
-  return getAllPosts().map((p) => ({ slug: p.slug }));
+export async function generateStaticParams() {
+  return (await getAllPosts()).map((p) => ({ slug: p.slug }));
 }
 
-export default function OpengraphImage({
+export default async function OpengraphImage({
   params,
 }: {
   params: { slug: string };
 }) {
-  const post = getPostBySlug(params.slug);
+  const post = await getPostBySlug(params.slug);
   if (!post) {
     return new ImageResponse(
       <div style={{ background: OG_COLORS.bg, width: "100%", height: "100%" }} />,
       size,
     );
   }
-  const cat = getCategory(post.meta.category);
+  const cat = await getCategory(post.meta.category);
 
   return new ImageResponse(
     (

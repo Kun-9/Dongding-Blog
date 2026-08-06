@@ -119,7 +119,7 @@ export async function getRecentComments(limit = 3): Promise<RecentComment[]> {
 
   const discussions = json.data?.repository?.discussions?.nodes ?? [];
   const slugToTitle = new Map(
-    getAllPosts().map((p) => [p.slug, p.title] as const),
+    (await getAllPosts()).map((p) => [p.slug, p.title] as const),
   );
 
   const flat: Array<{ entry: RecentComment; ts: number }> = [];

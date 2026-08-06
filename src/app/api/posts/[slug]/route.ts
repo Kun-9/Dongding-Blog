@@ -1,72 +1,50 @@
 /**
- * Dev-only single-post API.
- * - GET reads frontmatter + body for the Studio editor.
- * - PUT updates the file; if `body.slug` differs from the URL slug, the file
- *   is renamed (with collision check). Returns the canonical slug back so
- *   the client can update its URL.
+ * 글 단건 API.
+ * - GET: Studio 편집기가 쓰는 원문(draft/private 포함).
+ * - PUT: 수정. body.slug 가 URL slug 와 다르면 slug 를 바꾸고(충돌 검사) 정규
+ *        slug 를 돌려줘서 클라이언트가 URL 을 갱신하게 한다.
+ * - DELETE: 삭제.
  */
-import { promises as fs } from "node:fs";
 import { NextResponse } from "next/server";
-import matter from "gray-matter";
-import { invalidatePostsCache } from "@/lib/posts";
+import { dbAdmin } from "@/lib/supabase";
 import {
   PostBodySchema,
   devGuard,
   postExists,
-  postPath,
-  serializePost,
+  revalidateContent,
+  toRow,
 } from "../_shared";
 
 type Ctx = { params: Promise<{ slug: string }> };
-
-function isENOENT(err: unknown): boolean {
-  return (
-    err instanceof Error &&
-    (err as NodeJS.ErrnoException).code === "ENOENT"
-  );
-}
 
 export async function GET(_req: Request, { params }: Ctx) {
   const blocked = devGuard();
   if (blocked) return blocked;
 
   const { slug } = await params;
+  const { data, error } = await dbAdmin()
+    .from("posts")
+    .select(
+      "slug, title, summary, category_id, tags, date, visibility, featured, series_id, series_order, body",
+    )
+    .eq("slug", slug)
+    .maybeSingle();
 
-  let raw: string;
-  try {
-    raw = await fs.readFile(postPath(slug), "utf8");
-  } catch (err) {
-    if (isENOENT(err)) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
-    }
-    throw err;
-  }
-  const { data, content } = matter(raw);
-
-  // Resolve visibility: explicit field wins; legacy `draft: true` → 'draft';
-  // missing both → 'published' (matches loader logic).
-  const visibility =
-    data.visibility === "published" ||
-    data.visibility === "private" ||
-    data.visibility === "draft"
-      ? data.visibility
-      : data.draft === true
-        ? "draft"
-        : "published";
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (!data) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   return NextResponse.json({
-    slug,
-    title: typeof data.title === "string" ? data.title : "",
-    summary: typeof data.summary === "string" ? data.summary : "",
-    category: typeof data.category === "string" ? data.category : "",
-    tags: Array.isArray(data.tags) ? data.tags.map(String) : [],
-    date: typeof data.date === "string" ? data.date : "",
-    visibility,
-    featured: data.featured === true,
-    series: typeof data.series === "string" ? data.series : "",
-    seriesOrder:
-      typeof data.seriesOrder === "number" ? data.seriesOrder : null,
-    body: content.replace(/^\n+/, ""),
+    slug: data.slug,
+    title: data.title,
+    summary: data.summary,
+    category: data.category_id,
+    tags: data.tags,
+    date: data.date,
+    visibility: data.visibility,
+    featured: data.featured,
+    series: data.series_id ?? "",
+    seriesOrder: data.series_order,
+    body: data.body.replace(/^\n+/, ""),
   });
 }
 
@@ -105,12 +83,13 @@ export async function PUT(req: Request, { params }: Ctx) {
     );
   }
 
-  if (renaming) {
-    await fs.rename(postPath(currentSlug), postPath(nextSlug));
-  }
-  await fs.writeFile(postPath(nextSlug), serializePost(data), "utf8");
-  invalidatePostsCache();
+  const { error } = await dbAdmin()
+    .from("posts")
+    .update(toRow(data))
+    .eq("slug", currentSlug);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  revalidateContent();
   return NextResponse.json({ slug: nextSlug, renamed: renaming });
 }
 
@@ -119,15 +98,13 @@ export async function DELETE(_req: Request, { params }: Ctx) {
   if (blocked) return blocked;
 
   const { slug } = await params;
-  try {
-    await fs.unlink(postPath(slug));
-  } catch (err) {
-    if (isENOENT(err)) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
-    }
-    throw err;
+  if (!(await postExists(slug))) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
-  invalidatePostsCache();
 
+  const { error } = await dbAdmin().from("posts").delete().eq("slug", slug);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  revalidateContent();
   return NextResponse.json({ slug });
 }

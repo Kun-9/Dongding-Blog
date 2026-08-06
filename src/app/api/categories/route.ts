@@ -1,21 +1,17 @@
 /**
- * Dev-only categories API. Reads/writes `src/lib/categories.json` so the
- * Settings page can persist category-tree edits from a local `npm run dev`
- * session. Production builds exclude API routes entirely; the runtime
- * devGuard is a safety net.
+ * 카테고리 API — Supabase `categories` 를 읽고 쓴다.
+ * - GET: 설정 화면이 편집하는 부모 → subs 트리.
+ * - PUT: 트리 통째로 교체. 사라진 항목은 삭제하는데, 글이 물고 있으면
+ *        FK 가 막으므로 409 로 되돌려 준다.
  */
 import { NextResponse } from "next/server";
-import { promises as fs } from "node:fs";
-import path from "node:path";
 import { z } from "zod";
-import { SLUG_RE, devGuard } from "../posts/_shared";
+import { getCategories } from "@/lib/categories";
+import { dbAdmin } from "@/lib/supabase";
+import { SLUG_RE, devGuard, revalidateContent } from "@/lib/api-shared";
 
-const CATEGORIES_PATH = path.join(
-  process.cwd(),
-  "src",
-  "lib",
-  "categories.json",
-);
+/** FK 위반 — 아직 이 카테고리를 쓰는 글이 있다. */
+const FK_VIOLATION = "23503";
 
 const SubSchema = z.object({
   id: z.string().regex(SLUG_RE, "id는 영소문자/숫자/하이픈만 허용"),
@@ -34,11 +30,7 @@ const CategoriesSchema = z.array(CategorySchema);
 export async function GET() {
   const blocked = devGuard();
   if (blocked) return blocked;
-
-  const raw = await fs.readFile(CATEGORIES_PATH, "utf8");
-  return new NextResponse(raw, {
-    headers: { "Content-Type": "application/json; charset=utf-8" },
-  });
+  return NextResponse.json(await getCategories());
 }
 
 export async function PUT(req: Request) {
@@ -60,29 +52,92 @@ export async function PUT(req: Request) {
     );
   }
 
-  const ids = new Set<string>();
-  for (const c of parsed.data) {
-    if (ids.has(c.id)) {
+  const tree = parsed.data;
+
+  // id 중복은 upsert 가 조용히 덮어써 버리므로 먼저 걸러 낸다.
+  const seen = new Set<string>();
+  for (const cat of tree) {
+    if (seen.has(cat.id)) {
       return NextResponse.json(
-        { error: `중복된 카테고리 id: ${c.id}` },
+        { error: `중복된 카테고리 id: ${cat.id}` },
         { status: 400 },
       );
     }
-    ids.add(c.id);
-    const subIds = new Set<string>();
-    for (const s of c.subs) {
-      if (subIds.has(s.id)) {
+    seen.add(cat.id);
+    for (const sub of cat.subs) {
+      if (seen.has(sub.id)) {
         return NextResponse.json(
-          { error: `중복된 서브 id: ${c.id}/${s.id}` },
+          { error: `중복된 서브 id: ${cat.id}/${sub.id}` },
           { status: 400 },
         );
       }
-      subIds.add(s.id);
+      seen.add(sub.id);
     }
   }
 
-  const json = `${JSON.stringify(parsed.data, null, 2)}\n`;
-  await fs.writeFile(CATEGORIES_PATH, json, "utf8");
+  interface CategoryRow {
+    id: string;
+    name: string;
+    description: string;
+    parent_id: string | null;
+    sort: number;
+  }
 
-  return NextResponse.json(parsed.data);
+  const parents: CategoryRow[] = tree.map((c, i) => ({
+    id: c.id,
+    name: c.name,
+    description: c.desc,
+    parent_id: null,
+    sort: i,
+  }));
+  const subs: CategoryRow[] = tree.flatMap((c) =>
+    c.subs.map((s, j) => ({
+      id: s.id,
+      name: s.name,
+      description: "",
+      parent_id: c.id,
+      sort: j,
+    })),
+  );
+
+  const db = dbAdmin();
+  // 부모를 먼저 넣어야 서브의 parent_id FK 가 성립한다.
+  for (const rows of [parents, subs]) {
+    if (rows.length === 0) continue;
+    const { error } = await db.from("categories").upsert(rows, {
+      onConflict: "id",
+    });
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+  }
+
+  const { data: existing, error: readErr } = await db
+    .from("categories")
+    .select("id");
+  if (readErr) {
+    return NextResponse.json({ error: readErr.message }, { status: 500 });
+  }
+
+  const removed = (existing ?? [])
+    .map((r) => r.id)
+    .filter((id) => !seen.has(id));
+  if (removed.length > 0) {
+    const { error } = await db.from("categories").delete().in("id", removed);
+    if (error) {
+      if (error.code === FK_VIOLATION) {
+        return NextResponse.json(
+          {
+            error: "글이 남아 있는 카테고리는 지울 수 없습니다",
+            ids: removed,
+          },
+          { status: 409 },
+        );
+      }
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+  }
+
+  revalidateContent();
+  return NextResponse.json(tree);
 }

@@ -42,9 +42,11 @@ function isoLocal(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
-export function getMonthlyPublishCounts(months = 12): MonthlyPublishBucket[] {
+export async function getMonthlyPublishCounts(
+  months = 12,
+): Promise<MonthlyPublishBucket[]> {
   const counts = new Map<string, number>();
-  for (const p of getAllPosts()) {
+  for (const p of await getAllPosts()) {
     const key = p.date.slice(0, 7);
     counts.set(key, (counts.get(key) ?? 0) + 1);
   }
@@ -64,7 +66,7 @@ export function getMonthlyPublishCounts(months = 12): MonthlyPublishBucket[] {
   return buckets;
 }
 
-export function getPublishedThisWeek(): number {
+export async function getPublishedThisWeek(): Promise<number> {
   const now = new Date();
   const day = now.getDay();
   const offsetToMon = day === 0 ? 6 : day - 1;
@@ -74,5 +76,5 @@ export function getPublishedThisWeek(): number {
     now.getDate() - offsetToMon,
   );
   const mondayIso = isoLocal(monday);
-  return getAllPosts().filter((p) => p.date >= mondayIso).length;
+  return (await getAllPosts()).filter((p) => p.date >= mondayIso).length;
 }

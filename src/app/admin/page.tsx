@@ -24,12 +24,15 @@ const isDev = process.env.NODE_ENV === "development";
 export default async function Page() {
   if (!isDev) return <DevOnlyNotice page="대시보드" />;
 
-  const posts = getAllPosts();
-  const drafts = getAllDrafts();
-  const categories = getCategoriesWithCounts();
-  const monthly = getMonthlyPublishCounts(12);
-  const thisWeek = getPublishedThisWeek();
-  const comments = await getRecentComments(3);
+  const [posts, drafts, categories, monthly, thisWeek, comments] =
+    await Promise.all([
+      getAllPosts(),
+      getAllDrafts(),
+      getCategoriesWithCounts(),
+      getMonthlyPublishCounts(12),
+      getPublishedThisWeek(),
+      getRecentComments(3),
+    ]);
 
   const maxMonthly = Math.max(1, ...monthly.map((b) => b.count));
   const totalCatPosts = categories.reduce((a, x) => a + (x.count ?? 0), 0);

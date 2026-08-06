@@ -2,10 +2,10 @@ import { getAllPosts } from "@/lib/posts";
 import { buildRss } from "@/lib/rss";
 import { site } from "@/lib/site";
 
-export const dynamic = "force-static";
+export const revalidate = 3600;
 
-export function GET() {
-  const xml = buildRss(getAllPosts(), {
+export async function GET() {
+  const xml = buildRss(await getAllPosts(), {
     title: site.title,
     description: site.description,
   });
