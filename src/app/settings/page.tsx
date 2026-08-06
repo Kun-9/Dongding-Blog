@@ -6,11 +6,10 @@
  * site-wide form; comments (Giscus) stays read-only because it is configured
  * via .env. Production builds short-circuit to <DevOnlyNotice />.
  */
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import type { ChangeEvent, ReactNode } from "react";
 import { site } from "@/lib/site";
 import siteJson from "@/lib/site.json";
-import categoriesJson from "@/lib/categories.json";
 import { DevOnlyNotice } from "@/components/layout/DevOnlyNotice";
 import { safeWriteJSON } from "@/lib/storage";
 import { API } from "@/lib/api-routes";
@@ -94,6 +93,23 @@ export default function Page() {
 function SettingsView() {
   const [form, setForm] = useState<SiteData>(siteJson);
   const [status, setStatus] = useState<SaveStatus>("idle");
+  // 카테고리 정본이 DB 라 API 로 받아온다. null 은 "아직 안 옴".
+  const [categories, setCategories] = useState<CatNode[] | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(API.categories)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data: unknown) => {
+        if (!cancelled && Array.isArray(data)) setCategories(data as CatNode[]);
+      })
+      .catch(() => {
+        if (!cancelled) setCategories([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const initial = JSON.stringify(siteJson);
   const current = JSON.stringify(form);
@@ -256,11 +272,11 @@ function SettingsView() {
           </Row>
         </Card>
 
-        {/* CATEGORIES — categories.json */}
+        {/* CATEGORIES — Supabase categories 테이블 */}
         <Card
           id="settings-categories"
           title="카테고리"
-          source="src/lib/categories.json"
+          source="supabase · categories"
         >
           <p className="mb-2 text-[12.5px] leading-[1.55] text-ink-muted">
             대분류 + 서브카테고리 트리. 헤더 메뉴와{" "}
@@ -270,7 +286,13 @@ function SettingsView() {
             {" "}라우팅에 직결됩니다. 글이 매핑된 카테고리는 삭제 시 한번 더
             확인합니다.
           </p>
-          <CategoryManager initial={categoriesJson as CatNode[]} />
+          {/* CategoryManager 는 initial 을 마운트 시점에만 읽으므로
+              목록이 도착한 뒤에 붙인다. */}
+          {categories ? (
+            <CategoryManager initial={categories} />
+          ) : (
+            <p className="text-[12.5px] text-ink-muted">불러오는 중…</p>
+          )}
         </Card>
 
         {/* COMMENTS — env-driven, read-only */}
