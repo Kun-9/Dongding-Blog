@@ -34,6 +34,8 @@ export interface PostMeta {
   toc?: TocItem[];
   series?: string;
   seriesOrder?: number;
+  /** 홈 Featured 리드 그림에 쓸 대표 이미지 (`/posts/{slug}/{file}`). */
+  thumbnail?: string;
 }
 
 export interface TocItem {

@@ -190,6 +190,7 @@ export type Database = {
           slug: string
           summary: string
           tags: string[]
+          thumbnail: string | null
           title: string
           updated_at: string
           visibility: string
@@ -207,6 +208,7 @@ export type Database = {
           slug: string
           summary?: string
           tags?: string[]
+          thumbnail?: string | null
           title: string
           updated_at?: string
           visibility?: string
@@ -224,6 +226,7 @@ export type Database = {
           slug?: string
           summary?: string
           tags?: string[]
+          thumbnail?: string | null
           title?: string
           updated_at?: string
           visibility?: string

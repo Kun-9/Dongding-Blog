@@ -29,7 +29,7 @@ export const VisibilitySchema = z.enum(["published", "private", "draft"]);
  * 쿼리에서 body 를 빼면 된다.
  */
 const COLUMNS =
-  "slug, title, summary, category_id, tags, date, read_time, featured, visibility, series_id, series_order, body";
+  "slug, title, summary, category_id, tags, date, read_time, featured, visibility, series_id, series_order, thumbnail, body";
 
 interface Row {
   slug: string;
@@ -43,6 +43,7 @@ interface Row {
   visibility: string;
   series_id: string | null;
   series_order: number | null;
+  thumbnail: string | null;
   body: string;
 }
 
@@ -66,6 +67,7 @@ function toPost(row: Row): { meta: PostMeta; body: string } {
       toc: derivedToc.length >= 2 ? derivedToc : undefined,
       series: row.series_id ?? undefined,
       seriesOrder: row.series_order ?? undefined,
+      thumbnail: row.thumbnail ?? undefined,
     },
     body: row.body,
   };

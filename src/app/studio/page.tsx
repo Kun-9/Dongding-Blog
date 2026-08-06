@@ -17,6 +17,7 @@ import {
   useState,
 } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from "react";
+import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { categoryLabelIn } from "@/lib/category-utils";
 import { API } from "@/lib/api-routes";
@@ -136,9 +137,27 @@ type LocalDraft = {
   visibility: Visibility;
   series: string;
   seriesOrder: number;
+  thumbnail: string;
   savedAt: number;
 };
 type DraftSnapshot = Omit<LocalDraft, "savedAt">;
+
+/** 이미지 한 장을 글 폴더에 올리고 본문/썸네일이 가리킬 경로를 돌려준다. */
+async function uploadImage(
+  slug: string,
+  file: File,
+  name?: string,
+): Promise<{ url: string; filename: string }> {
+  const fd = new FormData();
+  fd.append("file", file);
+  if (name) fd.append("name", name);
+  const res = await fetch(API.postImages(slug), { method: "POST", body: fd });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data?.error ?? `HTTP ${res.status}`);
+  }
+  return (await res.json()) as { url: string; filename: string };
+}
 
 function draftKey(slug: string | null): string {
   return `${DRAFT_STORAGE_PREFIX}${slug ?? NEW_DRAFT_KEY}`;
@@ -172,7 +191,8 @@ function snapshotsEqual(a: DraftSnapshot, b: DraftSnapshot): boolean {
     a.body === b.body &&
     a.visibility === b.visibility &&
     a.series === b.series &&
-    a.seriesOrder === b.seriesOrder
+    a.seriesOrder === b.seriesOrder &&
+    a.thumbnail === b.thumbnail
   );
 }
 
@@ -214,6 +234,7 @@ function newDraftState(defaultCategory: string): FormState {
     visibility: "draft",
     series: "",
     seriesOrder: 0,
+    thumbnail: "",
     date: "",
   };
 }
@@ -245,6 +266,7 @@ function formReducer(state: FormState, action: FormAction): FormState {
           typeof action.draft.seriesOrder === "number"
             ? action.draft.seriesOrder
             : 0,
+        thumbnail: action.draft.thumbnail ?? "",
         date: state.date,
       };
   }
@@ -305,6 +327,7 @@ function StudioEditor() {
     visibility,
     series,
     seriesOrder,
+    thumbnail,
     date,
   } = form;
   const patch = useCallback(
@@ -407,6 +430,7 @@ function StudioEditor() {
             series: typeof data.series === "string" ? data.series : "",
             seriesOrder:
               typeof data.seriesOrder === "number" ? data.seriesOrder : 0,
+            thumbnail: typeof data.thumbnail === "string" ? data.thumbnail : "",
           };
           dispatch({
             type: "HYDRATE_FROM_SERVER",
@@ -478,6 +502,8 @@ function StudioEditor() {
             ...(seriesOrder > 0 ? { seriesOrder } : {}),
           }
         : {}),
+      // 빈 문자열도 그대로 보낸다 — 서버가 "지움"으로 받는다.
+      thumbnail: thumbnail.trim(),
     }),
     [
       body,
@@ -490,6 +516,7 @@ function StudioEditor() {
       title,
       series,
       seriesOrder,
+      thumbnail,
     ],
   );
 
@@ -637,6 +664,7 @@ function StudioEditor() {
           series: typeof data.series === "string" ? data.series : "",
           seriesOrder:
             typeof data.seriesOrder === "number" ? data.seriesOrder : 0,
+          thumbnail: typeof data.thumbnail === "string" ? data.thumbnail : "",
         },
         date: data.date ?? "",
       });
@@ -704,6 +732,7 @@ function StudioEditor() {
               ...(seriesOrder > 0 ? { seriesOrder } : {}),
             }
           : {}),
+        thumbnail: thumbnail.trim(),
       };
       const canonical = await persist(payload);
       dirtyRef.current = false;
@@ -732,6 +761,7 @@ function StudioEditor() {
     title,
     series,
     seriesOrder,
+    thumbnail,
   ]);
 
   const insertImageMarkdown = useCallback(
@@ -784,17 +814,7 @@ function StudioEditor() {
       setUploading(true);
       try {
         for (const file of images) {
-          const fd = new FormData();
-          fd.append("file", file);
-          const res = await fetch(API.postImages(targetSlug), {
-            method: "POST",
-            body: fd,
-          });
-          if (!res.ok) {
-            const data = await res.json().catch(() => ({}));
-            throw new Error(data?.error ?? `HTTP ${res.status}`);
-          }
-          const data = (await res.json()) as { url: string; filename: string };
+          const data = await uploadImage(targetSlug, file);
           insertImageMarkdown(altFromFilename(data.filename), data.url);
         }
       } catch (err) {
@@ -805,6 +825,28 @@ function StudioEditor() {
       }
     },
     [ensureSlugSaved, insertImageMarkdown],
+  );
+
+  /** 대표 이미지는 본문에 넣지 않고 thumbnail 필드에만 붙인다. */
+  const uploadThumbnail = useCallback(
+    async (file: File) => {
+      if (!file.type.startsWith(IMAGE_MIME_PREFIX)) return;
+      const targetSlug = await ensureSlugSaved();
+      if (!targetSlug) return;
+
+      setUploading(true);
+      try {
+        const data = await uploadImage(targetSlug, file, "thumbnail");
+        patch({ thumbnail: data.url });
+        markDirty();
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        setToast({ kind: "error", message: `업로드 실패: ${msg}` });
+      } finally {
+        setUploading(false);
+      }
+    },
+    [ensureSlugSaved, markDirty, patch],
   );
 
   const handleFilePick = useCallback(() => {
@@ -899,6 +941,7 @@ function StudioEditor() {
         visibility,
         series,
         seriesOrder,
+        thumbnail,
         savedAt: now,
       });
       setLocalSavedAt(now);
@@ -917,6 +960,7 @@ function StudioEditor() {
     visibility,
     series,
     seriesOrder,
+    thumbnail,
   ]);
 
   const wordCount = body.replace(/\s+/g, "").length;
@@ -1432,6 +1476,17 @@ function StudioEditor() {
                 }}
               />
             </FieldRow>
+            <FieldRow label="thumbnail" plain>
+              <ThumbnailField
+                value={thumbnail}
+                busy={uploading}
+                onPick={(file) => void uploadThumbnail(file)}
+                onClear={() => {
+                  patch({ thumbnail: "" });
+                  markDirty();
+                }}
+              />
+            </FieldRow>
             <FieldRow label="공개 범위">
               <VisibilityField
                 value={visibility}
@@ -1625,18 +1680,90 @@ function VisibilityField({
   );
 }
 
+/**
+ * 대표 이미지 — 홈 Featured 의 리드 그림에만 쓴다. 비워 두면 시리즈 진행
+ * 인디케이터, 그것도 없으면 카테고리·태그 타이포가 대신 들어간다.
+ */
+function ThumbnailField({
+  value,
+  busy,
+  onPick,
+  onClear,
+}: {
+  value: string;
+  busy: boolean;
+  onPick: (file: File) => void;
+  onClear: () => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  return (
+    <div className="grid gap-2">
+      <div className="flex items-center gap-2.5">
+        {value ? (
+          <span className="relative h-[42px] w-14 shrink-0 overflow-hidden rounded border border-border-token bg-surface-alt">
+            <Image src={value} alt="" fill sizes="56px" className="object-cover" />
+          </span>
+        ) : (
+          <span className="grid h-[42px] w-14 shrink-0 place-items-center rounded border border-dashed border-border-token bg-surface-alt font-mono text-[10px] text-ink-subtle">
+            없음
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          disabled={busy}
+          className="rounded-md border border-border-token bg-surface px-2.5 py-[6px] font-sans text-[12.5px] text-ink-soft hover:bg-hover disabled:cursor-progress disabled:opacity-60"
+        >
+          {busy ? "업로드 중…" : value ? "변경" : "이미지 선택"}
+        </button>
+        {value && (
+          <button
+            type="button"
+            onClick={onClear}
+            className="rounded-md border-none bg-transparent px-1.5 py-[6px] font-sans text-[12.5px] text-ink-muted hover:bg-hover"
+          >
+            지우기
+          </button>
+        )}
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*"
+          hidden
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            e.target.value = "";
+            if (file) onPick(file);
+          }}
+        />
+      </div>
+      <div className="font-mono text-[11px] text-ink-subtle">
+        {value || "비우면 시리즈 · 카테고리 그림이 대신 들어갑니다"}
+      </div>
+    </div>
+  );
+}
+
 function FieldRow({
   label,
   children,
+  plain = false,
 }: {
   label: string;
   children: ReactNode;
+  /**
+   * 감싸는 요소를 label 대신 div 로. 안에 hidden file input 이 있는 행은
+   * label 을 쓰면 행 아무 데나 눌러도 파일 선택창이 열려 버린다.
+   */
+  plain?: boolean;
 }) {
+  const Wrapper = plain ? "div" : "label";
   return (
-    <label className="grid grid-cols-[90px_1fr] items-start gap-3">
+    <Wrapper className="grid grid-cols-[90px_1fr] items-start gap-3">
       <span className="pt-[9px] font-mono text-xs text-ink-muted">{label}</span>
       {children}
-    </label>
+    </Wrapper>
   );
 }
 

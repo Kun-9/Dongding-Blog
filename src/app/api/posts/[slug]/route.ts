@@ -25,7 +25,7 @@ export async function GET(_req: Request, { params }: Ctx) {
   const { data, error } = await dbAdmin()
     .from("posts")
     .select(
-      "slug, title, summary, category_id, tags, date, visibility, featured, series_id, series_order, body",
+      "slug, title, summary, category_id, tags, date, visibility, featured, series_id, series_order, thumbnail, body",
     )
     .eq("slug", slug)
     .maybeSingle();
@@ -44,6 +44,7 @@ export async function GET(_req: Request, { params }: Ctx) {
     featured: data.featured,
     series: data.series_id ?? "",
     seriesOrder: data.series_order,
+    thumbnail: data.thumbnail ?? "",
     body: data.body.replace(/^\n+/, ""),
   });
 }

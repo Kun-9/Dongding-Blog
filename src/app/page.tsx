@@ -6,22 +6,30 @@
 import Link from "next/link";
 import { getAllPosts, getFeaturedPost } from "@/lib/posts";
 import { getCategoriesWithCounts } from "@/lib/category-stats";
+import { getAllSeries } from "@/lib/series";
+import { resolveCategoryIn } from "@/lib/category-utils";
 import { site } from "@/lib/site";
 import { fmtDate } from "@/lib/tokens";
 import { CTA } from "@/components/ui/CTA";
 import { TagChip } from "@/components/post/TagChip";
 import { PostCard } from "@/components/post/PostCard";
+import { LeadFigure } from "@/components/post/LeadFigure";
 import { InlineCode } from "@/components/prose/InlineCode";
 import { TopPosts } from "@/components/analytics/TopPosts";
 
 export default async function Page() {
-  const [all, featuredPost, categories] = await Promise.all([
+  const [all, featuredPost, categories, seriesList] = await Promise.all([
     getAllPosts(),
     getFeaturedPost(),
     getCategoriesWithCounts(),
+    getAllSeries(),
   ]);
   const featured = featuredPost ?? all[0];
   const recent = all.filter((p) => p.slug !== featured?.slug).slice(0, 6);
+  const featuredSeries = seriesList.find((s) => s.id === featured?.series);
+  const featuredCategory = featured
+    ? resolveCategoryIn(categories, featured.category)
+    : undefined;
 
   if (!featured) {
     return (
@@ -92,23 +100,11 @@ export default async function Page() {
             </div>
           </div>
 
-          {/* Lead figure — abstract code-pattern stand-in */}
-          <div
-            className="relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-xl border border-border-token bg-surface font-mono text-[11px] text-ink-muted"
-          >
-            <div
-              className="absolute inset-0 p-[18px] opacity-55"
-              style={{
-                background: `repeating-linear-gradient(180deg, transparent 0 18px, var(--surface-alt) 18px 19px)`,
-              }}
-            />
-            <div className="relative text-center leading-[1.7]">
-              <div className="font-sans text-5xl font-bold tracking-[-0.04em] text-ink">
-                N+1
-              </div>
-              <div>persistence.context</div>
-            </div>
-          </div>
+          <LeadFigure
+            post={featured}
+            series={featuredSeries}
+            categoryLabel={featuredCategory?.parent.name}
+          />
         </article>
       </section>
 

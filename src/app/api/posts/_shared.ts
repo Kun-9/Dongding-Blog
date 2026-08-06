@@ -32,6 +32,14 @@ export const PostBodySchema = z.object({
     .optional()
     .or(z.literal("").transform(() => undefined)),
   seriesOrder: z.number().int().positive().optional(),
+  /**
+   * 대표 이미지 경로. 필드를 아예 안 보내면(undefined) 기존 값을 그대로 두고,
+   * 빈 문자열이나 null 을 보내면 지운다 — MCP 의 부분 수정이 Studio 에서 붙인
+   * 썸네일을 조용히 날리지 않게 하기 위한 구분이다.
+   */
+  thumbnail: z
+    .union([z.string().min(1), z.literal("").transform(() => null), z.null()])
+    .optional(),
 });
 
 export type PostBody = z.infer<typeof PostBodySchema>;
@@ -49,6 +57,7 @@ export function toRow(input: PostBody) {
     visibility: input.visibility,
     series_id: input.series ?? null,
     series_order: input.series ? (input.seriesOrder ?? null) : null,
+    ...(input.thumbnail !== undefined ? { thumbnail: input.thumbnail } : {}),
     body: input.body.endsWith("\n") ? input.body : `${input.body}\n`,
   };
 }
