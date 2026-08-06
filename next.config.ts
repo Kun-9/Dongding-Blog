@@ -17,6 +17,22 @@ const nextConfig: NextConfig = {
   },
 
   /**
+   * apex 로 들어오면 blog 서브도메인으로 보낸다.
+   * 같은 사이트가 두 주소로 열리면 검색엔진이 중복 콘텐츠로 보는데,
+   * sitemap·RSS·OG 는 이미 blog.dongding.dev 를 정본으로 가리키고 있다.
+   */
+  async redirects() {
+    return [
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "dongding.dev" }],
+        destination: "https://blog.dongding.dev/:path*",
+        permanent: true,
+      },
+    ];
+  },
+
+  /**
    * 글 이미지는 Supabase Storage(post-images)에 있지만 본문은 예전처럼
    * `/posts/{slug}/{file}` 을 가리킨다. 그 경로를 여기서 Storage 로 넘긴다.
    *
