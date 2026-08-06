@@ -16,6 +16,7 @@ interface BaseProps {
   dark?: boolean;
   size?: Size;
   className?: string;
+  title?: string;
 }
 
 interface AnchorProps extends BaseProps {
@@ -60,7 +61,7 @@ function getStyle(dark: boolean): CSSProperties {
 }
 
 export function CTA(props: CTAProps) {
-  const { children, dark = true, size = "md", className = "" } = props;
+  const { children, dark = true, size = "md", className = "", title } = props;
   const cls = [
     "inline-block rounded-md font-sans font-semibold tracking-[-0.01em]",
     "whitespace-nowrap no-underline cursor-pointer",
@@ -77,6 +78,7 @@ export function CTA(props: CTAProps) {
         <a
           href={props.href}
           onClick={props.onClick}
+          title={title}
           className={cls}
           style={getStyle(dark)}
         >
@@ -85,14 +87,14 @@ export function CTA(props: CTAProps) {
       );
     }
     return (
-      <Link href={props.href} onClick={props.onClick} className={cls} style={getStyle(dark)}>
+      <Link href={props.href} onClick={props.onClick} title={title} className={cls} style={getStyle(dark)}>
         {children}
       </Link>
     );
   }
 
   return (
-    <button type="button" onClick={props.onClick} className={cls} style={getStyle(dark)}>
+    <button type="button" onClick={props.onClick} title={title} className={cls} style={getStyle(dark)}>
       {children}
     </button>
   );
