@@ -92,16 +92,20 @@ function fillDays(
   series: { x: string; y: number }[] | undefined,
   days: number,
 ): { x: string; y: number }[] {
+  // Umami returns bucket starts in UTC ("2026-08-05T15:00:00Z" = KST 08-06),
+  // so both sides of the lookup go through the KST calendar date.
+  const kstDate = (d: Date) =>
+    d.toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
   const map = new Map<string, number>();
   for (const p of series ?? []) {
-    map.set(p.x.slice(0, 10), p.y);
+    map.set(kstDate(new Date(p.x)), p.y);
   }
   const today = new Date();
   const out: { x: string; y: number }[] = [];
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
-    const key = d.toISOString().slice(0, 10);
+    const key = kstDate(d);
     out.push({ x: key, y: map.get(key) ?? 0 });
   }
   return out;
@@ -131,7 +135,7 @@ export default function StatsPage() {
     Promise.all([
       fetch(`${API.stats.summary}?days=${days}`).then((r) => r.json()),
       fetch(`${API.stats.pageviews}?days=${days}&unit=day`).then((r) => r.json()),
-      fetch(`${API.stats.metrics}?days=${days}&type=url&limit=10`).then((r) =>
+      fetch(`${API.stats.metrics}?days=${days}&type=path&limit=10`).then((r) =>
         r.json(),
       ),
       fetch(`${API.stats.metrics}?days=${days}&type=referrer&limit=10`).then(
@@ -164,7 +168,9 @@ export default function StatsPage() {
         <p className="mt-3 rounded-lg border border-border-token bg-surface p-4 text-sm text-ink-muted">
           Umami API 연결 실패 — <code>{error}</code>
           <br />
-          <code>UMAMI_API_KEY</code> 환경변수가 설정되어 있는지 확인.
+          <code>NEXT_PUBLIC_UMAMI_SHARE_ID</code> ·{" "}
+          <code>NEXT_PUBLIC_UMAMI_SHARE_BASE</code> 환경변수가 설정되어 있고 공유
+          링크가 살아 있는지 확인.
         </p>
       </main>
     );

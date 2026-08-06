@@ -8,13 +8,13 @@ import {
 export async function GET(req: Request) {
   if (!umamiConfigured()) {
     return NextResponse.json(
-      { error: "UMAMI_API_KEY missing" },
+      { error: "NEXT_PUBLIC_UMAMI_SHARE_ID missing" },
       { status: 503 },
     );
   }
   const url = new URL(req.url);
   const days = Number(url.searchParams.get("days") ?? "7");
-  const type = url.searchParams.get("type") ?? "url";
+  const type = url.searchParams.get("type") ?? "path";
   const limit = Number(url.searchParams.get("limit") ?? "10");
   const { startAt, endAt } = rangeFromDays(days);
   try {

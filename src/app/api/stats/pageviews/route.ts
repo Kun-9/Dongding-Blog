@@ -8,7 +8,7 @@ import {
 export async function GET(req: Request) {
   if (!umamiConfigured()) {
     return NextResponse.json(
-      { error: "UMAMI_API_KEY missing" },
+      { error: "NEXT_PUBLIC_UMAMI_SHARE_ID missing" },
       { status: 503 },
     );
   }
