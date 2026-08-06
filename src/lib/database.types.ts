@@ -76,6 +76,21 @@ export type Database = {
           },
         ]
       }
+      oauth_code: {
+        Row: {
+          expires_at: string
+          jti: string
+        }
+        Insert: {
+          expires_at: string
+          jti: string
+        }
+        Update: {
+          expires_at?: string
+          jti?: string
+        }
+        Relationships: []
+      }
       post_revisions: {
         Row: {
           body: string
