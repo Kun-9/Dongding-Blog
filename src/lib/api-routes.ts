@@ -10,6 +10,7 @@ export const API = {
   posts: "/api/posts/",
   post: (slug: string) => `/api/posts/${enc(slug)}/`,
   postImages: (slug: string) => `/api/posts/${enc(slug)}/images/`,
+  postRevisions: (slug: string) => `/api/posts/${enc(slug)}/revisions/`,
 
   series: "/api/series/",
   seriesItem: (id: string) => `/api/series/${enc(id)}/`,

@@ -34,8 +34,9 @@ import { renderMarkdown, type ImageWidth } from "@/lib/markdown";
 import { safeReadJSON, safeRemove, safeWriteJSON } from "@/lib/storage";
 import { CTA } from "@/components/ui/CTA";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { ToastBanner, type Toast } from "@/components/ui/ToastBanner";
 import { TagChip } from "@/components/post/TagChip";
-
+import { RevisionPanel } from "@/components/studio/RevisionPanel";
 
 const SAMPLE_BODY = `# 들어가며
 
@@ -52,7 +53,6 @@ const SAMPLE_BODY = `# 들어가며
 `;
 
 type SaveState = "idle" | "typing" | "saving" | "saved" | "error";
-type Toast = { kind: "success" | "error"; message: string; href?: string };
 type ToolbarAction =
   | "bold"
   | "italic"
@@ -1177,6 +1177,14 @@ function StudioEditor() {
           </span>
         )}
         <div className="flex-1" />
+        {editingSlug && (
+          <RevisionPanel
+            slug={editingSlug}
+            // 복원하면 서버 내용이 통째로 바뀐다 — 편집기를 새로 채우는 것보다
+            // 새로고침이 확실하다.
+            onRestored={() => window.location.reload()}
+          />
+        )}
         <button
           type="button"
           onClick={handleCancelClick}
@@ -1204,7 +1212,7 @@ function StudioEditor() {
         body={
           visibility === "published"
             ? "이미 발행된 글입니다. 변경 사항을 다시 발행하면 즉시 반영돼요."
-            : "발행하면 공개 범위가 published로 바뀌고 공개 목록과 RSS, sitemap에 노출됩니다."
+            : "발행하면 공개 범위가 published로 바뀌고 공개 목록과 sitemap에 노출됩니다."
         }
         meta={
           <>
@@ -2025,57 +2033,3 @@ function MarkdownCheatsheet() {
     </section>
   );
 }
-
-function ToastBanner({
-  toast,
-  onClose,
-}: {
-  toast: Toast;
-  onClose: () => void;
-}) {
-  const isSuccess = toast.kind === "success";
-  return (
-    <div
-      role="status"
-      aria-live="polite"
-      className="fixed bottom-6 right-6 z-[100] flex max-w-[420px] items-center gap-3 rounded-xl border px-4 py-3"
-      style={{
-        background: "var(--surface)",
-        borderColor: isSuccess ? "#7da75e" : "#c95c5c",
-        boxShadow: "0 12px 32px rgba(0,0,0,0.18)",
-      }}
-    >
-      <span
-        className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full font-mono text-[13px] font-bold"
-        style={{
-          background: isSuccess ? "#7da75e" : "#c95c5c",
-          color: "white",
-        }}
-      >
-        {isSuccess ? "✓" : "!"}
-      </span>
-      <div className="min-w-0 flex-1">
-        <div className="font-sans text-[13px] font-medium leading-[1.5] text-ink">
-          {toast.message}
-        </div>
-        {toast.href && (
-          <a
-            href={toast.href}
-            className="mt-1 inline-block font-sans text-[12.5px] font-semibold text-ink underline underline-offset-2"
-          >
-            지금 보기 →
-          </a>
-        )}
-      </div>
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label="닫기"
-        className="shrink-0 rounded p-1 text-[14px] text-ink-muted hover:text-ink"
-      >
-        ×
-      </button>
-    </div>
-  );
-}
-

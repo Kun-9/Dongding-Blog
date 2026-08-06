@@ -76,6 +76,62 @@ export type Database = {
           },
         ]
       }
+      post_revisions: {
+        Row: {
+          body: string
+          category_id: string | null
+          created_at: string
+          date: string | null
+          id: number
+          post_id: string
+          series_id: string | null
+          series_order: number | null
+          slug: string
+          summary: string
+          tags: string[]
+          title: string
+          visibility: string | null
+        }
+        Insert: {
+          body?: string
+          category_id?: string | null
+          created_at?: string
+          date?: string | null
+          id?: never
+          post_id: string
+          series_id?: string | null
+          series_order?: number | null
+          slug: string
+          summary?: string
+          tags?: string[]
+          title: string
+          visibility?: string | null
+        }
+        Update: {
+          body?: string
+          category_id?: string | null
+          created_at?: string
+          date?: string | null
+          id?: never
+          post_id?: string
+          series_id?: string | null
+          series_order?: number | null
+          slug?: string
+          summary?: string
+          tags?: string[]
+          title?: string
+          visibility?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_revisions_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       post_stats: {
         Row: {
           likes: number
