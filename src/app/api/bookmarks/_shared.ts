@@ -7,7 +7,7 @@ import "server-only";
 import { z } from "zod";
 import { DATE_RE } from "@/lib/api-shared";
 
-export { devGuard, todayISO, revalidateContent } from "@/lib/api-shared";
+export { requireApiUser, todayISO, revalidateContent } from "@/lib/api-shared";
 
 /** unique 위반 — 같은 URL 이 이미 담겨 있다. */
 export const UNIQUE_VIOLATION = "23505";

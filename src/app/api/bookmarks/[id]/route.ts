@@ -6,7 +6,7 @@ import { dbAdmin } from "@/lib/supabase";
 import {
   BookmarkInputSchema,
   UNIQUE_VIOLATION,
-  devGuard,
+  requireApiUser,
   parseId,
   revalidateContent,
   todayISO,
@@ -17,7 +17,7 @@ type Ctx = { params: Promise<{ id: string }> };
 const COLUMNS = "id, url, title, source, tag, note, date";
 
 export async function PUT(req: Request, { params }: Ctx) {
-  const blocked = devGuard();
+  const blocked = await requireApiUser();
   if (blocked) return blocked;
 
   const { id: rawId } = await params;
@@ -65,7 +65,7 @@ export async function PUT(req: Request, { params }: Ctx) {
 }
 
 export async function DELETE(_req: Request, { params }: Ctx) {
-  const blocked = devGuard();
+  const blocked = await requireApiUser();
   if (blocked) return blocked;
 
   const { id: rawId } = await params;

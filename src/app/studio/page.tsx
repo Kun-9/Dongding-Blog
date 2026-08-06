@@ -4,7 +4,7 @@
  * Studio — write/edit page with split editor + live preview.
  * Wires the dev-only `/api/posts` routes: POST for new drafts, PUT for
  * updates (with optional slug rename), GET to hydrate an existing post via
- * `?slug=`. Production builds render <DevOnlyNotice />.
+ * `?slug=`. 접근은 proxy 의 로그인 검사와 편집 API 의 401 로 막는다.
  */
 import {
   Fragment,
@@ -35,9 +35,7 @@ import { safeReadJSON, safeRemove, safeWriteJSON } from "@/lib/storage";
 import { CTA } from "@/components/ui/CTA";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { TagChip } from "@/components/post/TagChip";
-import { DevOnlyNotice } from "@/components/layout/DevOnlyNotice";
 
-const isDev = process.env.NODE_ENV === "development";
 
 const SAMPLE_BODY = `# 들어가며
 
@@ -83,8 +81,8 @@ const TOOLBAR_TITLES: Record<ToolbarAction, string> = {
 const IMAGE_MIME_PREFIX = "image/";
 const PUBLISH_REDIRECT_MS = 2000;
 
+// 접근 차단은 proxy(로그인 리다이렉트)와 편집 API(401)가 맡는다.
 export default function Page() {
-  if (!isDev) return <DevOnlyNotice page="스튜디오" />;
   return (
     <Suspense fallback={<EditorFallback message="에디터 로딩 중…" />}>
       <StudioEditor />

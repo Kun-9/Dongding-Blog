@@ -1,5 +1,5 @@
 /**
- * Admin Dashboard — dev-only. Numbers come from content loaders;
+ * Admin Dashboard — 로그인 필요. Numbers come from content loaders;
  * recent comments come from the GitHub Discussions GraphQL API when
  * GITHUB_TOKEN is set, otherwise the section degrades to an empty state.
  */
@@ -13,16 +13,17 @@ import {
 } from "@/lib/post-stats";
 import { getRecentComments } from "@/lib/comments-recent";
 import { fmtDate } from "@/lib/tokens";
-import { DevOnlyNotice } from "@/components/layout/DevOnlyNotice";
+import { requireUser } from "@/lib/auth";
+import { signOut } from "@/app/login/actions";
 
 export const metadata = {
   title: "Admin",
 };
 
-const isDev = process.env.NODE_ENV === "development";
 
 export default async function Page() {
-  if (!isDev) return <DevOnlyNotice page="대시보드" />;
+  // proxy 가 이미 걸러내지만, 데이터에 손대기 직전에 한 번 더 확인한다.
+  await requireUser();
 
   const [posts, drafts, categories, monthly, thisWeek, comments] =
     await Promise.all([
@@ -66,6 +67,15 @@ export default async function Page() {
             {dateStr} · {weekCopy}
           </p>
         </div>
+        <div className="flex shrink-0 items-center gap-2">
+        <form action={signOut}>
+          <button
+            type="submit"
+            className="cursor-pointer rounded-full border border-border-token bg-surface px-4 py-2 font-sans text-[13px] font-medium text-ink-muted transition-colors hover:text-ink"
+          >
+            로그아웃
+          </button>
+        </form>
         <Link
           href="/admin/stats"
           className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border-token bg-surface px-4 py-2 font-sans text-[13px] font-medium text-ink no-underline transition-[border-color] hover:border-border-strong"
@@ -88,6 +98,7 @@ export default async function Page() {
           방문 통계
           <span className="text-ink-muted">→</span>
         </Link>
+        </div>
       </header>
 
       {/* Stats */}

@@ -8,7 +8,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCategories } from "@/lib/categories";
 import { dbAdmin } from "@/lib/supabase";
-import { SLUG_RE, devGuard, revalidateContent } from "@/lib/api-shared";
+import { SLUG_RE, requireApiUser, revalidateContent } from "@/lib/api-shared";
 
 /** FK 위반 — 아직 이 카테고리를 쓰는 글이 있다. */
 const FK_VIOLATION = "23503";
@@ -28,13 +28,13 @@ const CategorySchema = z.object({
 const CategoriesSchema = z.array(CategorySchema);
 
 export async function GET() {
-  const blocked = devGuard();
+  const blocked = await requireApiUser();
   if (blocked) return blocked;
   return NextResponse.json(await getCategories());
 }
 
 export async function PUT(req: Request) {
-  const blocked = devGuard();
+  const blocked = await requireApiUser();
   if (blocked) return blocked;
 
   let body: unknown;

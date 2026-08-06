@@ -7,7 +7,7 @@ import "server-only";
 import { z } from "zod";
 import { SLUG_RE } from "@/lib/api-shared";
 
-export { devGuard, revalidateContent } from "@/lib/api-shared";
+export { requireApiUser, revalidateContent } from "@/lib/api-shared";
 
 export const SeriesEntrySchema = z.object({
   id: z.string().regex(SLUG_RE, "id는 영소문자/숫자/하이픈만 허용"),

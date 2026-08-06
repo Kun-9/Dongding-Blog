@@ -9,7 +9,7 @@ import { NextResponse } from "next/server";
 import { dbAdmin } from "@/lib/supabase";
 import {
   PostBodySchema,
-  devGuard,
+  requireApiUser,
   postExists,
   revalidateContent,
   toRow,
@@ -18,7 +18,7 @@ import {
 type Ctx = { params: Promise<{ slug: string }> };
 
 export async function GET(_req: Request, { params }: Ctx) {
-  const blocked = devGuard();
+  const blocked = await requireApiUser();
   if (blocked) return blocked;
 
   const { slug } = await params;
@@ -49,7 +49,7 @@ export async function GET(_req: Request, { params }: Ctx) {
 }
 
 export async function PUT(req: Request, { params }: Ctx) {
-  const blocked = devGuard();
+  const blocked = await requireApiUser();
   if (blocked) return blocked;
 
   const { slug: currentSlug } = await params;
@@ -94,7 +94,7 @@ export async function PUT(req: Request, { params }: Ctx) {
 }
 
 export async function DELETE(_req: Request, { params }: Ctx) {
-  const blocked = devGuard();
+  const blocked = await requireApiUser();
   if (blocked) return blocked;
 
   const { slug } = await params;

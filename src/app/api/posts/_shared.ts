@@ -10,7 +10,7 @@ import { VisibilitySchema } from "@/lib/posts";
 import { dbAdmin } from "@/lib/supabase";
 
 export {
-  devGuard,
+  requireApiUser,
   todayISO,
   revalidateContent,
   SLUG_RE,

@@ -1,24 +1,17 @@
 /**
  * 콘텐츠 편집 API 공용 런타임 헬퍼.
  *
- * 콘텐츠 정본이 Supabase 로 옮겨간 뒤에도 편집 화면은 아직 로컬 전용이라
- * devGuard 를 유지한다 — 배포판에서 편집을 열려면 3단계에서 인증을 붙인 뒤
- * 이 가드를 세션 검사로 바꾼다.
+ * 편집 API 는 로그인한 사용자만 호출할 수 있다. 가드는 `requireApiUser` 가
+ * 맡으며(`lib/auth`), 프록시의 리다이렉트와 별개로 라우트마다 다시 확인한다.
  */
 import "server-only";
 
-import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
+
+export { requireApiUser } from "@/lib/auth";
 
 export const SLUG_RE = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
 export const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-
-export function devGuard(): NextResponse | null {
-  if (process.env.NODE_ENV !== "development") {
-    return new NextResponse("Not Found", { status: 404 });
-  }
-  return null;
-}
 
 export function todayISO(): string {
   return new Date().toISOString().slice(0, 10);

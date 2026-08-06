@@ -7,7 +7,7 @@ import { NextResponse } from "next/server";
 import { dbAdmin } from "@/lib/supabase";
 import {
   SeriesPatchSchema,
-  devGuard,
+  requireApiUser,
   revalidateContent,
   toRow,
 } from "../_shared";
@@ -15,7 +15,7 @@ import {
 type Ctx = { params: Promise<{ id: string }> };
 
 export async function PATCH(req: Request, { params }: Ctx) {
-  const blocked = devGuard();
+  const blocked = await requireApiUser();
   if (blocked) return blocked;
 
   const { id } = await params;
@@ -54,7 +54,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
 }
 
 export async function DELETE(_req: Request, { params }: Ctx) {
-  const blocked = devGuard();
+  const blocked = await requireApiUser();
   if (blocked) return blocked;
 
   const { id } = await params;

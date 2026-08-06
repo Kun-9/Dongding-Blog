@@ -6,13 +6,13 @@ import { dbAdmin } from "@/lib/supabase";
 import {
   BookmarkInputSchema,
   UNIQUE_VIOLATION,
-  devGuard,
+  requireApiUser,
   revalidateContent,
   todayISO,
 } from "./_shared";
 
 export async function POST(req: Request) {
-  const blocked = devGuard();
+  const blocked = await requireApiUser();
   if (blocked) return blocked;
 
   let raw: unknown;

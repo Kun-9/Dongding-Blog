@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.12.4",
     "@supabase/supabase-js": "^2.112.1",
     "github-slugger": "^2.0.0",
     "gray-matter": "^4.0.3",

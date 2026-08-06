@@ -4,13 +4,12 @@
  * Settings — dev-only editor for `src/lib/site.json` plus a localStorage-
  * backed editor preferences pane. The /api/settings PUT route persists the
  * site-wide form; comments (Giscus) stays read-only because it is configured
- * via .env. Production builds short-circuit to <DevOnlyNotice />.
+ * via .env. 접근은 proxy 의 로그인 검사로 막는다.
  */
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import type { ChangeEvent, ReactNode } from "react";
 import { site } from "@/lib/site";
 import siteJson from "@/lib/site.json";
-import { DevOnlyNotice } from "@/components/layout/DevOnlyNotice";
 import { safeWriteJSON } from "@/lib/storage";
 import { API } from "@/lib/api-routes";
 import {
@@ -18,7 +17,6 @@ import {
   type CatNode,
 } from "@/components/settings/CategoryManager";
 
-const isDev = process.env.NODE_ENV === "development";
 
 const giscus = {
   repo: process.env.NEXT_PUBLIC_GISCUS_REPO,
@@ -85,8 +83,8 @@ const SECTIONS: ReadonlyArray<readonly [string, string]> = [
 type SiteData = typeof siteJson;
 type SaveStatus = "idle" | "saving" | "saved" | { error: string };
 
+// 접근 차단은 proxy(로그인 리다이렉트)와 편집 API(401)가 맡는다.
 export default function Page() {
-  if (!isDev) return <DevOnlyNotice page="설정" />;
   return <SettingsView />;
 }
 

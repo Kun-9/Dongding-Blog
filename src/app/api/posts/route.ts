@@ -4,13 +4,13 @@
  */
 import { NextResponse } from "next/server";
 import { dbAdmin } from "@/lib/supabase";
-import { PostBodySchema, devGuard, revalidateContent, toRow } from "./_shared";
+import { PostBodySchema, requireApiUser, revalidateContent, toRow } from "./_shared";
 
 /** unique 위반 — 같은 slug 가 이미 있다. */
 const UNIQUE_VIOLATION = "23505";
 
 export async function POST(req: Request) {
-  const blocked = devGuard();
+  const blocked = await requireApiUser();
   if (blocked) return blocked;
 
   let raw: unknown;

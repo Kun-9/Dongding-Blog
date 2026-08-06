@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { devGuard } from "../_shared";
+import { requireApiUser } from "../_shared";
 
 const TIMEOUT_MS = 5000;
 const MAX_BYTES = 256 * 1024;
@@ -90,7 +90,7 @@ async function readCappedText(res: Response): Promise<string> {
 }
 
 export async function GET(req: Request) {
-  const blocked = devGuard();
+  const blocked = await requireApiUser();
   if (blocked) return blocked;
 
   const { searchParams } = new URL(req.url);

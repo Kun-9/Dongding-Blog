@@ -10,7 +10,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { NextResponse } from "next/server";
-import { devGuard } from "../../_shared";
+import { requireApiUser } from "../../_shared";
 
 const PUBLIC_POSTS_DIR = path.join(process.cwd(), "public", "posts");
 const MAX_BYTES = 12 * 1024 * 1024; // 12 MB
@@ -57,7 +57,7 @@ async function pickAvailable(
 type Ctx = { params: Promise<{ slug: string }> };
 
 export async function POST(req: Request, { params }: Ctx) {
-  const blocked = devGuard();
+  const blocked = await requireApiUser();
   if (blocked) return blocked;
 
   const { slug } = await params;

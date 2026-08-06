@@ -6,10 +6,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { DevOnlyNotice } from "@/components/layout/DevOnlyNotice";
 import { API } from "@/lib/api-routes";
 
-const isDev = process.env.NODE_ENV === "development";
 
 type Stat = number | { value: number };
 
@@ -129,7 +127,6 @@ export default function StatsPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isDev) return;
     setError(null);
     Promise.all([
       fetch(`${API.stats.summary}?days=${days}`).then((r) => r.json()),
@@ -157,8 +154,6 @@ export default function StatsPage() {
       })
       .catch((err) => setError(String(err)));
   }, [days]);
-
-  if (!isDev) return <DevOnlyNotice page="통계" />;
 
   if (error) {
     return (

@@ -8,7 +8,7 @@ import { NextResponse } from "next/server";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { z } from "zod";
-import { devGuard } from "../posts/_shared";
+import { requireApiUser } from "../posts/_shared";
 
 const SETTINGS_PATH = path.join(process.cwd(), "src", "lib", "site.json");
 
@@ -40,7 +40,7 @@ const SiteSchema = z.object({
 });
 
 export async function GET() {
-  const blocked = devGuard();
+  const blocked = await requireApiUser();
   if (blocked) return blocked;
 
   const raw = await fs.readFile(SETTINGS_PATH, "utf8");
@@ -50,7 +50,7 @@ export async function GET() {
 }
 
 export async function PUT(req: Request) {
-  const blocked = devGuard();
+  const blocked = await requireApiUser();
   if (blocked) return blocked;
 
   let body: unknown;
