@@ -90,7 +90,10 @@ console.log(`\n  브라우저에서 "연결 승인"을 눌러 주세요 (${BASE}
 console.log(`  ${authUrl}\n`);
 
 // 승인 페이지는 앱 도메인이라 루프백 서버가 뜨기 전에 열어도 상관없다.
-if (process.platform === "darwin") spawn("open", [authUrl], { stdio: "ignore" });
+// NO_OPEN=1 이면 열지 않는다 — 승인을 자동화(dev-browser)해서 돌릴 때 쓴다.
+if (process.platform === "darwin" && !process.env.NO_OPEN) {
+  spawn("open", [authUrl], { stdio: "ignore" });
+}
 
 const received = await new Promise((resolve, reject) => {
   const server = createServer((req, res) => {
