@@ -1,7 +1,6 @@
 /**
- * Admin Stats — dev-only. Fetches from /api/stats/* which proxies Umami.
- * The proxy routes are removed by static-build.mjs at prod build time, so
- * this page renders the dev-only notice when NODE_ENV is not "development".
+ * Admin Stats — /api/stats/* 프록시를 통해 Umami 공유 링크를 읽는다.
+ * 진입은 헤더 아바타 드롭다운(AdminMenu)의 "통계".
  */
 "use client";
 

@@ -67,8 +67,8 @@ export default async function Page() {
             {dateStr} · {weekCopy}
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-        <form action={signOut}>
+        {/* ponytail: 통계 진입은 헤더 아바타 드롭다운(AdminMenu)에 있다 */}
+        <form action={signOut} className="shrink-0">
           <button
             type="submit"
             className="cursor-pointer rounded-full border border-border-token bg-surface px-4 py-2 font-sans text-[13px] font-medium text-ink-muted transition-colors hover:text-ink"
@@ -76,29 +76,6 @@ export default async function Page() {
             로그아웃
           </button>
         </form>
-        <Link
-          href="/admin/stats"
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border-token bg-surface px-4 py-2 font-sans text-[13px] font-medium text-ink no-underline transition-[border-color] hover:border-border-strong"
-        >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <line x1="18" y1="20" x2="18" y2="10" />
-            <line x1="12" y1="20" x2="12" y2="4" />
-            <line x1="6" y1="20" x2="6" y2="14" />
-          </svg>
-          방문 통계
-          <span className="text-ink-muted">→</span>
-        </Link>
-        </div>
       </header>
 
       {/* Stats */}
