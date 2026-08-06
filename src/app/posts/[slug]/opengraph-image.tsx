@@ -2,12 +2,14 @@ import { ImageResponse } from "next/og";
 import { getPostBySlug, getAllPosts } from "@/lib/posts";
 import { getCategory } from "@/lib/categories";
 import { site } from "@/lib/site";
+import { getSite } from "@/lib/site-db";
 import { OG_COLORS, OG_SIZE } from "@/lib/og-tokens";
 
 export const runtime = "nodejs"; // Supabase 조회를 위해 node 런타임
 export const size = OG_SIZE;
 export const contentType = "image/png";
 
+// 배포 도메인이라 env/빌드 시점에 고정된다 — 설정 화면 값과 무관하게 둔다.
 const SITE_HOST = new URL(site.url).host;
 
 export async function generateStaticParams() {
@@ -26,7 +28,10 @@ export default async function OpengraphImage({
       size,
     );
   }
-  const cat = await getCategory(post.meta.category);
+  const [cat, siteMeta] = await Promise.all([
+    getCategory(post.meta.category),
+    getSite(),
+  ]);
 
   return new ImageResponse(
     (
@@ -69,7 +74,7 @@ export default async function OpengraphImage({
           >
             동
           </div>
-          <span>{cat?.name ?? site.shortTitle}</span>
+          <span>{cat?.name ?? siteMeta.shortTitle}</span>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column" }}>

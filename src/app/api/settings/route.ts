@@ -1,48 +1,21 @@
 /**
- * Dev-only settings API. Reads/writes `src/lib/site.json` so the Settings
- * page can persist site-wide config changes from a local `npm run dev`
- * session. Production builds (`BUILD_TARGET=static`) exclude API routes
- * entirely; this 404 guard is belt-and-suspenders for non-static dev runs.
+ * 사이트 전역 설정 API. 정본은 Supabase `site_settings` 한 행이다.
+ *
+ * 예전에는 `src/lib/site.json` 을 fs.writeFile 로 덮어썼는데, Vercel 서버리스는
+ * 파일시스템이 읽기 전용이라 운영에서 저장이 500 으로 떨어졌다. 쓰기가 됐더라도
+ * site.json 은 빌드 타임 import 라 렌더에는 반영되지 않았다.
  */
 import { NextResponse } from "next/server";
-import { promises as fs } from "node:fs";
-import path from "node:path";
-import { z } from "zod";
-import { requireApiUser } from "../posts/_shared";
-
-const SETTINGS_PATH = path.join(process.cwd(), "src", "lib", "site.json");
-
-const SiteSchema = z.object({
-  url: z.string().url(),
-  title: z.string().min(1),
-  shortTitle: z.string().min(1),
-  description: z.string().min(1),
-  lang: z.string().min(1),
-  locale: z.string().min(1),
-  copyright: z.string().min(1),
-  author: z.string().min(1),
-  handle: z.string().min(1),
-  bio: z.string(),
-  intro: z.string(),
-  og: z.object({
-    headline: z.array(z.string().min(1)).min(1).max(3),
-    tagline: z.string(),
-    label: z.string().min(1),
-  }),
-  social: z.object({
-    github: z.string(),
-    email: z.string(),
-  }),
-});
+import { dbAdmin } from "@/lib/supabase";
+import { getStoredSite, SiteSchema } from "@/lib/site-db";
+import { requireApiUser, revalidateContent } from "../posts/_shared";
 
 export async function GET() {
   const blocked = await requireApiUser();
   if (blocked) return blocked;
 
-  const raw = await fs.readFile(SETTINGS_PATH, "utf8");
-  return new NextResponse(raw, {
-    headers: { "Content-Type": "application/json; charset=utf-8" },
-  });
+  // env 오버라이드를 얹지 않은 저장값. 폼이 편집하는 값 그대로여야 한다.
+  return NextResponse.json(await getStoredSite());
 }
 
 export async function PUT(req: Request) {
@@ -64,8 +37,18 @@ export async function PUT(req: Request) {
     );
   }
 
-  const json = `${JSON.stringify(parsed.data, null, 2)}\n`;
-  await fs.writeFile(SETTINGS_PATH, json, "utf8");
+  const { error } = await dbAdmin()
+    .from("site_settings")
+    .upsert({ id: 1, data: parsed.data, updated_at: new Date().toISOString() });
+  if (error) {
+    return NextResponse.json(
+      { error: `설정 저장 실패: ${error.message}` },
+      { status: 500 },
+    );
+  }
+
+  // 제목·저작권·OG 문구가 루트 레이아웃과 모든 글에 걸려 있다.
+  revalidateContent();
 
   return NextResponse.json(parsed.data);
 }

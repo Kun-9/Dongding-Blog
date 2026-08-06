@@ -9,11 +9,16 @@
 import { useEffect, useState } from "react";
 import { CTA } from "@/components/ui/CTA";
 import { ToastBanner, type Toast } from "@/components/ui/ToastBanner";
-import { site } from "@/lib/site";
 
-export function EmailCopy({ as = "link" }: { as?: "link" | "cta" }) {
+export function EmailCopy({
+  email,
+  as = "link",
+}: {
+  /** site.social.email. 정본이 DB 라 서버에서 내려받는다. */
+  email: string;
+  as?: "link" | "cta";
+}) {
   const [toast, setToast] = useState<Toast | null>(null);
-  const email = site.social.email;
 
   useEffect(() => {
     if (!toast) return;

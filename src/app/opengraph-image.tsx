@@ -1,13 +1,17 @@
 import { ImageResponse } from "next/og";
-import { site } from "@/lib/site";
+import { site as siteDefaults } from "@/lib/site";
+import { getSite } from "@/lib/site-db";
 import { OG_COLORS, OG_SIZE } from "@/lib/og-tokens";
 
 export const dynamic = "force-static";
 export const size = OG_SIZE;
 export const contentType = "image/png";
-export const alt = site.title;
+// alt 는 모듈 export 라 await 할 수 없다. 이 한 줄만 번들 기본값을 쓴다.
+export const alt = siteDefaults.title;
 
-export default function OpengraphImage() {
+export default async function OpengraphImage() {
+  const site = await getSite();
+
   return new ImageResponse(
     (
       <div

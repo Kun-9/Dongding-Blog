@@ -1,12 +1,13 @@
 "use client";
 
 /**
- * Settings — dev-only editor for `src/lib/site.json` plus a localStorage-
- * backed editor preferences pane. The /api/settings PUT route persists the
- * site-wide form; comments (Giscus) stays read-only because it is configured
- * via .env. 접근은 proxy 의 로그인 검사로 막는다.
+ * Settings — 사이트 전역 설정 편집기 + localStorage 기반 에디터 환경설정.
+ * 전역 설정의 정본은 Supabase `site_settings` 이고 /api/settings 가 읽고 쓴다.
+ * 댓글(Giscus)은 .env 로 설정하므로 읽기 전용이다.
+ * 접근은 proxy 의 로그인 검사로 막는다.
  */
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useRouter } from "next/navigation";
 import type { ChangeEvent, ReactNode } from "react";
 import { site } from "@/lib/site";
 import siteJson from "@/lib/site.json";
@@ -87,7 +88,11 @@ export default function Page() {
 }
 
 function SettingsView() {
+  const router = useRouter();
+  // 정본은 DB 지만 초기값은 번들에 박힌 기본값으로 채운다 — 로딩 중 빈 폼이
+  // 깜빡이지 않게. 아래 effect 가 저장값을 받아 폼과 기준선을 함께 교체한다.
   const [form, setForm] = useState<SiteData>(siteJson);
+  const [baseline, setBaseline] = useState(() => JSON.stringify(siteJson));
   const [status, setStatus] = useState<SaveStatus>("idle");
   // 카테고리 정본이 DB 라 API 로 받아온다. null 은 "아직 안 옴".
   const [categories, setCategories] = useState<CatNode[] | null>(null);
@@ -107,9 +112,23 @@ function SettingsView() {
     };
   }, []);
 
-  const initial = JSON.stringify(siteJson);
-  const current = JSON.stringify(form);
-  const dirty = current !== initial;
+  useEffect(() => {
+    let cancelled = false;
+    fetch(API.settings)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: unknown) => {
+        // 실패하면 기본값을 그대로 둔다 — 저장할 때 검증에서 다시 걸린다.
+        if (cancelled || !data) return;
+        setForm(data as SiteData);
+        setBaseline(JSON.stringify(data));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const dirty = JSON.stringify(form) !== baseline;
   const displayStatus: SaveStatus =
     status === "saved" && dirty ? "idle" : status;
 
@@ -142,14 +161,17 @@ function SettingsView() {
         };
         throw new Error(data.error ?? `HTTP ${res.status}`);
       }
+      setBaseline(JSON.stringify(form));
       setStatus("saved");
+      // 헤더·푸터·메타가 서버에서 렌더되므로 새로 받아야 반영이 보인다.
+      router.refresh();
     } catch (e) {
       setStatus({ error: e instanceof Error ? e.message : String(e) });
     }
   };
 
   const reset = () => {
-    setForm(siteJson);
+    setForm(JSON.parse(baseline) as SiteData);
     setStatus("idle");
   };
 
@@ -195,17 +217,17 @@ function SettingsView() {
             설정
           </h1>
           <p className="mt-2 text-sm leading-[1.6] text-ink-muted">
-            글로벌 값은{" "}
+            글로벌 값은 Supabase{" "}
             <code className="rounded bg-surface-alt px-1 py-px font-mono text-[12px]">
-              src/lib/site.json
+              site_settings
             </code>
-            에 저장됩니다. 저장하면 자동으로 페이지가 다시 로드되고, git diff로
-            변경 내용을 확인 후 commit하고 push하면 배포에 반영됩니다.
+            에 저장됩니다. 저장하면 캐시를 비우고 사이트에 바로 반영되므로 배포는
+            필요하지 않습니다.
           </p>
         </header>
 
         {/* PROFILE */}
-        <Card id="settings-profile" title="프로필" source="site.json">
+        <Card id="settings-profile" title="프로필" source="supabase · site_settings">
           <Row label="핸들">
             <TextInput
               value={form.handle}
@@ -235,7 +257,7 @@ function SettingsView() {
         <Card
           id="settings-social"
           title="소셜 링크"
-          source="site.json → social"
+          source="supabase · site_settings → social"
         >
           <Row label="GitHub">
             <TextInput
@@ -313,7 +335,7 @@ function SettingsView() {
         </Card>
 
         {/* SEO */}
-        <Card id="settings-seo" title="SEO · 메타" source="site.json">
+        <Card id="settings-seo" title="SEO · 메타" source="supabase · site_settings → og">
           <Row label="사이트 제목">
             <TextInput
               value={form.title}

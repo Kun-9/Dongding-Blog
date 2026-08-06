@@ -14,7 +14,7 @@ import {
 } from "@/lib/posts";
 import { getSeriesByIdWithPosts } from "@/lib/series";
 import { resolveCategory } from "@/lib/categories";
-import { site } from "@/lib/site";
+import { getSite } from "@/lib/site-db";
 import { fmtDate } from "@/lib/tokens";
 import { renderMarkdown } from "@/lib/markdown";
 
@@ -66,9 +66,10 @@ export default async function Page({
 
   const content = renderMarkdown(post.body);
 
-  const [cat, { prev, next }] = await Promise.all([
+  const [cat, { prev, next }, site] = await Promise.all([
     resolveCategory(post.meta.category),
     getAdjacentPosts(slug),
+    getSite(),
   ]);
   const toc = post.meta.toc ?? [];
 

@@ -7,7 +7,7 @@ import { Footer } from "@/components/layout/Footer";
 import { Umami } from "@/components/analytics/Umami";
 import { getCategories } from "@/lib/categories";
 import { getAllPosts } from "@/lib/posts";
-import { site } from "@/lib/site";
+import { getSite } from "@/lib/site-db";
 
 const jetbrainsMono = JetBrains_Mono({
   variable: "--font-jetbrains-mono",
@@ -15,14 +15,17 @@ const jetbrainsMono = JetBrains_Mono({
   weight: ["400", "500", "600", "700"],
 });
 
-export const metadata: Metadata = {
-  metadataBase: new URL(site.url),
-  title: {
-    default: site.title,
-    template: `%s · ${site.shortTitle}`,
-  },
-  description: site.description,
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const site = await getSite();
+  return {
+    metadataBase: new URL(site.url),
+    title: {
+      default: site.title,
+      template: `%s · ${site.shortTitle}`,
+    },
+    description: site.description,
+  };
+}
 
 export default async function RootLayout({
   children,
@@ -30,16 +33,17 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   // Fetched server-side so the client Header can hand them to CommandPalette.
-  const [posts, categories] = await Promise.all([
+  const [posts, categories, site] = await Promise.all([
     getAllPosts(),
     getCategories(),
+    getSite(),
   ]);
 
   return (
     <html lang={site.lang} suppressHydrationWarning data-scroll-behavior="smooth" className={jetbrainsMono.variable}>
       <body className="scenic-glow min-h-screen">
         <ThemeProvider>
-          <Header categories={categories} posts={posts} />
+          <Header categories={categories} posts={posts} title={site.shortTitle} />
           {children}
           <Footer />
         </ThemeProvider>

@@ -13,15 +13,16 @@ import { CommandPalette } from "@/components/command/CommandPalette";
 import { AdminMenu } from "@/components/layout/AdminMenu";
 import { Avatar } from "@/components/layout/Avatar";
 import { useMounted } from "@/lib/hooks";
-import { site } from "@/lib/site";
 import type { Category, PostMeta } from "@/lib/types";
 
 interface Props {
   categories: Category[];
   posts: PostMeta[];
+  /** site.shortTitle. 정본이 DB 라 서버에서 내려받는다. */
+  title: string;
 }
 
-export function Header({ categories, posts }: Props) {
+export function Header({ categories, posts, title }: Props) {
   const pathname = usePathname();
   const { resolvedTheme, setTheme } = useTheme();
   const [openK, setOpenK] = useState(false);
@@ -74,7 +75,7 @@ export function Header({ categories, posts }: Props) {
             <Avatar />
             <Link href="/" className="no-underline">
               <span className="whitespace-nowrap font-sans text-[17px] font-bold tracking-[-0.025em] text-ink">
-                {site.shortTitle}
+                {title}
               </span>
             </Link>
           </div>

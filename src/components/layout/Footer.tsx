@@ -3,9 +3,11 @@
  * Port of components.jsx#Footer.
  */
 import { EmailCopy } from "@/components/ui/EmailCopy";
-import { site } from "@/lib/site";
+import { getSite } from "@/lib/site-db";
 
-export function Footer() {
+export async function Footer() {
+  const site = await getSite();
+
   return (
     <footer className="mx-auto mt-20 flex max-w-[1180px] flex-wrap items-center justify-between gap-4 border-t border-border-token px-8 py-8 font-sans text-[13px] text-ink-muted">
       <div>{site.copyright}</div>
@@ -16,7 +18,7 @@ export function Footer() {
         >
           GitHub
         </a>
-        <EmailCopy />
+        <EmailCopy email={site.social.email} />
       </div>
     </footer>
   );

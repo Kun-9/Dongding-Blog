@@ -3,7 +3,7 @@
  */
 import { CTA } from "@/components/ui/CTA";
 import { EmailCopy } from "@/components/ui/EmailCopy";
-import { site } from "@/lib/site";
+import { getSite } from "@/lib/site-db";
 
 export const metadata = {
   title: "About",
@@ -23,7 +23,9 @@ const INTERESTS = [
   "LLM 워크플로우",
 ];
 
-export default function Page() {
+export default async function Page() {
+  const site = await getSite();
+
   return (
     <main className="mx-auto max-w-[720px] px-8 pt-16">
       <header className="mb-10">
@@ -99,7 +101,7 @@ export default function Page() {
         </h2>
         <div className="flex gap-2.5">
           <CTA href={`https://${site.social.github}`}>GitHub</CTA>
-          <EmailCopy as="cta" />
+          <EmailCopy email={site.social.email} as="cta" />
         </div>
       </section>
     </main>

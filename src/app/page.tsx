@@ -8,7 +8,7 @@ import { getAllPosts, getFeaturedPost } from "@/lib/posts";
 import { getCategoriesWithCounts } from "@/lib/category-stats";
 import { getAllSeries } from "@/lib/series";
 import { resolveCategoryIn } from "@/lib/category-utils";
-import { site } from "@/lib/site";
+import { getSite } from "@/lib/site-db";
 import { fmtDate } from "@/lib/tokens";
 import { CTA } from "@/components/ui/CTA";
 import { TagChip } from "@/components/post/TagChip";
@@ -18,10 +18,11 @@ import { InlineCode } from "@/components/prose/InlineCode";
 import { TopPosts } from "@/components/analytics/TopPosts";
 
 export default async function Page() {
-  const [all, featuredPost, categories, seriesList] = await Promise.all([
+  const [all, featuredPost, categories, site, seriesList] = await Promise.all([
     getAllPosts(),
     getFeaturedPost(),
     getCategoriesWithCounts(),
+    getSite(),
     getAllSeries(),
   ]);
   const featured = featuredPost ?? all[0];
