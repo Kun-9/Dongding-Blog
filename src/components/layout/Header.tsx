@@ -11,6 +11,7 @@ import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import { CommandPalette } from "@/components/command/CommandPalette";
 import { AdminMenu } from "@/components/layout/AdminMenu";
+import { Avatar } from "@/components/layout/Avatar";
 import { useMounted } from "@/lib/hooks";
 import { site } from "@/lib/site";
 import type { Category, PostMeta } from "@/lib/types";
@@ -68,23 +69,15 @@ export function Header({ categories, posts }: Props) {
         }}
       >
         <div className="mx-auto flex max-w-[1180px] items-center justify-between px-5 py-3.5 md:px-8">
-          <Link
-            href="/"
-            className="flex shrink-0 items-center gap-2.5 no-underline"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/avatar.svg"
-              alt=""
-              width={30}
-              height={30}
-              className="h-[30px] w-[30px] rounded-full"
-              style={{ boxShadow: "inset 0 0 0 0.5px rgba(0,0,0,0.2)" }}
-            />
-            <span className="whitespace-nowrap font-sans text-[17px] font-bold tracking-[-0.025em] text-ink">
-              {site.shortTitle}
-            </span>
-          </Link>
+          {/* 아바타는 홈 링크에서 떼어냈다 — 눌러도 이동하지 않고 표정만 바뀐다. */}
+          <div className="flex shrink-0 items-center gap-2.5">
+            <Avatar />
+            <Link href="/" className="no-underline">
+              <span className="whitespace-nowrap font-sans text-[17px] font-bold tracking-[-0.025em] text-ink">
+                {site.shortTitle}
+              </span>
+            </Link>
+          </div>
 
           <div className="flex items-center gap-1">
             <div className="hidden items-center gap-1 md:flex">
