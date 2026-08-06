@@ -52,3 +52,6 @@ tmp/
 
 # Local-only operations docs (secrets, design notes, plans)
 /docs/
+
+# Vercel
+.vercel

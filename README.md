@@ -2,23 +2,23 @@
 
 Java, Spring, DB, 시스템 설계 등을 정리해두는 개인 기술 블로그.
 
-[https://kun-9.github.io/Dongding-Blog](https://kun-9.github.io/Dongding-Blog)
+[https://dongding-blog.vercel.app](https://dongding-blog.vercel.app)
 
 ## 구성
 
 - 글: Java, Spring, DB(JPA·MySQL), 시스템 설계, 면접, 알고리즘 풀이
 - 시리즈, 태그, 북마크 라우트
 - 클라이언트 검색과 `/feed.xml` RSS
-- 로컬에서 글을 작성·미리보기하는 `/studio` 에디터
+- 글을 작성·미리보기하는 `/studio` 에디터
 
 ## 스택
 
-- Next.js 16 (App Router, 정적 export)
+- Next.js 16 (App Router, SSR/ISR)
 - React 19, TypeScript 5
 - Tailwind CSS v4
+- Supabase (Postgres) — 글·시리즈·카테고리·북마크의 정본
 - 자체 마크다운 파서 (MDX 미사용)
-- gray-matter + zod로 frontmatter 검증
-- GitHub Pages 배포
+- Vercel 배포
 
 ## 개발
 
@@ -27,44 +27,54 @@ npm install
 npm run dev          # http://localhost:3000
 ```
 
-dev 모드에서만 `/studio`(에디터)와 `/admin`이 활성화됩니다.
+`.env.local`에 Supabase 접속 정보가 필요합니다(`.env.example` 참고).
+로컬 개발도 원격 Supabase 프로젝트를 그대로 바라봅니다 — **dev에서 고친 글이
+곧바로 배포판에 반영된다**는 뜻이니 주의하세요.
+
+dev 모드에서만 `/studio`(에디터)와 `/admin`, `/settings`가 활성화됩니다.
 
 ## 빌드
 
 ```bash
-npm run build        # 정적 사이트 → out/
+npm run build        # next build (빌드 시 Supabase 에서 글을 읽어 프리렌더)
 ```
 
-`scripts/static-build.mjs`가 `next build`를 감싸서 GitHub Pages용 `basePath`를 적용하고, 정적 export가 거부하는 dev 전용 PUT 라우트(`src/app/api`)를 빌드 동안 잠시 빼뒀다가 원복합니다.
+공개 페이지는 ISR 1시간이며, 글을 저장하면 편집 API가 `revalidatePath`로
+캐시를 즉시 비웁니다.
 
-## 글 작성
+## 데이터
 
-`content/posts/<slug>.md` 형식. frontmatter는 `src/lib/posts.ts`의 zod 스키마로 검증합니다.
+정본은 Supabase입니다. 스키마는 `supabase/migrations/`에 있고, 적용은
+`supabase db push`로 합니다.
 
-```yaml
----
-title: 글 제목
-summary: 한두 줄 요약
-category: spring             # src/lib/categories.json 의 id
-tags: [spring, jpa]
-date: 2026-04-27             # YYYY-MM-DD
-featured: false
-visibility: published        # published | private | draft
----
+| 테이블 | 비고 |
+|---|---|
+| `posts` | `slug`는 rename 가능해 PK 대신 unique. 본문은 `body` 컬럼 |
+| `series` | `planned_count`는 발행 수가 아니라 **계획 편수** (미작성 회차를 대시로 표시) |
+| `categories` | `parent_id` self-reference로 2계층 |
+| `bookmarks` | `url` unique |
+
+RLS는 공개 읽기만 허용하고 쓰기 정책은 두지 않았습니다 — 변경은 secret 키를
+쓰는 서버 경로에서만 가능합니다. 경계가 살아 있는지는 아래로 확인합니다.
+
+```bash
+node --env-file=.env.local scripts/verify-rls.mjs
 ```
 
-`draft`는 빌드 결과에서 제외됩니다.
+`readTime`과 목차는 본문에서 파생하므로 저장하지 않습니다(frontmatter로
+명시했던 값만 `read_time`에 남아 있습니다).
 
 ## 디렉토리
 
 ```
-src/app/         라우트
-src/components/  UI
-src/lib/         posts · markdown · categories · site
-content/posts/   글 (Markdown)
-scripts/         빌드 스크립트
+src/app/            라우트
+src/components/     UI
+src/lib/            posts · markdown · categories · supabase · site
+supabase/migrations 스키마
+scripts/            검증·이관 스크립트
+public/posts/       글 이미지
 ```
 
 ## 라이선스
 
-`content/` 아래의 글은 저작자 Kun-9에게 권리가 있습니다. 인용 시 출처를 남겨주세요.
+글의 권리는 저작자 Kun-9에게 있습니다. 인용 시 출처를 남겨주세요.
