@@ -48,7 +48,7 @@ function rain(svg: SVGSVGElement) {
   }
 }
 
-export function Avatar() {
+export function Avatar({ size = 30 }: { size?: number }) {
   const ref = useRef<SVGSVGElement>(null);
   const combo = useRef(0);
   const face = useRef(0);
@@ -148,7 +148,8 @@ export function Avatar() {
       type="button"
       onClick={onClick}
       aria-label="아바타 인사"
-      className="h-[30px] w-[30px] shrink-0 cursor-pointer rounded-full border-none bg-transparent p-0"
+      style={{ width: size, height: size }}
+      className="shrink-0 cursor-pointer rounded-full border-none bg-transparent p-0"
     >
       <svg
         ref={ref}

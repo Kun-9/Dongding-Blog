@@ -18,6 +18,7 @@ import { getSite } from "@/lib/site-db";
 import { fmtDate } from "@/lib/tokens";
 import { renderMarkdown } from "@/lib/markdown";
 
+import { Avatar } from "@/components/layout/Avatar";
 import { TagChip } from "@/components/post/TagChip";
 import { PostViews } from "@/components/analytics/PostViews";
 import { TOC } from "@/components/prose/TOC";
@@ -179,9 +180,7 @@ export default async function Page({
               {post.meta.summary}
             </p>
             <div className="flex flex-wrap items-center gap-3.5 border-t border-border-token pt-4">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full border border-border-token bg-surface-alt font-sans text-[13px] font-bold text-ink">
-                동
-              </div>
+              <Avatar size={36} />
               <div className="flex-1 text-[13.5px]">
                 <div className="font-medium text-ink">{site.author}</div>
                 <div className="mt-px flex flex-wrap items-center gap-1.5 font-mono tabular-nums text-ink-muted">
