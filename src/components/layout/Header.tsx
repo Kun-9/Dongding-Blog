@@ -74,7 +74,7 @@ export function Header({ categories, posts }: Props) {
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/mark.svg"
+              src="/avatar.svg"
               alt=""
               width={30}
               height={30}
