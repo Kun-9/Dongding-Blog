@@ -17,7 +17,6 @@ import {
   type CatNode,
 } from "@/components/settings/CategoryManager";
 
-
 const giscus = {
   repo: process.env.NEXT_PUBLIC_GISCUS_REPO,
   repoId: process.env.NEXT_PUBLIC_GISCUS_REPO_ID,
@@ -76,7 +75,6 @@ const SECTIONS: ReadonlyArray<readonly [string, string]> = [
   ["categories", "카테고리"],
   ["comments", "댓글"],
   ["seo", "SEO · 메타"],
-  ["publish", "발행"],
   ["editor", "에디터"],
 ];
 
@@ -129,14 +127,6 @@ function SettingsView() {
     key: K,
     value: SiteData["og"][K],
   ) => setForm((prev) => ({ ...prev, og: { ...prev.og, [key]: value } }));
-  const setPublish = <K extends keyof SiteData["publish"]>(
-    key: K,
-    value: SiteData["publish"][K],
-  ) =>
-    setForm((prev) => ({
-      ...prev,
-      publish: { ...prev.publish, [key]: value },
-    }));
 
   const save = async () => {
     setStatus("saving");
@@ -258,13 +248,6 @@ function SettingsView() {
             <TextInput
               value={form.social.email}
               onChange={(v) => setSocial("email", v)}
-              mono
-            />
-          </Row>
-          <Row label="RSS">
-            <TextInput
-              value={form.social.rss}
-              onChange={(v) => setSocial("rss", v)}
               mono
             />
           </Row>
@@ -408,23 +391,6 @@ function SettingsView() {
               value={form.og.label}
               onChange={(v) => setOg("label", v)}
               mono
-            />
-          </Row>
-        </Card>
-
-        {/* PUBLISH */}
-        <Card
-          id="settings-publish"
-          title="발행"
-          source="site.json → publish"
-        >
-          <Row label="RSS 글 개수">
-            <NumberInput
-              value={form.publish.rssLimit}
-              onChange={(v) => setPublish("rssLimit", v)}
-              min={1}
-              max={100}
-              suffix="편"
             />
           </Row>
         </Card>
@@ -648,40 +614,6 @@ function Textarea({
         <div className="mt-1 text-right font-mono text-[11px] text-ink-muted">
           {hint}
         </div>
-      )}
-    </div>
-  );
-}
-
-function NumberInput({
-  value,
-  onChange,
-  min,
-  max,
-  suffix,
-}: {
-  value: number;
-  onChange: (v: number) => void;
-  min?: number;
-  max?: number;
-  suffix?: string;
-}) {
-  return (
-    <div className="flex items-center gap-2">
-      <input
-        type="number"
-        value={value}
-        min={min}
-        max={max}
-        onChange={(e: ChangeEvent<HTMLInputElement>) => {
-          const n = Number(e.target.value);
-          if (Number.isFinite(n)) onChange(n);
-        }}
-        className="w-[100px] rounded-md border border-border-token bg-bg px-2.5 py-[7px] font-mono text-[13px] tabular-nums text-ink outline-none"
-        style={{ background: "var(--bg)" }}
-      />
-      {suffix && (
-        <code className="font-mono text-xs text-ink-muted">{suffix}</code>
       )}
     </div>
   );

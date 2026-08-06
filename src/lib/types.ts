@@ -95,11 +95,6 @@ export interface SiteMeta {
   social: {
     github: string;
     email: string;
-    rss: string;
-  };
-
-  publish: {
-    rssLimit: number;
   };
 }
 

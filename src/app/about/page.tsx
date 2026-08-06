@@ -2,6 +2,7 @@
  * About — port of project/page-about-404.jsx#AboutPage.
  */
 import { CTA } from "@/components/ui/CTA";
+import { EmailCopy } from "@/components/ui/EmailCopy";
 import { site } from "@/lib/site";
 
 export const metadata = {
@@ -98,12 +99,7 @@ export default function Page() {
         </h2>
         <div className="flex gap-2.5">
           <CTA href={`https://${site.social.github}`}>GitHub</CTA>
-          <CTA dark={false} href={`mailto:${site.social.email}`}>
-            Email
-          </CTA>
-          <CTA dark={false} href={site.social.rss}>
-            RSS
-          </CTA>
+          <EmailCopy as="cta" />
         </div>
       </section>
     </main>

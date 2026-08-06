@@ -19,7 +19,7 @@ export function todayISO(): string {
 
 /**
  * 콘텐츠가 바뀌면 ISR 캐시를 통째로 비운다.
- * ponytail: 글 한 편이 목록·카테고리·태그·시리즈·사이트맵·RSS 에 동시에
+ * ponytail: 글 한 편이 목록·카테고리·태그·시리즈·사이트맵 에 동시에
  * 걸리므로 경로를 하나씩 세는 것보다 루트 레이아웃째 무효화가 싸고 정확하다.
  */
 export function revalidateContent(): void {

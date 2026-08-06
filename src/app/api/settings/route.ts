@@ -32,10 +32,6 @@ const SiteSchema = z.object({
   social: z.object({
     github: z.string(),
     email: z.string(),
-    rss: z.string(),
-  }),
-  publish: z.object({
-    rssLimit: z.number().int().min(1).max(100),
   }),
 });
 
