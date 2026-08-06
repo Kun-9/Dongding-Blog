@@ -199,6 +199,31 @@ const HEADER_CLASS: Record<1 | 2 | 3 | 4, string> = {
 };
 
 /**
+ * A pipe table starts on a `|` line whose next line is a delimiter row
+ * (`|---|---|`). The `-` requirement keeps a bare `---` horizontal rule out.
+ */
+function isTableStart(lines: string[], i: number): boolean {
+  const next = lines[i + 1];
+  return (
+    lines[i].trim().startsWith("|") &&
+    next !== undefined &&
+    /^[\s|:-]+$/.test(next) &&
+    next.includes("|") &&
+    next.includes("-")
+  );
+}
+
+/** Split a table row into cells. `\|` escapes a literal pipe inside a cell. */
+function splitRow(line: string): string[] {
+  return line
+    .trim()
+    .replace(/^\|/, "")
+    .replace(/\|$/, "")
+    .split(/(?<!\\)\|/)
+    .map((c) => c.trim().replace(/\\\|/g, "|"));
+}
+
+/**
  * Render markdown source to React nodes. Pure function (no hooks) — safe in
  * both server components (PostDetail) and client (Studio preview).
  *
@@ -443,6 +468,57 @@ export function renderMarkdown(
       continue;
     }
 
+    // Table — GFM pipe table: header row, delimiter row, then body rows
+    if (isTableStart(lines, i)) {
+      const head = splitRow(lines[i]);
+      i += 2; // header + delimiter
+      const rows: string[][] = [];
+      while (i < lines.length && lines[i].trim().startsWith("|")) {
+        rows.push(splitRow(lines[i]));
+        i++;
+      }
+      const baseKey = k();
+      out.push(
+        <div key={baseKey} className="mb-5 overflow-x-auto">
+          <table className="w-full border-collapse font-sans text-[15px] leading-[1.7] text-ink-soft">
+            <thead>
+              <tr>
+                {head.map((cell, idx) => (
+                  <th
+                    key={idx}
+                    className="whitespace-nowrap border-b border-border-strong px-3 py-2 text-left font-semibold text-ink"
+                  >
+                    {renderInline(cell, {
+                      ...inlineBase,
+                      keyBase: `${baseKey}-th-${idx}`,
+                    })}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, ridx) => (
+                <tr key={ridx}>
+                  {row.map((cell, cidx) => (
+                    <td
+                      key={cidx}
+                      className="border-b border-border-token px-3 py-2 align-top"
+                    >
+                      {renderInline(cell, {
+                        ...inlineBase,
+                        keyBase: `${baseKey}-td-${ridx}-${cidx}`,
+                      })}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>,
+      );
+      continue;
+    }
+
     // Paragraph — collect contiguous non-block lines
     const paraLines = [ln];
     i++;
@@ -454,7 +530,8 @@ export function renderMarkdown(
       !lines[i].startsWith(">") &&
       !/^-\s+/.test(lines[i]) &&
       !/^\d+\.\s+/.test(lines[i]) &&
-      !/^---+\s*$/.test(lines[i])
+      !/^---+\s*$/.test(lines[i]) &&
+      !isTableStart(lines, i)
     ) {
       paraLines.push(lines[i]);
       i++;
