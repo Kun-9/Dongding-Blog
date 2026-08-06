@@ -72,7 +72,7 @@ src/components/     UI
 src/lib/            posts · markdown · categories · supabase · site
 supabase/migrations 스키마
 scripts/            검증·이관 스크립트
-public/posts/       글 이미지
+
 ```
 
 ## 라이선스

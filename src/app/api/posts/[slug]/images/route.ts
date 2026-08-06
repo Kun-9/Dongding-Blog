@@ -1,18 +1,19 @@
 /**
- * Dev-only image upload — POST multipart/form-data with field "file" saves
- * the binary under `public/posts/{slug}/{name}` and returns the public URL.
+ * 글 이미지 업로드 — multipart/form-data 의 "file" 을 Supabase Storage
+ * (post-images/{slug}/{name})에 올리고 본문에 넣을 경로를 돌려준다.
  *
- * On filename collision an incrementing `-1`, `-2`, … suffix is appended so
- * uploads never overwrite an existing asset. The post itself does NOT need
- * to exist yet — uploading to a slug that has no .md file is allowed so the
- * Studio can persist images alongside an autosaved draft.
+ * 돌려주는 URL 은 Storage 주소가 아니라 예전과 같은 `/posts/{slug}/{file}` 이다.
+ * 그 경로는 next.config 의 fallback rewrite 가 Storage 로 넘겨준다 — 덕분에
+ * 본문 마크다운이 짧게 유지되고, 나중에 저장소를 바꿔도 글은 그대로다.
+ *
+ * 파일명이 겹치면 `-1`, `-2` … 를 붙여 기존 이미지를 덮지 않는다. 글이 아직
+ * 없어도 업로드할 수 있다 — Studio 가 자동저장 중인 초안에도 이미지를 붙인다.
  */
-import { promises as fs } from "node:fs";
-import path from "node:path";
 import { NextResponse } from "next/server";
+import { dbAdmin } from "@/lib/supabase";
 import { requireApiUser } from "../../_shared";
 
-const PUBLIC_POSTS_DIR = path.join(process.cwd(), "public", "posts");
+const BUCKET = "post-images";
 const MAX_BYTES = 12 * 1024 * 1024; // 12 MB
 const SLUG_RE = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
 
@@ -26,8 +27,11 @@ const MIME_EXT: Record<string, string> = {
   "image/avif": "avif",
 };
 
+/**
+ * Storage 키에는 한글·공백을 쓸 수 없다. 소문자 ASCII 로만 남긴다.
+ * (이관 스크립트 scripts/upload-images.mjs 의 safeKey 와 같은 규칙)
+ */
 function sanitizeBaseName(name: string): string {
-  // Strip extension; lowercase; non [a-z0-9-_] → "-"; collapse runs.
   const noExt = name.replace(/\.[^./\\]+$/, "");
   const ascii = noExt
     .toLowerCase()
@@ -37,20 +41,21 @@ function sanitizeBaseName(name: string): string {
   return ascii || "image";
 }
 
+/** 이미 있는 이름이면 -1, -2 … 를 붙여 비어 있는 자리를 찾는다. */
 async function pickAvailable(
-  dir: string,
+  slug: string,
   base: string,
   ext: string,
 ): Promise<string> {
-  let i = 0;
-  while (true) {
+  const { data, error } = await dbAdmin()
+    .storage.from(BUCKET)
+    .list(slug, { limit: 1000 });
+  if (error) throw new Error(`Storage 조회 실패: ${error.message}`);
+
+  const taken = new Set((data ?? []).map((f) => f.name));
+  for (let i = 0; ; i++) {
     const candidate = i === 0 ? `${base}.${ext}` : `${base}-${i}.${ext}`;
-    try {
-      await fs.access(path.join(dir, candidate));
-      i++;
-    } catch {
-      return candidate;
-    }
+    if (!taken.has(candidate)) return candidate;
   }
 }
 
@@ -93,25 +98,25 @@ export async function POST(req: Request, { params }: Ctx) {
 
   if (file.size > MAX_BYTES) {
     return NextResponse.json(
-      {
-        error: `파일이 너무 큽니다 (${file.size} bytes, 최대 ${MAX_BYTES})`,
-      },
+      { error: `파일이 너무 큽니다 (${file.size} bytes, 최대 ${MAX_BYTES})` },
       { status: 413 },
     );
   }
 
-  const dir = path.join(PUBLIC_POSTS_DIR, slug);
-  await fs.mkdir(dir, { recursive: true });
-
   const baseRaw = (form.get("name") as string | null) || file.name || "image";
-  const base = sanitizeBaseName(baseRaw);
-  const filename = await pickAvailable(dir, base, ext);
+  const filename = await pickAvailable(slug, sanitizeBaseName(baseRaw), ext);
 
-  const buffer = Buffer.from(await file.arrayBuffer());
-  await fs.writeFile(path.join(dir, filename), buffer);
+  const bytes = await file.arrayBuffer();
+  const { error } = await dbAdmin()
+    .storage.from(BUCKET)
+    .upload(`${slug}/${filename}`, bytes, { contentType: file.type });
 
-  const url = `/posts/${slug}/${filename}`;
-  return NextResponse.json({ url, filename, bytes: buffer.length }, {
-    status: 201,
-  });
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json(
+    { url: `/posts/${slug}/${filename}`, filename, bytes: bytes.byteLength },
+    { status: 201 },
+  );
 }
