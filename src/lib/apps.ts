@@ -34,7 +34,7 @@ export const APPS: ShowcaseApp[] = [
   {
     slug: "solve-card",
     name: "Solve-Card",
-    desc: "정보처리기사 기출 920문항, 카드로 넘겨 푸는 나만의 문제집",
+    desc: "카드로 한 장씩 넘겨 푸는 나만의 문제집",
     host: "solve.dongding.dev",
   },
 ];

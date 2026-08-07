@@ -5,8 +5,8 @@
  * README 에서 이미지 한 장이 링크 하나라, 앱마다 이미지를 따로 뽑아야 각각
  * 자기 주소로 갈 수 있다 — 한 장에 셋을 그리면 링크도 하나뿐이다.
  *
- * 오른쪽 끝의 주소와 화살표는 장식이 아니다. camo 를 거친 `<img>` 는 hover 에
- * 반응하지 못하므로, 누를 수 있다는 신호를 그림 안에 넣어야 한다.
+ * 오른쪽 끝의 주소는 장식이 아니다. camo 를 거친 `<img>` 는 hover 에 반응하지
+ * 못하므로, 어디로 가는지를 그림 안에서 알려야 한다.
  */
 import satori from "satori";
 
@@ -79,30 +79,15 @@ export async function GET(req: Request, ctx: RouteContext<"/card/app/[slug]">) {
           </div>
         </div>
 
-        <div
+        <span
           style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
             fontSize: 13.5,
             color: c.inkMuted,
             letterSpacing: "0.03em",
           }}
         >
-          <span>{app.host}</span>
-          <svg
-            width={15}
-            height={15}
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke={c.inkMuted}
-            strokeWidth={1.7}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M3.5 8h9M8.5 4l4 4-4 4" />
-          </svg>
-        </div>
+          {app.host}
+        </span>
       </div>
     ),
     { ...SIZE, fonts: await cardFonts() },
