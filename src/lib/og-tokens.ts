@@ -13,6 +13,12 @@ export const OG_COLORS = {
   inkMuted: "#5f5f5d",
 } as const;
 
+/**
+ * 카드 렌더 배율. README 본문 폭이 890px 이라 3x 디스플레이는 2670px 을 요구한다 —
+ * 등배는 물론 2배로도 거기서 흐려진다. 좌표는 전부 논리 크기로 쓰고 이 값을 곱한다.
+ */
+export const CARD_SCALE = 3;
+
 /** 프로필 README 등 외부에 붙이는 가로 카드 (`/card`). */
 export const CARD_SIZE = { width: 1200, height: 250 } as const;
 

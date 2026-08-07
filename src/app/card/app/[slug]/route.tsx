@@ -9,11 +9,10 @@
  * 반응하지 못하므로, 누를 수 있다는 신호를 그림 안에 넣어야 한다.
  */
 import { ImageResponse } from "next/og";
-import { CARD_THEMES, type CardTheme } from "@/lib/og-tokens";
+import { CARD_SCALE, CARD_THEMES, type CardTheme } from "@/lib/og-tokens";
 import { APP_ICONS, findApp } from "@/lib/apps";
 
-/** 레티나 배율 — `/card` 와 같은 이유로 두 배로 뽑는다. */
-const S = 2;
+const S = CARD_SCALE;
 
 const SIZE = { width: 1200, height: 118 } as const;
 

@@ -21,21 +21,21 @@ export type ShowcaseApp = {
 export const APPS: ShowcaseApp[] = [
   {
     slug: "seulseul",
-    name: "seulseul",
+    name: "SeulSeul",
     desc: "할 일을 지우는 곳이 아니라, 해낸 것을 되돌아보는 기록장",
-    host: "seulseul.vercel.app",
+    host: "seulseul.dongding.dev",
   },
   {
     slug: "plate",
-    name: "Plate",
+    name: "PlateLog",
     desc: "운동과 식단을 기록하면 AI 가 분석하고, 트레이너에게 링크로 공유",
     host: "plate.dongding.dev",
   },
   {
     slug: "solve-card",
-    name: "solve-card",
+    name: "Solve-Card",
     desc: "정보처리기사 기출 920문항, 카드로 넘겨 푸는 나만의 문제집",
-    host: "kun-9.github.io/solve-card",
+    host: "solve.dongding.dev",
   },
 ];
 

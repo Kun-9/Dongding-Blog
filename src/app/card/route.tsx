@@ -6,16 +6,14 @@
  * `?theme=dark` 로 다크 팔레트를 받는다 — README 에서는 `<picture>` 의
  * `prefers-color-scheme` source 로 연결하면 뷰어 테마를 따라간다.
  *
- * 좌표는 전부 1200×250 기준으로 쓰고 마지막에 `S` 를 곱한다. README 본문 폭이
- * 890px 이라 레티나는 그 두 배 픽셀을 요구하는데, 등배로 뽑으면 거기서 흐려진다.
+ * 좌표는 전부 1200×250 기준으로 쓰고 마지막에 `S`(= CARD_SCALE)를 곱한다.
  */
 import { ImageResponse } from "next/og";
 import { site as siteDefaults } from "@/lib/site";
 import { getSite } from "@/lib/site-db";
-import { CARD_SIZE, CARD_THEMES, type CardTheme } from "@/lib/og-tokens";
+import { CARD_SCALE, CARD_SIZE, CARD_THEMES, type CardTheme } from "@/lib/og-tokens";
 
-/** 레티나 배율. 출력 픽셀만 키우고 레이아웃 수치는 그대로 읽힌다. */
-const S = 2;
+const S = CARD_SCALE;
 
 // 배포 도메인이라 env/빌드 시점에 고정된다 — 설정 화면 값과 무관하게 둔다.
 const HOST = new URL(siteDefaults.url).host;
