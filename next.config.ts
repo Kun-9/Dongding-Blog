@@ -17,6 +17,16 @@ const nextConfig: NextConfig = {
   },
 
   /**
+   * 카드 라우트는 satori 로 SVG 를 그리면서 `assets/` 의 폰트 서브셋을
+   * `readFile` 로 읽는다. 정적 분석으로는 안 잡혀서 명시하지 않으면 번들에
+   * 빠지고, 로컬은 멀쩡한데 배포에서만 ENOENT 로 죽는다.
+   */
+  outputFileTracingIncludes: {
+    "/card": ["./assets/**"],
+    "/card/app/[slug]": ["./assets/**"],
+  },
+
+  /**
    * apex 로 들어오면 blog 서브도메인으로 보낸다.
    * 같은 사이트가 두 주소로 열리면 검색엔진이 중복 콘텐츠로 보는데,
    * sitemap·RSS·OG 는 이미 blog.dongding.dev 를 정본으로 가리키고 있다.

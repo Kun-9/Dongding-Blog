@@ -8,11 +8,11 @@
  * 오른쪽 끝의 주소와 화살표는 장식이 아니다. camo 를 거친 `<img>` 는 hover 에
  * 반응하지 못하므로, 누를 수 있다는 신호를 그림 안에 넣어야 한다.
  */
-import { ImageResponse } from "next/og";
-import { CARD_SCALE, CARD_THEMES, type CardTheme } from "@/lib/og-tokens";
-import { APP_ICONS, findApp } from "@/lib/apps";
+import satori from "satori";
 
-const S = CARD_SCALE;
+import { cardFonts, SVG_HEADERS } from "@/lib/card-font";
+import { CARD_THEMES, type CardTheme } from "@/lib/og-tokens";
+import { APP_ICONS, findApp } from "@/lib/apps";
 
 const SIZE = { width: 1200, height: 118 } as const;
 
@@ -28,7 +28,7 @@ export async function GET(req: Request, ctx: RouteContext<"/card/app/[slug]">) {
     new URL(req.url).searchParams.get("theme") === "dark" ? "dark" : "light";
   const c = CARD_THEMES[theme];
 
-  return new ImageResponse(
+  const svg = await satori(
     (
       <div
         style={{
@@ -36,24 +36,24 @@ export async function GET(req: Request, ctx: RouteContext<"/card/app/[slug]">) {
           height: "100%",
           display: "flex",
           alignItems: "center",
-          gap: 20 * S,
+          gap: 20,
           // 좌우 여백은 `/card` 와 같은 값이다. README 에서 세로로 쌓이므로
           // 아이콘 시작점과 오른쪽 끝이 블로그 띠와 어긋나면 바로 보인다.
-          padding: `0 ${52 * S}px 0 ${56 * S}px`,
+          padding: "0 52px 0 56px",
           backgroundColor: c.bg,
-          backgroundImage: `radial-gradient(ellipse ${420 * S}px ${180 * S}px at 92% -60%, ${c.glow1}, transparent 68%), radial-gradient(ellipse ${340 * S}px ${150 * S}px at -6% 40%, ${c.glow2}, transparent 68%)`,
-          border: `${S}px solid ${c.line}`,
-          borderRadius: 14 * S,
-          fontFamily: "sans-serif",
+          backgroundImage: `radial-gradient(ellipse 420px 180px at 92% -60%, ${c.glow1}, transparent 68%), radial-gradient(ellipse 340px 150px at -6% 40%, ${c.glow2}, transparent 68%)`,
+          border: `1px solid ${c.line}`,
+          borderRadius: 14,
+          fontFamily: "Card",
         }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={icon}
-          width={48 * S}
-          height={48 * S}
+          width={48}
+          height={48}
           alt=""
-          style={{ borderRadius: 11 * S, border: `${S}px solid ${c.ring}` }}
+          style={{ borderRadius: 11, border: `1px solid ${c.ring}` }}
         />
 
         <div
@@ -66,7 +66,7 @@ export async function GET(req: Request, ctx: RouteContext<"/card/app/[slug]">) {
         >
           <div
             style={{
-              fontSize: 21 * S,
+              fontSize: 21,
               fontWeight: 700,
               color: c.ink,
               letterSpacing: "-0.02em",
@@ -74,7 +74,7 @@ export async function GET(req: Request, ctx: RouteContext<"/card/app/[slug]">) {
           >
             {app.name}
           </div>
-          <div style={{ marginTop: 5 * S, fontSize: 15 * S, color: c.inkMuted }}>
+          <div style={{ marginTop: 5, fontSize: 15, color: c.inkMuted }}>
             {app.desc}
           </div>
         </div>
@@ -83,17 +83,16 @@ export async function GET(req: Request, ctx: RouteContext<"/card/app/[slug]">) {
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 10 * S,
-            fontSize: 13.5 * S,
+            gap: 10,
+            fontSize: 13.5,
             color: c.inkMuted,
             letterSpacing: "0.03em",
           }}
         >
           <span>{app.host}</span>
-          {/* 화살표. Satori 는 SVG 요소를 직접 받으므로 아이콘처럼 심지 않아도 된다. */}
           <svg
-            width={15 * S}
-            height={15 * S}
+            width={15}
+            height={15}
             viewBox="0 0 16 16"
             fill="none"
             stroke={c.inkMuted}
@@ -106,12 +105,8 @@ export async function GET(req: Request, ctx: RouteContext<"/card/app/[slug]">) {
         </div>
       </div>
     ),
-    {
-      width: SIZE.width * S,
-      height: SIZE.height * S,
-      headers: {
-        "cache-control": "public, max-age=3600, s-maxage=86400",
-      },
-    },
+    { ...SIZE, fonts: await cardFonts() },
   );
+
+  return new Response(svg, { headers: SVG_HEADERS });
 }

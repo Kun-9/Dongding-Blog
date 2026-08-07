@@ -6,14 +6,16 @@
  * `?theme=dark` 로 다크 팔레트를 받는다 — README 에서는 `<picture>` 의
  * `prefers-color-scheme` source 로 연결하면 뷰어 테마를 따라간다.
  *
- * 좌표는 전부 1200×250 기준으로 쓰고 마지막에 `S`(= CARD_SCALE)를 곱한다.
+ * PNG(`ImageResponse`) 가 아니라 satori 로 SVG 를 직접 뽑는다. 벡터라 배율을
+ * 관리할 필요가 없고(예전엔 3배로 뽑았다) 크기도 4분의 1이다. satori 가 글자를
+ * path 로 바꾸므로 보는 사람에게 한글 폰트가 없어도 그대로 보인다.
  */
-import { ImageResponse } from "next/og";
+import satori from "satori";
+
 import { site as siteDefaults } from "@/lib/site";
 import { getSite } from "@/lib/site-db";
-import { CARD_SCALE, CARD_SIZE, CARD_THEMES, type CardTheme } from "@/lib/og-tokens";
-
-const S = CARD_SCALE;
+import { cardFonts, SVG_HEADERS } from "@/lib/card-font";
+import { CARD_SIZE, CARD_THEMES, type CardTheme } from "@/lib/og-tokens";
 
 // 배포 도메인이라 env/빌드 시점에 고정된다 — 설정 화면 값과 무관하게 둔다.
 const HOST = new URL(siteDefaults.url).host;
@@ -56,7 +58,7 @@ export async function GET(req: Request) {
   const c = CARD_THEMES[theme];
   const site = await getSite();
 
-  return new ImageResponse(
+  const svg = await satori(
     (
       <div
         style={{
@@ -68,14 +70,14 @@ export async function GET(req: Request) {
           // 네 값이 다른 건 렌더된 픽셀을 재서 맞춘 결과다. 위는 아바타가
           // 원형이라 잉크가 늦게 시작하고, 아래는 글자라 line box 가 잉크보다
           // 크며, 오른쪽은 마지막 글자의 사이드베어링이 남는다.
-          padding: `${42 * S}px ${52 * S}px ${43 * S}px ${56 * S}px`,
+          padding: "42px 52px 43px 56px",
           backgroundColor: c.bg,
           // .scenic-glow 와 같은 구도(오른쪽 위 따뜻하게, 왼쪽 차갑게)를
           // 카드 비율로 좁힌 것. 타원이 카드보다 커지면 배경색이 안 남는다.
-          backgroundImage: `radial-gradient(ellipse ${640 * S}px ${300 * S}px at 88% -30%, ${c.glow1}, transparent 65%), radial-gradient(ellipse ${520 * S}px ${260 * S}px at -4% 20%, ${c.glow2}, transparent 65%)`,
-          border: `${S}px solid ${c.line}`,
-          borderRadius: 16 * S,
-          fontFamily: "sans-serif",
+          backgroundImage: `radial-gradient(ellipse 640px 300px at 88% -30%, ${c.glow1}, transparent 65%), radial-gradient(ellipse 520px 260px at -4% 20%, ${c.glow2}, transparent 65%)`,
+          border: `1px solid ${c.line}`,
+          borderRadius: 16,
+          fontFamily: "Card",
         }}
       >
         <div
@@ -84,16 +86,17 @@ export async function GET(req: Request) {
             alignItems: "center",
             justifyContent: "space-between",
             color: c.inkMuted,
-            fontSize: 15 * S,
+            fontSize: 15,
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 16 * S }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={AVATAR_SRC}
-              width={44 * S}
-              height={44 * S}
+              width={44}
+              height={44}
               alt=""
-              style={{ borderRadius: 22 * S }}
+              style={{ borderRadius: 22 }}
             />
             <span style={{ letterSpacing: "0.16em" }}>
               {site.og.label.toUpperCase()}
@@ -103,8 +106,8 @@ export async function GET(req: Request) {
               style={{
                 background: c.chip,
                 borderRadius: 999,
-                padding: `${3 * S}px ${10 * S}px`,
-                fontSize: 12 * S,
+                padding: "3px 10px",
+                fontSize: 12,
                 letterSpacing: "0.14em",
               }}
             >
@@ -117,7 +120,7 @@ export async function GET(req: Request) {
         <div style={{ display: "flex", flexDirection: "column" }}>
           <div
             style={{
-              fontSize: 50 * S,
+              fontSize: 50,
               fontWeight: 700,
               color: c.ink,
               letterSpacing: "-0.035em",
@@ -126,22 +129,14 @@ export async function GET(req: Request) {
           >
             {site.og.headline.join(" ")}
           </div>
-          <div
-            style={{ marginTop: 14 * S, fontSize: 19 * S, color: c.inkMuted }}
-          >
+          <div style={{ marginTop: 14, fontSize: 19, color: c.inkMuted }}>
             {site.og.tagline}
           </div>
         </div>
       </div>
     ),
-    {
-      width: CARD_SIZE.width * S,
-      height: CARD_SIZE.height * S,
-      // 방문자가 직접 여는 URL 이 아니라 남의 페이지에 박히는 이미지다.
-      // GitHub 은 camo 로 한 번 더 캐싱하므로 짧게 잡아도 부담이 없다.
-      headers: {
-        "cache-control": "public, max-age=3600, s-maxage=86400",
-      },
-    },
+    { ...CARD_SIZE, fonts: await cardFonts() },
   );
+
+  return new Response(svg, { headers: SVG_HEADERS });
 }

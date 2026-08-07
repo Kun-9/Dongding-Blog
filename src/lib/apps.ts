@@ -22,7 +22,7 @@ export const APPS: ShowcaseApp[] = [
   {
     slug: "seulseul",
     name: "SeulSeul",
-    desc: "할 일을 지우는 곳이 아니라, 해낸 것을 되돌아보는 기록장",
+    desc: "미루지 말고 슬슬. 시작한 것과 해낸 것이 쌓이는 곳",
     host: "seulseul.dongding.dev",
   },
   {
