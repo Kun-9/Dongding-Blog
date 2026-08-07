@@ -100,6 +100,18 @@ export async function GET(req: Request) {
             <span style={{ letterSpacing: "0.16em" }}>
               {site.og.label.toUpperCase()}
             </span>
+            {/* 앱 카드들과 나란히 놓이므로 이것도 앱으로 읽힌다. 종류를 박아 둔다. */}
+            <span
+              style={{
+                background: c.chip,
+                borderRadius: 999,
+                padding: `${3 * S}px ${10 * S}px`,
+                fontSize: 12 * S,
+                letterSpacing: "0.14em",
+              }}
+            >
+              BLOG
+            </span>
           </div>
           <span style={{ letterSpacing: "0.04em" }}>{HOST}</span>
         </div>

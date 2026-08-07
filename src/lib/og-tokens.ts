@@ -29,6 +29,9 @@ export const CARD_THEMES = {
     inkInverse: "#fcfbf8",
     inkMuted: "#5f5f5d",
     line: "#e6e1d4",
+    chip: "rgba(28, 28, 28, 0.055)",
+    /** 앱 아이콘 테두리 — 아이콘 바탕이 카드 바탕과 같을 때 경계를 살린다. */
+    ring: "rgba(28, 28, 28, 0.1)",
     glow1: "rgba(255, 210, 170, 0.5)",
     glow2: "rgba(190, 205, 225, 0.28)",
   },
@@ -38,6 +41,8 @@ export const CARD_THEMES = {
     inkInverse: "#161513",
     inkMuted: "#9a948a",
     line: "#2c2925",
+    chip: "rgba(236, 233, 224, 0.07)",
+    ring: "rgba(236, 233, 224, 0.14)",
     glow1: "rgba(110, 75, 40, 0.4)",
     glow2: "rgba(40, 55, 80, 0.3)",
   },
