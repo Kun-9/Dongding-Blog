@@ -29,7 +29,7 @@ import {
   type PostPatch,
 } from "@/lib/mcp-blog";
 
-const VISIBILITY = z.enum(["published", "private", "draft"]);
+const VISIBILITY = z.enum(["published", "private", "draft", "review"]);
 const SEVERITY = z.enum(["error", "warning", "info"]);
 
 const json = (value: unknown) => ({

@@ -13,6 +13,7 @@ import { useAuthEmail } from "@/lib/hooks";
 
 const ITEMS = [
   { href: "/studio", label: "새 글" },
+  { href: "/manage", label: "글 관리" },
   { href: "/admin", label: "대시보드" },
   { href: "/admin/stats", label: "통계" },
   { href: "/settings", label: "설정" },

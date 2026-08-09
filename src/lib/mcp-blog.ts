@@ -198,7 +198,7 @@ export type PostPatch = Partial<{
   category: string;
   tags: string[];
   date: string;
-  visibility: "published" | "private" | "draft";
+  visibility: "published" | "private" | "draft" | "review";
   featured: boolean;
   series: string | null;
   seriesOrder: number | null;

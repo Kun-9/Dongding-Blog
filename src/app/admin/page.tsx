@@ -168,8 +168,19 @@ export default async function Page() {
 
       {/* Drafts */}
       <section className="mb-8">
-        <div className="mb-3.5 border-b border-border-token pb-2.5 font-sans text-[11px] font-bold uppercase tracking-[0.1em] text-ink-muted">
-          초안 ({drafts.length})
+        <div className="mb-3.5 flex items-baseline justify-between gap-3 border-b border-border-token pb-2.5">
+          <div className="whitespace-nowrap font-sans text-[11px] font-bold uppercase tracking-[0.1em] text-ink-muted">
+            초안 ({drafts.length})
+          </div>
+          {/* globals.css 의 `a { color: inherit }` 가 레이어 밖이라 링크에는
+              text-* 유틸이 안 먹는다 — 색은 직접 준다. */}
+          <Link
+            href="/drafts"
+            className="whitespace-nowrap text-[12.5px] no-underline"
+            style={{ color: "var(--ink-muted)" }}
+          >
+            초안 전체 →
+          </Link>
         </div>
         {drafts.length === 0 ? (
           <div className="rounded-xl border border-border-token bg-surface p-6 text-center text-sm text-ink-muted">
@@ -184,7 +195,8 @@ export default async function Page() {
               <span className="text-right">WORDS</span>
               <span className="text-right">UPDATED</span>
             </div>
-            {drafts.map((d) => (
+            {/* 4행까지만 — 전체 목록은 /drafts 가 맡는다 */}
+            {drafts.slice(0, 4).map((d) => (
               <Link
                 key={d.slug}
                 href={`/studio?slug=${encodeURIComponent(d.slug)}`}

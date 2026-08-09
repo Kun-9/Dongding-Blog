@@ -73,6 +73,9 @@
   --inline-code-bg: rgba(168, 129, 74, 0.12);
   --inline-code-fg: #7a5a2a;
 
+  /* 파괴적 액션(삭제) 글자색. AdminBar·SeriesGrid 가 쓰던 값을 토큰으로 올렸다. */
+  --danger: #a04a3a;
+
   /* 링크 카드의 도메인 타일 — 색조(hue)는 호스트에서 나오고 밝기만 테마가 정한다. */
   --link-tile-l: 87%;
   --link-tile-ink-l: 30%;
@@ -139,6 +142,8 @@
   --inline-code-bg: rgba(255, 200, 140, 0.1);
   --inline-code-fg: #e8c89a;
 
+  --danger: #d99a8c;
+
   --link-tile-l: 26%;
   --link-tile-ink-l: 78%;
 
@@ -178,6 +183,7 @@
 
   --color-inline-code-bg: var(--inline-code-bg);
   --color-inline-code: var(--inline-code-fg);
+  --color-danger: var(--danger);
 
   --font-sans: "Pretendard Variable", Pretendard, -apple-system,
     BlinkMacSystemFont, system-ui, sans-serif;

@@ -23,7 +23,12 @@ export const TocItemSchema = z.object({
   level: z.union([z.literal(2), z.literal(3)]),
 });
 
-export const VisibilitySchema = z.enum(["published", "private", "draft"]);
+export const VisibilitySchema = z.enum([
+  "published",
+  "private",
+  "draft",
+  "review",
+]);
 
 /**
  * ponytail: 목록 조회에도 body 를 딸려 온다 — readTime 과 TOC 가 본문에서

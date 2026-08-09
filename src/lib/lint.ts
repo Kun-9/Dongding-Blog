@@ -33,7 +33,7 @@ export interface LintablePost {
   category: string;
   tags: string[];
   date: string;
-  visibility: "published" | "private" | "draft";
+  visibility: "published" | "private" | "draft" | "review";
   featured: boolean;
   series: string | null;
   seriesOrder: number | null;
@@ -78,9 +78,10 @@ const STATIC_ROUTES = new Set([
   "/posts",
 ]);
 
-const IMAGE_RE = /!\[([^\]]*)\]\(([^)\s]+)[^)]*\)/g;
+const IMAGE_RE = /!\[([^\]]*)\]\(([^)\s]+)[^)]*\)(?:\{([A-Za-z0-9]+)\})?/g;
 const LINK_RE = /(!?)\[([^\]]*)\]\(([^)\s]+)[^)]*\)/g;
-const WIDTH_RE = /^(.*)\|(\d+%?)$/;
+/** 그림 블록에 붙일 수 있는 옵션 — 폭 2종과 열 수 1~4. */
+const IMAGE_OPTIONS = new Set(["sm", "wide", "1", "2", "3", "4"]);
 
 interface ScannedLine {
   /** 1-based */
@@ -370,12 +371,23 @@ function lintReferences(s: Scan, ctx: LintContext, out: Issue[]): void {
       const rawAlt = m[1];
       const src = m[2];
 
-      if (rawAlt.includes("|") && !WIDTH_RE.test(rawAlt)) {
+      const opt = m[3];
+      if (opt !== undefined && !IMAGE_OPTIONS.has(opt.toLowerCase())) {
         out.push({
-          rule: "image-width",
+          rule: "image-option",
           severity: "warning",
           line: n,
-          message: `너비 표기가 \`|숫자\` 또는 \`|숫자%\` 형태가 아니라 무시되고 alt 에 그대로 들어갑니다: ![${rawAlt}]`,
+          message: `알 수 없는 이미지 옵션이라 무시됩니다: {${opt}}. 폭은 \`{sm}\` · \`{wide}\`, 열 수는 \`{2}\`~\`{4}\` 입니다.`,
+        });
+      }
+
+      // 옛 문법(`![alt|480]`)은 이제 폭이 아니라 캡션 글자로 새어 나온다.
+      if (/\|\d+%?$/.test(rawAlt)) {
+        out.push({
+          rule: "image-width-legacy",
+          severity: "warning",
+          line: n,
+          message: `옛 너비 표기입니다. \`|${rawAlt.split("|").pop()}\` 가 캡션에 그대로 찍힙니다 — \`![alt](url){sm}\` / \`{wide}\` 로 바꾸세요.`,
         });
       }
 

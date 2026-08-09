@@ -31,6 +31,12 @@ const STATUS_TONE = {
     fgDark: "var(--ink-muted)",
     label: "PRIVATE",
   },
+  review: {
+    bg: "rgba(168,129,74,0.16)",
+    fgLight: "#7a5a2a",
+    fgDark: "#d4a878",
+    label: "REVIEW",
+  },
   draft: {
     bg: "rgba(168,129,74,0.16)",
     fgLight: "#7a5a2a",

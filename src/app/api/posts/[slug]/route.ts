@@ -6,8 +6,10 @@
  * - DELETE: 삭제.
  */
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { dbAdmin } from "@/lib/supabase";
 import { syncLinkMeta } from "@/lib/link-meta";
+import { VisibilitySchema } from "@/lib/posts";
 import {
   PostBodySchema,
   requireApiUser,
@@ -96,6 +98,45 @@ export async function PUT(req: Request, { params }: Ctx) {
 
   revalidateContent();
   return NextResponse.json({ slug: nextSlug, renamed: renaming });
+}
+
+/**
+ * 공개 상태만 바꾼다. `/manage` 가 상태 탭·벌크 처리에서 쓰는 경로 —
+ * PUT 은 본문까지 전부 요구하므로 상태 하나 옮기자고 글을 통째로 왕복시킬
+ * 이유가 없다.
+ */
+export async function PATCH(req: Request, { params }: Ctx) {
+  const blocked = await requireApiUser();
+  if (blocked) return blocked;
+
+  const { slug } = await params;
+  if (!(await postExists(slug))) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  let raw: unknown;
+  try {
+    raw = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  const parsed = z.object({ visibility: VisibilitySchema }).safeParse(raw);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Validation failed", issues: parsed.error.flatten() },
+      { status: 400 },
+    );
+  }
+
+  const { error } = await dbAdmin()
+    .from("posts")
+    .update({ visibility: parsed.data.visibility })
+    .eq("slug", slug);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  revalidateContent();
+  return NextResponse.json({ slug, visibility: parsed.data.visibility });
 }
 
 export async function DELETE(_req: Request, { params }: Ctx) {

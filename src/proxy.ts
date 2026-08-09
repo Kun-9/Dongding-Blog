@@ -12,7 +12,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
 /** 로그인해야 열리는 화면. 편집 API 는 각 라우트가 401 로 직접 막는다. */
-const PROTECTED = ["/studio", "/admin", "/settings"];
+const PROTECTED = ["/studio", "/admin", "/settings", "/manage", "/drafts"];
 
 export default async function proxy(req: NextRequest) {
   const res = NextResponse.next({ request: req });

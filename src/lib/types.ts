@@ -17,7 +17,11 @@ export interface Category {
   subs?: Subcategory[];
 }
 
-export type Visibility = "published" | "private" | "draft";
+/**
+ * `review` 는 "다 썼고 검토만 남은" 자리다. 공개 범위는 draft 와 같다 —
+ * RLS 가 published 만 내보내므로 방문자에게는 셋 다 안 보인다.
+ */
+export type Visibility = "published" | "private" | "draft" | "review";
 
 export interface PostMeta {
   slug: string;

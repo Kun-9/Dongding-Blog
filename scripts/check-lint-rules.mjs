@@ -86,8 +86,26 @@ assert.ok(!has("[태그](/tags/jpa)\n", "broken-link", ctx), "있는 태그 링�
 assert.ok(has("![그림](/posts/sample/none.png)\n", "missing-image", ctx), "없는 이미지");
 assert.ok(!has("![그림](/posts/sample/a.png)\n", "missing-image", ctx), "있는 이미지");
 assert.ok(has("![그림](posts/sample/a.png)\n", "image-path", ctx), "앞 슬래시 누락");
-assert.ok(has("![그림|abc](/posts/sample/a.png)\n", "image-width", ctx), "잘못된 너비");
-assert.ok(!has("![그림|480](/posts/sample/a.png)\n", "image-width", ctx), "정상 너비");
+assert.ok(
+  has("![그림](/posts/sample/a.png){huge}\n", "image-option", ctx),
+  "알 수 없는 이미지 옵션",
+);
+assert.ok(
+  !has("![그림](/posts/sample/a.png){wide}\n", "image-option", ctx),
+  "정상 폭 옵션",
+);
+assert.ok(
+  !has("![그림](/posts/sample/a.png){3}\n", "image-option", ctx),
+  "정상 열 옵션",
+);
+assert.ok(
+  has("![그림|480](/posts/sample/a.png)\n", "image-width-legacy", ctx),
+  "옛 너비 표기",
+);
+assert.ok(
+  !has("![그림](/posts/sample/a.png)\n", "image-width-legacy", ctx),
+  "옵션 없는 이미지",
+);
 assert.ok(has("## 제목\n\n[가기](#없는앵커)\n", "dead-anchor", ctx), "죽은 앵커");
 assert.ok(!has("## 제목\n\n[가기](#제목)\n", "dead-anchor", ctx), "살아있는 앵커");
 

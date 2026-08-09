@@ -15,6 +15,6 @@ export async function getAllDrafts(): Promise<Draft[]> {
       title: p.meta.title,
       updated: p.meta.date,
       words: p.body.replace(/\s+/g, "").length,
-      status: p.meta.visibility === "private" ? "private" : "draft",
+      status: p.meta.visibility === "published" ? "draft" : p.meta.visibility,
     }));
 }

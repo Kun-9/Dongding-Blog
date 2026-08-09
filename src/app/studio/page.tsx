@@ -38,7 +38,8 @@ type StudioSeriesPost = {
   visibility: Visibility;
 };
 type StudioSeries = Series & { posts: StudioSeriesPost[] };
-import { renderMarkdown, type ImageWidth } from "@/lib/markdown";
+import { renderMarkdown } from "@/lib/markdown";
+import type { ImageSize } from "@/components/prose/Figure";
 import { safeReadJSON, safeRemove, safeWriteJSON } from "@/lib/storage";
 import { CTA } from "@/components/ui/CTA";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -72,6 +73,7 @@ type ToolbarAction =
   | "callout-tip"
   | "callout-note"
   | "linkcard"
+  | "imagegroup"
   | "divider";
 
 const TOOLBAR_TITLES: Record<ToolbarAction, string> = {
@@ -85,6 +87,7 @@ const TOOLBAR_TITLES: Record<ToolbarAction, string> = {
   "callout-tip": "Callout — TIP",
   "callout-note": "Callout — NOTE",
   linkcard: "링크 카드",
+  imagegroup: "이미지 묶음 — 연속 줄이 그리드가 된다",
   divider: "수평선",
 };
 
@@ -108,20 +111,18 @@ function EditorFallback({ message }: { message: string }) {
   );
 }
 
-const IMAGE_TOKEN_RE = /!\[([^\]]*)\]\(([^)]+)\)/g;
-const IMAGE_WIDTH_SUFFIX_RE = /\|(\d+%?)$/;
+const IMAGE_TOKEN_RE = /!\[([^\]]*)\]\(([^)]+)\)(\{[A-Za-z0-9]+\})?/g;
 
-function setImageWidthAt(
+/** n 번째 이미지 토큰의 폭 옵션을 갈아 끼운다. 빈 값이면 옵션 자체를 지운다. */
+function setImageSizeAt(
   body: string,
   imageIndex: number,
-  width: ImageWidth | null,
+  size: ImageSize,
 ): string {
   let count = 0;
-  return body.replace(IMAGE_TOKEN_RE, (full, rawAlt: string, url: string) => {
+  return body.replace(IMAGE_TOKEN_RE, (full, alt: string, url: string) => {
     if (count++ !== imageIndex) return full;
-    const cleanAlt = rawAlt.replace(IMAGE_WIDTH_SUFFIX_RE, "");
-    const newAlt = width != null ? `${cleanAlt}|${width}` : cleanAlt;
-    return `![${newAlt}](${url})`;
+    return `![${alt}](${url})${size ? `{${size}}` : ""}`;
   });
 }
 
@@ -293,10 +294,18 @@ const VISIBILITY_OPTIONS = [
   {
     v: "private" as const,
     label: "비공개",
-    glyph: "◐",
+    glyph: "◑",
     desc: "URL 알아도 안 보임",
     badgeLabel: "PRIVATE",
     ctaLabel: "비공개로 저장",
+  },
+  {
+    v: "review" as const,
+    label: "검토",
+    glyph: "◐",
+    desc: "다 썼고 검토만 남음",
+    badgeLabel: "REVIEW",
+    ctaLabel: "검토로 저장",
   },
   {
     v: "draft" as const,
@@ -313,6 +322,11 @@ type VisibilityMeta = (typeof VISIBILITY_OPTIONS)[number];
 const VISIBILITY_META: Record<Visibility, VisibilityMeta> = Object.fromEntries(
   VISIBILITY_OPTIONS.map((o) => [o.v, o]),
 ) as Record<Visibility, VisibilityMeta>;
+
+/** 서버가 준 값을 좁힌다. 모르는 값이면 가장 안전한 쪽(초안)으로 떨어뜨린다. */
+function asVisibility(v: unknown): Visibility {
+  return VISIBILITY_OPTIONS.some((o) => o.v === v) ? (v as Visibility) : "draft";
+}
 
 function StudioEditor() {
   const router = useRouter();
@@ -423,12 +437,7 @@ function StudioEditor() {
         })
         .then((data) => {
           if (cancelled) return;
-          const serverVisibility: Visibility =
-            data.visibility === "published" ||
-            data.visibility === "private" ||
-            data.visibility === "draft"
-              ? data.visibility
-              : "draft";
+          const serverVisibility = asVisibility(data.visibility);
           const serverSnapshot: DraftSnapshot = {
             title: data.title ?? "",
             summary: data.summary ?? "",
@@ -656,12 +665,7 @@ function StudioEditor() {
       const res = await fetch(API.post(editingSlug));
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      const serverVisibility: Visibility =
-        data.visibility === "published" ||
-        data.visibility === "private" ||
-        data.visibility === "draft"
-          ? data.visibility
-          : "draft";
+      const serverVisibility = asVisibility(data.visibility);
       dispatch({
         type: "HYDRATE_FROM_SERVER",
         snapshot: {
@@ -903,8 +907,8 @@ function StudioEditor() {
   }, []);
 
   const handlePreviewImageResize = useCallback(
-    (imageIndex: number, width: ImageWidth | null) => {
-      patch({ body: setImageWidthAt(body, imageIndex, width) });
+    (imageIndex: number, size: ImageSize) => {
+      patch({ body: setImageSizeAt(body, imageIndex, size) });
       markDirty();
     },
     [body, markDirty, patch],
@@ -1024,8 +1028,8 @@ function StudioEditor() {
     };
   }, [cardTargets]);
 
-  // Studio preview uses editable=true so EditableImage renders the slider
-  // panel; the post detail page renders ZoomableImage via the same parser.
+  // Studio preview uses editable=true so a block image gets the width picker;
+  // the post detail page renders the same Figure through the same parser.
   const renderedBody = useMemo(
     () =>
       renderMarkdown(body, {
@@ -1109,6 +1113,10 @@ function StudioEditor() {
           );
           break;
         }
+        case "imagegroup":
+          // 빈 줄 없이 붙여 써야 묶음이다. 경로는 업로드로 채운다.
+          insertBlock("![첫 번째](/posts/slug/1.png){2}\n![두 번째](/posts/slug/2.png)");
+          break;
         case "divider":
           insertBlock("---");
           break;
@@ -1597,6 +1605,7 @@ function StudioEditor() {
                   ["✓", "callout-tip", "sans", "group-callout"],
                   ["※", "callout-note", "sans", "group-callout"],
                   ["↗", "linkcard", "sans", "group-block"],
+                  ["▤", "imagegroup", "sans", "group-block"],
                   ["—", "divider", "sans", "group-block"],
                 ] as const
               ).map(([g, k, font, group], idx, arr) => {
@@ -2350,14 +2359,21 @@ function MarkdownCheatsheet() {
                 syntax="https://example.com"
                 label="문장 안 주소 — 자동 링크"
               />
-              <CheatsheetRow syntax="![alt](url)" label="이미지" />
               <CheatsheetRow
-                syntax="![alt|480](url)"
-                label="이미지 + 너비 (480px)"
+                syntax="![alt](url)"
+                label="이미지 — 줄에 혼자면 캡션 달린 그림"
               />
               <CheatsheetRow
-                syntax="![alt|50%](url)"
-                label="이미지 + 너비 (50%)"
+                syntax="![alt](url){sm}"
+                label="좁게 (380px)"
+              />
+              <CheatsheetRow
+                syntax="![alt](url){wide}"
+                label="넓게 (본문 폭 밖, 880px)"
+              />
+              <CheatsheetRow
+                syntax="![a](u1){3}⏎![b](u2)"
+                label="연속 줄 = 묶음, 첫 줄 숫자로 열 수 (1~4)"
               />
             </tbody>
           </table>

@@ -3,8 +3,10 @@
  * Block: # ## ### ####, ```lang:filename, > [!KIND] title (multi-line),
  *        - / 1. lists, ---, blank lines.
  *        URL 또는 /posts/slug 만 있는 줄 → 링크 카드.
- * Inline: **bold**, *italic*, `code`, [text](url), ![alt|width](url), 맨 URL.
- * Image width syntax: `![alt|480](url)` (px) or `![alt|50%](url)` (percent).
+ *        줄에 이미지만 있으면 그림 블록, 연속 줄이면 묶음.
+ * Inline: **bold**, *italic*, `code`, [text](url), ![alt](url), 맨 URL.
+ * Image: 줄 단독 → 캡션(alt) 달린 그림. `{sm}` 380px · 기본 본문 폭 ·
+ *        `{wide}` 880px, 열 수는 `{2}`~`{4}`. 문장 안 이미지는 인라인 그대로.
  * `>` is RESERVED for callouts. Plain blockquote is not supported.
  * 문단 안의 줄바꿈은 `<br>` 로 살아난다 (엔터 한 번 = 줄바꿈, 빈 줄 = 문단 분리).
  */
@@ -21,10 +23,16 @@ import {
 import { Callout, type CalloutKind } from "@/components/prose/Callout";
 import { CodeBlock } from "@/components/prose/CodeBlock";
 import { EditableImage } from "@/components/prose/EditableImage";
+import { Figure, ImageGroup } from "@/components/prose/Figure";
+import {
+  IMG_LINE_RE,
+  asImageSize,
+  type ImageItem,
+  type ImageSize,
+} from "@/lib/image-blocks";
 import { InlineCode } from "@/components/prose/InlineCode";
 import { LinkCard } from "@/components/prose/LinkCard";
 import { PostRefCard } from "@/components/prose/PostRefCard";
-import { ZoomableImage } from "@/components/prose/ZoomableImage";
 
 const CALLOUT_KINDS = ["info", "warning", "tip", "note"] as const;
 
@@ -32,11 +40,10 @@ function isCalloutKind(s: string): s is CalloutKind {
   return (CALLOUT_KINDS as readonly string[]).includes(s);
 }
 
-export type ImageWidth = `${number}` | `${number}%`;
-
 export type RenderOptions = {
   editable?: boolean;
-  onImageResize?: (imageIndex: number, width: ImageWidth | null) => void;
+  /** 그림 블록의 폭 옵션(`{sm}` / 없음 / `{wide}`)을 본문에 되쓴다. */
+  onImageResize?: (imageIndex: number, size: ImageSize) => void;
   /**
    * 링크 카드 재료. 파서는 순수 동기 함수라 DB 를 못 본다 — 호출자가 본문에서
    * 카드 줄을 걷어(`extractCardTargets`) 미리 채워 넣는다. 없으면 외부 링크는
@@ -50,19 +57,9 @@ interface InlineCtx {
   keyBase: string;
   imageCounter: { value: number };
   editable: boolean;
-  onImageResize?: (imageIndex: number, width: ImageWidth | null) => void;
+  onImageResize?: (imageIndex: number, size: ImageSize) => void;
 }
 
-const WIDTH_RE = /^(.*)\|(\d+%?)$/;
-
-function parseImageAlt(rawAlt: string): {
-  alt: string;
-  width: ImageWidth | null;
-} {
-  const m = rawAlt.match(WIDTH_RE);
-  if (!m) return { alt: rawAlt, width: null };
-  return { alt: m[1], width: m[2] as ImageWidth };
-}
 
 function renderInline(text: string, ctx: InlineCtx): ReactNode {
   if (!text) return null;
@@ -87,37 +84,22 @@ function renderInline(text: string, ctx: InlineCtx): ReactNode {
     const rest = text.slice(i);
     const ch = text[i];
 
-    // Image ![alt](url)  — alt may carry a width modifier: "label|480" or "label|50%"
+    // Image ![alt](url) — 문장 안에서는 인라인 그대로. 캡션도 확대도 붙지 않는다.
     let m = rest.match(/^!\[([^\]]*)\]\(([^)]+)\)/);
     if (m) {
-      const { alt, width } = parseImageAlt(m[1]);
+      const alt = m[1];
       const src = m[2];
-      const imageIndex = ctx.imageCounter.value++;
-      const onImageResize = ctx.onImageResize;
-      if (ctx.editable) {
-        push(
-          <EditableImage
-            key={`${ctx.keyBase}-img-${n}`}
-            src={src}
-            alt={alt}
-            width={width}
-            onResize={
-              onImageResize
-                ? (next) => onImageResize(imageIndex, next)
-                : undefined
-            }
-          />,
-        );
-      } else {
-        push(
-          <ZoomableImage
-            key={`${ctx.keyBase}-img-${n}`}
-            src={src}
-            alt={alt}
-            width={width}
-          />,
-        );
-      }
+      ctx.imageCounter.value++;
+      push(
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          key={`${ctx.keyBase}-img-${n}`}
+          src={src}
+          alt={alt}
+          loading="lazy"
+          className="my-2 inline-block max-w-full rounded-lg align-middle"
+        />,
+      );
       i += m[0].length;
       continue;
     }
@@ -334,6 +316,48 @@ export function renderMarkdown(
         ),
       );
       i++;
+      continue;
+    }
+
+    // 이미지 줄 — 한 줄이면 그림, 연속 줄이면 묶음. 빈 줄로 끊으면 따로 놓인다.
+    // 폭·열 옵션은 첫 줄만 읽고 나머지 줄의 `{…}` 는 무시한다.
+    if (IMG_LINE_RE.test(ln.trim())) {
+      const items: ImageItem[] = [];
+      let opt = "";
+      let firstIndex = 0;
+      while (i < lines.length && IMG_LINE_RE.test(lines[i].trim())) {
+        const im = lines[i].trim().match(IMG_LINE_RE)!;
+        if (items.length === 0) {
+          opt = (im[3] ?? "").toLowerCase();
+          firstIndex = imageCounter.value;
+        }
+        imageCounter.value++;
+        items.push({ alt: im[1].trim(), src: im[2] });
+        i++;
+      }
+      const onResize = opts?.onImageResize;
+      out.push(
+        items.length === 1 ? (
+          opts?.editable && onResize ? (
+            <EditableImage
+              key={k()}
+              src={items[0].src}
+              alt={items[0].alt}
+              size={asImageSize(opt)}
+              onResize={(next) => onResize(firstIndex, next)}
+            />
+          ) : (
+            <Figure
+              key={k()}
+              src={items[0].src}
+              alt={items[0].alt}
+              size={asImageSize(opt)}
+            />
+          )
+        ) : (
+          <ImageGroup key={k()} items={items} opt={opt} />
+        ),
+      );
       continue;
     }
 
@@ -604,6 +628,7 @@ export function renderMarkdown(
       !/^\d+\.\s+/.test(lines[i]) &&
       !/^---+\s*$/.test(lines[i]) &&
       !CARD_LINE_RE.test(lines[i].trim()) &&
+      !IMG_LINE_RE.test(lines[i].trim()) &&
       !isTableStart(lines, i)
     ) {
       paraLines.push(lines[i]);

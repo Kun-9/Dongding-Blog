@@ -1,59 +1,39 @@
 "use client";
 
 /**
- * Studio-only image wrapper. Click the image to reveal a width slider that
- * calls back with the new width token (e.g. "480" or "50%"); the Studio uses
- * the callback to rewrite the matching `![alt|width](url)` token in-place.
+ * Studio 전용 그림 블록. 그림을 누르면 폭 3단(`{sm}` / 기본 / `{wide}`)이 열리고,
+ * 고른 값을 콜백으로 올려 본문의 `![…](…){…}` 토큰을 고쳐 쓴다.
  *
- * Width semantics — number → px, "%"-suffixed → percent, null → natural.
+ * 임의 px 슬라이더는 걷어냈다 — 새 문법에 자리가 없다 (시안 DEC-27).
+ * 묶음(연속 줄)의 열 수는 여기서 못 바꾼다. 본문에서 `{2}`~`{4}` 로 적는다.
  */
 import { useEffect, useRef, useState } from "react";
-import type { ImageWidth } from "@/lib/markdown";
+import { Figure, type ImageSize } from "@/components/prose/Figure";
 
 interface Props {
   src: string;
   alt?: string;
-  width?: string | null;
-  onResize?: (width: ImageWidth | null) => void;
+  size?: ImageSize;
+  onResize?: (size: ImageSize) => void;
 }
 
-const PX_MIN = 80;
-const PX_MAX = 1600;
-const PX_DEFAULT = 640;
+const SIZES: { v: ImageSize; label: string; hint: string }[] = [
+  { v: "sm", label: "좁게", hint: "380px" },
+  { v: "", label: "기본", hint: "본문 폭" },
+  { v: "wide", label: "넓게", hint: "880px" },
+];
 
-type Mode = "px" | "percent" | "natural";
-
-function parseMode(width: string | null | undefined): Mode {
-  if (!width) return "natural";
-  return /%$/.test(width) ? "percent" : "px";
-}
-
-function parseValue(width: string | null | undefined): number {
-  if (!width) return PX_DEFAULT;
-  return parseInt(width.replace("%", ""), 10) || PX_DEFAULT;
-}
-
-function cssWidth(width: string | null | undefined): string | undefined {
-  if (!width) return undefined;
-  return /%$/.test(width) ? width : `${width}px`;
-}
-
-export function EditableImage({ src, alt = "", width, onResize }: Props) {
+export function EditableImage({ src, alt = "", size = "", onResize }: Props) {
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
-  const mode = parseMode(width);
-  const value = parseValue(width);
 
-  // Close panel on outside click / Escape.
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
     };
     const onDown = (e: MouseEvent) => {
-      if (!panelRef.current) return;
-      if (panelRef.current.contains(e.target as Node)) return;
-      // The image lives outside the panel — closing on its click is desired.
+      if (panelRef.current?.contains(e.target as Node)) return;
       setOpen(false);
     };
     window.addEventListener("keydown", onKey);
@@ -64,172 +44,56 @@ export function EditableImage({ src, alt = "", width, onResize }: Props) {
     };
   }, [open]);
 
-  const setWidth = (next: ImageWidth | null) => {
-    onResize?.(next);
-  };
-
-  const sliderMin = mode === "percent" ? 10 : PX_MIN;
-  const sliderMax = mode === "percent" ? 100 : PX_MAX;
-
   return (
-    <span className="relative my-2 block">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={src}
-        alt={alt}
-        onClick={(e) => {
+    <div className="relative">
+      {/* 실물과 같은 렌더를 그대로 쓰고, 클릭만 가로채 폭 패널을 연다. */}
+      <div
+        onClickCapture={(e) => {
+          e.preventDefault();
           e.stopPropagation();
           setOpen((o) => !o);
         }}
-        className="block max-w-full cursor-pointer rounded-lg ring-2 ring-transparent transition hover:ring-ink/20"
-        style={{
-          width: cssWidth(width),
-          ...(open ? { outline: "2px solid var(--ink)", outlineOffset: 2 } : {}),
-        }}
-      />
+        className={open ? "rounded-lg outline outline-2 outline-ink" : undefined}
+      >
+        <Figure src={src} alt={alt} size={size} />
+      </div>
+
       {open && onResize && (
-        <span
+        <div
           ref={panelRef}
           role="dialog"
-          aria-label="이미지 크기 조정"
-          onClick={(e) => e.stopPropagation()}
-          className="mt-1.5 w-full max-w-[420px] flex-col gap-2 rounded-lg border border-border-token bg-surface px-3 py-2.5 shadow-md"
-          style={{ display: "flex" }}
+          aria-label="이미지 폭"
+          className="mb-4 flex w-full max-w-[420px] items-center gap-1.5 rounded-lg border border-border-token bg-surface px-3 py-2.5 shadow-md"
         >
-          <span
-            className="flex items-center gap-2 text-[11px] font-mono text-ink-muted"
-            style={{ display: "flex" }}
-          >
-            <span className="font-semibold uppercase tracking-[0.05em]">
-              너비
-            </span>
-            <span className="rounded bg-surface-alt px-1.5 py-[1px] text-ink">
-              {mode === "natural"
-                ? "원본"
-                : mode === "percent"
-                  ? `${value}%`
-                  : `${value}px`}
-            </span>
+          <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.05em] text-ink-muted">
+            폭
+          </span>
+          {SIZES.map((s) => (
             <button
+              key={s.v || "default"}
               type="button"
-              onClick={() => setOpen(false)}
-              aria-label="닫기"
-              className="ml-auto rounded p-1 text-[12px] text-ink-muted hover:bg-hover hover:text-ink"
+              onClick={() => onResize(s.v)}
+              title={s.hint}
+              className="rounded-md border px-2 py-[3px] font-sans text-[11.5px] transition"
+              style={{
+                borderColor: size === s.v ? "var(--ink)" : "var(--border)",
+                background: size === s.v ? "var(--ink)" : "transparent",
+                color: size === s.v ? "var(--bg)" : "var(--ink-soft)",
+              }}
             >
-              ×
+              {s.label}
             </button>
-          </span>
-
-          <span
-            className="flex items-center gap-2"
-            style={{ display: "flex" }}
+          ))}
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            aria-label="닫기"
+            className="ml-auto rounded p-1 text-[12px] text-ink-muted hover:bg-hover hover:text-ink"
           >
-            <input
-              type="range"
-              min={sliderMin}
-              max={sliderMax}
-              step={mode === "percent" ? 5 : 10}
-              value={mode === "natural" ? PX_DEFAULT : value}
-              onChange={(e) => {
-                const next = parseInt(e.target.value, 10);
-                if (mode === "percent") {
-                  setWidth(`${next}%` as ImageWidth);
-                } else {
-                  setWidth(`${next}` as ImageWidth);
-                }
-              }}
-              className="flex-1 cursor-pointer accent-ink"
-              disabled={mode === "natural"}
-            />
-            <input
-              type="number"
-              min={sliderMin}
-              max={sliderMax}
-              value={mode === "natural" ? "" : value}
-              placeholder="—"
-              onChange={(e) => {
-                const raw = e.target.value;
-                if (raw === "") {
-                  setWidth(null);
-                  return;
-                }
-                const next = parseInt(raw, 10);
-                if (Number.isNaN(next)) return;
-                if (mode === "percent") {
-                  setWidth(`${next}%` as ImageWidth);
-                } else {
-                  setWidth(`${next}` as ImageWidth);
-                }
-              }}
-              className="w-[70px] rounded-md border border-border-token bg-surface px-1.5 py-[3px] text-right font-mono text-[12px] text-ink outline-none"
-            />
-          </span>
-
-          <span
-            className="flex flex-wrap gap-1"
-            style={{ display: "flex" }}
-          >
-            <PresetButton active={mode === "natural"} onClick={() => setWidth(null)}>
-              원본
-            </PresetButton>
-            <PresetButton
-              active={mode === "percent" && value === 100}
-              onClick={() => setWidth("100%" as ImageWidth)}
-            >
-              100%
-            </PresetButton>
-            <PresetButton
-              active={mode === "percent" && value === 75}
-              onClick={() => setWidth("75%" as ImageWidth)}
-            >
-              75%
-            </PresetButton>
-            <PresetButton
-              active={mode === "percent" && value === 50}
-              onClick={() => setWidth("50%" as ImageWidth)}
-            >
-              50%
-            </PresetButton>
-            <PresetButton
-              active={mode === "px" && value === 480}
-              onClick={() => setWidth("480" as ImageWidth)}
-            >
-              480px
-            </PresetButton>
-            <PresetButton
-              active={mode === "px" && value === 320}
-              onClick={() => setWidth("320" as ImageWidth)}
-            >
-              320px
-            </PresetButton>
-          </span>
-        </span>
+            ×
+          </button>
+        </div>
       )}
-    </span>
-  );
-}
-
-function PresetButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="rounded-md border px-2 py-[3px] font-mono text-[11px] transition"
-      style={{
-        borderColor: active ? "var(--ink)" : "var(--border)",
-        background: active ? "var(--ink)" : "transparent",
-        color: active ? "var(--bg)" : "var(--ink-soft)",
-      }}
-    >
-      {children}
-    </button>
+    </div>
   );
 }
