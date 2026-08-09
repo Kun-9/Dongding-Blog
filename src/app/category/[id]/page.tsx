@@ -18,6 +18,7 @@ export async function generateMetadata({
   const { id } = await params;
   return {
     title: await categoryLabel(id),
+    alternates: { canonical: `/category/${id}` },
   };
 }
 

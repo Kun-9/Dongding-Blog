@@ -17,6 +17,10 @@ import { LeadFigure } from "@/components/post/LeadFigure";
 import { InlineCode } from "@/components/prose/InlineCode";
 import { TopPosts } from "@/components/analytics/TopPosts";
 
+export const metadata = {
+  alternates: { canonical: "/" },
+};
+
 export default async function Page() {
   const [all, featuredPost, categories, site, seriesList] = await Promise.all([
     getAllPosts(),

@@ -6,6 +6,7 @@ import { SeriesGrid } from "@/components/series/SeriesGrid";
 
 export const metadata = {
   title: "Series",
+  alternates: { canonical: "/series" },
 };
 
 export const revalidate = 3600;

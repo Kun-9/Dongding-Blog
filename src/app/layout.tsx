@@ -24,6 +24,14 @@ export async function generateMetadata(): Promise<Metadata> {
       template: `%s · ${site.shortTitle}`,
     },
     description: site.description,
+    // title·description·image 는 일부러 비운다 — 비워 두면 Next 가 각 페이지의
+    // title/description 과 opengraph-image 에서 채운다. 여기서 못 박으면 모든
+    // 페이지의 og:title 이 홈 제목으로 고정된다(하위 openGraph 는 통째 교체).
+    openGraph: {
+      type: "website",
+      siteName: site.shortTitle,
+      locale: site.locale.replace("-", "_"),
+    },
   };
 }
 

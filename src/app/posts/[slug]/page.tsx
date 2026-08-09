@@ -53,6 +53,7 @@ export async function generateMetadata({
   return {
     title: post.meta.title,
     description: post.meta.summary,
+    alternates: { canonical: `/posts/${slug}` },
   };
 }
 

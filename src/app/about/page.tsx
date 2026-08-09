@@ -7,6 +7,7 @@ import { getSite } from "@/lib/site-db";
 
 export const metadata = {
   title: "About",
+  alternates: { canonical: "/about" },
 };
 
 const CAREER: ReadonlyArray<readonly [string, string, string]> = [

@@ -5,6 +5,8 @@ import { SearchClient } from "./SearchClient";
 
 export const metadata = {
   title: "Search",
+  // 쿼리스트링이 붙어도 색인 대상은 /search 하나로 모은다.
+  alternates: { canonical: "/search" },
 };
 
 export const revalidate = 3600;

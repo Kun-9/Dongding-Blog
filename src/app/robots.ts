@@ -1,11 +1,12 @@
 import type { MetadataRoute } from "next";
-import { site } from "@/lib/site";
+import { getSite } from "@/lib/site-db";
 
-export const dynamic = "force-static";
+// 설정 화면에서 URL 을 바꾸면 따라오도록 정본(DB)을 읽는다. force-static 이면
+// 빌드 시점 값에 굳는다.
+export const revalidate = 3600;
 
-const SITE_URL = site.url;
-
-export default function robots(): MetadataRoute.Robots {
+export default async function robots(): Promise<MetadataRoute.Robots> {
+  const SITE_URL = (await getSite()).url;
   return {
     rules: [
       {

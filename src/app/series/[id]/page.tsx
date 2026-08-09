@@ -19,7 +19,10 @@ export async function generateMetadata({
 }) {
   const { id } = await params;
   const s = await getSeriesByIdWithPosts(id);
-  return { title: s ? s.title : "Series" };
+  return {
+    title: s ? s.title : "Series",
+    alternates: { canonical: `/series/${id}` },
+  };
 }
 
 export default async function Page({

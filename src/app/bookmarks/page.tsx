@@ -6,6 +6,7 @@ import { BookmarkList } from "@/components/bookmarks/BookmarkList";
 
 export const metadata = {
   title: "Linkroll",
+  alternates: { canonical: "/bookmarks" },
 };
 
 export const revalidate = 3600;
