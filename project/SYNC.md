@@ -46,11 +46,19 @@ claude.ai/design 프로젝트 `BLOG`(`7b833edf-d807-40c6-ba64-764bd77f5bd8`)를 
 
 ## 어긋난 곳
 
-### 시안에 있는데 미구현 — 1건
+### 시안에 있는데 미구현 — 없음
 
-- **SEO 미리보기** (`page-settings.jsx` 의 `SeoPreview` · `SeoMeter`, 264행~)
-  설정 › SEO 카드 맨 위에 검색결과 / SNS 카드 2-way 실시간 미리보기 + 길이 미터.
-  `src/app/settings/page.tsx` 에 해당 코드 없음.
+`page-settings.jsx` 의 `SeoPreview` · `SeoMeter` 가 마지막 미구현 항목이었고
+2026-08-09 에 `src/app/settings/page.tsx` 로 구현했다.
+
+다만 **SNS 카드 미리보기는 시안을 그대로 옮기지 않았다.** 시안 목업은 검은 배경
+단일 헤드라인인데, 실제 OG 이미지(`src/app/opengraph-image.tsx`,
+`src/app/posts/[slug]/opengraph-image.tsx`)는 크림 배경에 `동` 타일 + 여러 줄
+헤드라인이다. 시안이 낡았다. 미리보기는 **실물 쪽**을 재현한다 — 실제와 다른
+미리보기는 없느니만 못하다. 시안을 실물에 맞추는 건 남은 일.
+
+폭 계산·잘림 로직은 `src/lib/seo-text.ts` 로 빼고
+`node scripts/check-seo-text.mjs` 로 점검한다.
 
 ### 구현에만 있는 것 — 시안·문서 어디에도 없음
 
@@ -67,10 +75,23 @@ claude.ai/design 프로젝트 `BLOG`(`7b833edf-d807-40c6-ba64-764bd77f5bd8`)를 
 
 ### 문서에만 어긋난 것
 
-- 클라우드 `CHANGELOG.md` 의 `Latest deployed: v1.2.1` 은 사실이 아니다. 그 뒤로 responsive · series · link-card 가 배포됐다.
+- ~~클라우드 `CHANGELOG.md` 의 `Latest deployed: v1.2.1`~~ → 2026-08-09 정리 완료.
+  `[Unreleased]` 를 `v1.3.0` 으로 승격하고 **배포 상태 표기 자체를 걷어냈다.**
+  시안 프로젝트는 서버 상태를 알 수 없어서, 적는 순간부터 틀리기 시작한다
+  (실제로 넉 달간 커밋 70여 개가 배포되는 동안 `v1.2.1` 로 굳어 있었다).
 - 레포에서는 CHANGELOG · SemVer · 배포 상태 표기를 쓰지 않는다. `git log origin/main` 이 그 역할을 한다.
 - 클라우드 `CLAUDE.md` 의 작업 규칙은 claude.ai/design 안에서만 유효하다. 이 레포에는 적용되지 않는다.
 - `PRD.html` 의 결정 로그(DEC-NN)는 계속 쓴다 — "왜 그 방향으로 정했나"는 git log 가 대신하지 못한다.
+- `PRD.html` 표지에 `v1.3.0 (작업 중)` 이 남아 있다. v1.3.0 은 이제 확정본이라 손봐야 한다.
+
+### 지금 로컬이 클라우드보다 앞선 것 — 손으로 옮겨야 함
+
+**`project/CLAUDE.md`.** 배포 상태 표기 규칙(§2·§3·§5)을 걷어낸 판이 로컬에만
+있다. `DesignSync` 는 `CLAUDE.md` 와 `.claude/` 쓰기를 **차단한다** — 디자인
+에이전트에게 지시를 흘려보낼 수 있는 경로라서 계획에 넣어도 거부된다.
+
+claude.ai/design 에서 직접 열어 `project/CLAUDE.md` 내용으로 덮어써야 한다.
+그때까지 클라우드 규칙은 없어진 `Deployed` 배지를 계속 요구한다.
 
 ## 갱신 방법
 
