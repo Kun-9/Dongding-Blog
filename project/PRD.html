@@ -1,0 +1,774 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PRD · Dong-Ding 개발 노트</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  :root {
+    --bg: #f7f4ed;
+    --surface: #fffdf7;
+    --surface-alt: #efe9dc;
+    --ink: #2a2825;
+    --ink-soft: #4a463f;
+    --ink-muted: #8a8478;
+    --border: #e3dccc;
+    --border-strong: #2a2825;
+    --accent: #2a2825;
+    --accent-ink: #f7f4ed;
+    --warn: #a8814a;
+    --ok: #7a8a5a;
+    --info: #5a7480;
+    --danger: #8a5d5d;
+    --sans: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); }
+  body {
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+    word-break: keep-all; line-height: 1.65;
+    background-image:
+      radial-gradient(ellipse 1100px 500px at 90% -10%, rgba(255,210,170,0.32), transparent 60%),
+      radial-gradient(ellipse 800px 400px at 0% 5%, rgba(190,205,225,0.22), transparent 60%);
+    background-attachment: fixed;
+  }
+  ::selection { background: rgba(255,200,120,0.4); }
+  a { color: inherit; }
+
+  /* Layout */
+  .wrap { display: grid; grid-template-columns: 220px 1fr; max-width: 1180px; margin: 0 auto; gap: 48px; padding: 56px 32px 96px; }
+  aside.toc { position: sticky; top: 32px; align-self: flex-start; height: fit-content; }
+  aside.toc .label { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-muted); margin-bottom: 14px; white-space: nowrap; }
+  aside.toc ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+  aside.toc a { display: block; padding: 5px 10px; border-radius: 6px; text-decoration: none; font-size: 13px; color: var(--ink-soft); font-weight: 500; letter-spacing: -0.01em; }
+  aside.toc a:hover { background: rgba(0,0,0,0.04); }
+  aside.toc a.h3 { padding-left: 22px; color: var(--ink-muted); font-size: 12.5px; font-weight: 400; }
+
+  main { max-width: 760px; min-width: 0; }
+
+  /* Cover */
+  .cover { margin-bottom: 56px; padding-bottom: 28px; border-bottom: 1px solid var(--border); }
+  .crumb { font-family: var(--mono); font-size: 12px; color: var(--ink-muted); letter-spacing: 0.02em; margin-bottom: 12px; }
+  .crumb .sep { margin: 0 6px; opacity: 0.5; }
+  h1.title { font-size: 56px; font-weight: 700; letter-spacing: -0.04em; line-height: 1.05; margin: 0; text-wrap: balance; }
+  .lede { font-size: 17px; color: var(--ink-soft); line-height: 1.65; margin: 18px 0 0; max-width: 580px; text-wrap: pretty; }
+  .meta { display: flex; gap: 24px; flex-wrap: wrap; margin-top: 24px; font-size: 13px; color: var(--ink-muted); font-family: var(--mono); }
+  .meta b { color: var(--ink); font-weight: 600; }
+  .status-bar { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 18px; align-items: center; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 600; letter-spacing: 0.02em; font-family: var(--mono); white-space: nowrap; }
+  .pill.draft { background: rgba(168,129,74,0.15); color: var(--warn); }
+  .pill.review { background: rgba(90,116,128,0.15); color: var(--info); }
+  .pill.shipped { background: rgba(122,138,90,0.15); color: var(--ok); }
+
+  /* Section */
+  section { margin: 56px 0 0; scroll-margin-top: 32px; }
+  h2 { font-size: 28px; font-weight: 700; letter-spacing: -0.03em; margin: 0 0 6px; line-height: 1.2; }
+  h2 .num { font-family: var(--mono); font-size: 14px; font-weight: 600; color: var(--ink-muted); letter-spacing: 0.02em; vertical-align: top; padding-right: 12px; }
+  h2 + .sub { font-size: 14px; color: var(--ink-muted); margin: 0 0 24px; line-height: 1.55; }
+  h3 { font-size: 18px; font-weight: 600; letter-spacing: -0.02em; margin: 28px 0 10px; line-height: 1.3; }
+  p { margin: 0 0 1em; font-size: 15.5px; line-height: 1.85; color: var(--ink-soft); }
+  p strong { color: var(--ink); font-weight: 600; }
+  ul.bullets, ol.numbered { margin: 0 0 1em; padding-left: 22px; font-size: 15px; line-height: 1.85; color: var(--ink-soft); }
+  ul.bullets li, ol.numbered li { margin: 0 0 0.4em; }
+  ul.bullets li::marker { color: var(--ink-muted); }
+
+  /* Notion-style callout */
+  .cb { display: flex; gap: 12px; padding: 14px 18px; border-radius: 10px; margin: 18px 0; align-items: flex-start; }
+  .cb.note { background: rgba(90,116,128,0.10); }
+  .cb.warn { background: rgba(168,129,74,0.12); }
+  .cb.q { background: rgba(122,138,90,0.10); }
+  .cb .glyph { flex-shrink: 0; width: 22px; height: 22px; border-radius: 999px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; margin-top: 1px; color: #fff; }
+  .cb.note .glyph { background: var(--info); }
+  .cb.warn .glyph { background: var(--warn); }
+  .cb.q .glyph { background: var(--ok); }
+  .cb .body { font-size: 14.5px; line-height: 1.7; color: var(--ink-soft); }
+  .cb .body strong { color: var(--ink); }
+
+  /* Inline code & blocks */
+  code.ic { font-family: var(--mono); font-size: 0.88em; background: rgba(0,0,0,0.05); padding: 1px 6px; border-radius: 4px; color: var(--ink); }
+  pre { font-family: var(--mono); font-size: 13px; line-height: 1.65; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; overflow-x: auto; margin: 18px 0; color: var(--ink-soft); }
+
+  /* Persona card */
+  .personas { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 16px; }
+  .persona { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; }
+  .persona .top { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .persona .av { width: 38px; height: 38px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 16px; letter-spacing: -0.02em; }
+  .persona .name { font-size: 14.5px; font-weight: 600; letter-spacing: -0.015em; }
+  .persona .role { font-size: 12px; color: var(--ink-muted); font-family: var(--mono); }
+  .persona .quote { font-size: 13.5px; color: var(--ink-soft); line-height: 1.65; padding-left: 12px; border-left: 0; font-style: italic; }
+  .persona .needs { margin: 12px 0 0; padding: 0; list-style: none; font-size: 13px; }
+  .persona .needs li { padding: 3px 0; color: var(--ink-soft); }
+  .persona .needs li::before { content: '→ '; color: var(--ink-muted); font-family: var(--mono); }
+
+  /* Goal grid */
+  .goals { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin: 16px 0; }
+  .goal { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .goal .num { font-family: var(--mono); font-size: 11px; color: var(--ink-muted); letter-spacing: 0.05em; }
+  .goal .text { font-size: 14px; font-weight: 600; color: var(--ink); margin-top: 4px; line-height: 1.4; letter-spacing: -0.015em; }
+
+  /* IA / sitemap */
+  .sitemap { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 22px; margin: 16px 0; }
+  .sitemap .root { font-family: var(--mono); font-size: 13.5px; color: var(--ink); display: inline-block; padding: 6px 12px; background: var(--surface-alt); border-radius: 6px; font-weight: 600; }
+  .sitemap .branch { margin-top: 10px; padding-left: 18px; border-left: 1px dashed var(--border); }
+  .sitemap .node { font-family: var(--mono); font-size: 13px; padding: 4px 0; color: var(--ink-soft); display: flex; align-items: center; gap: 10px; }
+  .sitemap .node .arrow { color: var(--ink-muted); }
+  .sitemap .node .tag { font-size: 10.5px; padding: 1px 6px; border-radius: 4px; background: var(--surface-alt); color: var(--ink-muted); font-weight: 600; letter-spacing: 0.03em; }
+  .sitemap .node .tag.public { background: rgba(122,138,90,0.15); color: var(--ok); }
+  .sitemap .node .tag.admin { background: rgba(168,129,74,0.15); color: var(--warn); }
+
+  /* Page table */
+  table.pages { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13.5px; background: var(--surface); border-radius: 10px; overflow: hidden; }
+  table.pages th { text-align: left; padding: 10px 12px; font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-muted); font-weight: 600; border-bottom: 1px solid var(--border); }
+  table.pages td { padding: 12px; border-top: 1px solid var(--border); vertical-align: top; }
+  table.pages td.path { font-family: var(--mono); font-size: 12.5px; color: var(--ink); white-space: nowrap; }
+  table.pages td.purpose { color: var(--ink-soft); }
+  table.pages tbody tr:first-child td { border-top: none; }
+
+  /* Decision log */
+  .decision { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; margin: 12px 0; display: grid; grid-template-columns: 80px 1fr; gap: 18px; align-items: start; }
+  .decision .ref { font-family: var(--mono); font-size: 12px; color: var(--ink-muted); padding-top: 2px; }
+  .decision .h { font-size: 14.5px; font-weight: 600; letter-spacing: -0.015em; color: var(--ink); margin: 0 0 4px; }
+  .decision .body p { font-size: 14px; line-height: 1.7; margin: 0 0 4px; color: var(--ink-soft); }
+  .decision .tag { display: inline-block; font-family: var(--mono); font-size: 10.5px; padding: 1px 6px; border-radius: 4px; background: var(--surface-alt); color: var(--ink-muted); margin-right: 4px; letter-spacing: 0.03em; }
+  .decision .tag.kept { background: rgba(122,138,90,0.15); color: var(--ok); }
+  .decision .tag.rejected { background: rgba(138,93,93,0.15); color: var(--danger); }
+
+  /* Roadmap */
+  .roadmap { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin: 16px 0; }
+  .phase { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; }
+  .phase .label { font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; color: var(--ink-muted); text-transform: uppercase; }
+  .phase h4 { margin: 4px 0 14px; font-size: 18px; font-weight: 600; letter-spacing: -0.02em; }
+  .phase ul { list-style: none; margin: 0; padding: 0; font-size: 13px; }
+  .phase ul li { padding: 5px 0; display: flex; gap: 8px; color: var(--ink-soft); line-height: 1.5; align-items: flex-start; }
+  .phase ul li .check { display: inline-block; width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; margin-top: 4px; }
+  .phase ul li .check.done { background: var(--ok); }
+  .phase ul li .check.todo { background: var(--surface-alt); border: 1px solid var(--border); }
+  .phase.now { border: 1px solid var(--ink); }
+
+  /* Open questions */
+  .oq { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 18px; margin: 10px 0; }
+  .oq .q { font-size: 14.5px; font-weight: 600; color: var(--ink); margin: 0 0 4px; letter-spacing: -0.015em; }
+  .oq .ctx { font-size: 13px; color: var(--ink-muted); line-height: 1.6; margin: 0; }
+
+  hr.div { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+
+  /* Footer */
+  footer.foot { margin-top: 80px; padding-top: 24px; border-top: 1px solid var(--border); font-size: 12px; color: var(--ink-muted); font-family: var(--mono); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<aside class="toc">
+  <div class="label">CONTENTS</div>
+  <ul>
+    <li><a href="#overview">개요</a></li>
+    <li><a href="#why">배경 · 왜 만드는가</a></li>
+    <li><a href="#goals">목표 · 비목표</a></li>
+    <li><a href="#personas">독자 · 작성자</a></li>
+    <li><a href="#sitemap">정보 구조</a></li>
+    <li><a href="#pages">페이지 사양</a></li>
+    <li><a href="#design">디자인 결정 로그</a></li>
+    <li><a href="#stack">기술 스택</a></li>
+    <li><a href="#roadmap">로드맵</a></li>
+    <li><a href="#metrics">성공 지표</a></li>
+    <li><a href="#open">미해결 질문</a></li>
+  </ul>
+</aside>
+
+<main>
+
+<header class="cover">
+  <div class="crumb">/ Personal Sites <span class="sep">›</span> Blog <span class="sep">›</span> 개발 노트</div>
+  <h1 class="title">개발 노트, 다시 짓다</h1>
+  <p class="lede">자바와 스프링, DB를 깊이, 천천히 따라가는 1인 기술 블로그를 위한 제품 요구사항. 목적 · 사용자 · 페이지 · 결정 로그를 한 곳에서.</p>
+  <div class="meta">
+    <span><b>Owner</b> · 동딩 (@dongding)</span>
+    <span><b>Version</b> · v1.3.0 (작업 중)</span>
+    <span><b>Updated</b> · 2026.08.07</span>
+    <span><b>Status</b> · v1.2.1 배포 · 구현본 역싱크 반영</span>
+  </div>
+  <div class="status-bar">
+    <span class="pill shipped">shipped · 공개 페이지 · Studio · Admin</span>
+    <span class="pill review">in review · 통계 · 시리즈 네비</span>
+    <span class="pill draft">draft · 모바일 반응형</span>  </div>
+</header>
+
+<section id="overview">
+<h2><span class="num">01</span>개요</h2>
+<p class="sub">한 페이지로 압축한 제품 요지.</p>
+
+<p><strong>Dong-Ding</strong>은 2년차 백엔드 개발자 1인의 기술 블로그입니다. 흔한 "TIL" 모음이 아니라, 한 주제를 깊이 따라가는 글을 모아두는 곳을 목표로 합니다. 빠르고, 광고가 없고, 다크모드를 지원하고, 코드 블록이 부끄럽지 않게 잘 보이는 — 그게 전부입니다.</p>
+
+<div class="cb note">
+  <span class="glyph">i</span>
+  <div class="body"><strong>한 줄 요약</strong> — 자바와 스프링, DB에 대해 천천히 깊이 쓰는 글을 모아두는 곳. 작성자가 다시 와서 검색해 읽을 수 있어야 한다.</div>
+</div>
+</section>
+
+<section id="why">
+<h2><span class="num">02</span>배경 · 왜 만드는가</h2>
+<p class="sub">기존 플랫폼으로는 안 되는 이유.</p>
+
+<h3>문제</h3>
+<ul class="bullets">
+  <li><strong>velog · tistory</strong> — 글이 "스트림"으로만 흐르고 시리즈/연재 구조가 약합니다. 한 주제를 5편으로 쓰면 세 번째 글에서 흐름이 끊깁니다.</li>
+  <li><strong>medium</strong> — 코드 블록 가독성이 떨어지고, 한국어 본문 글꼴 옵션이 빈약합니다.</li>
+  <li><strong>github pages 템플릿</strong> — 만들면 디자인이 어딘가 어색하고, Tailwind를 쓰지 않으면 새 페이지를 추가할 때마다 CSS를 다시 고민해야 합니다.</li>
+  <li><strong>공통</strong> — 검색 결과 페이지, 어드민, 글 작성 인터페이스가 작성자 본인의 글쓰기 동선에 맞지 않습니다.</li>
+</ul>
+
+<h3>기회</h3>
+<p>독자에게는 <strong>읽기 좋은 페이지</strong>를, 작성자에게는 <strong>다시 쓰고 싶은 작성 환경</strong>을 만들 수 있다면, 한 주에 한 글이라는 페이스를 1년 이상 유지할 수 있다고 가정합니다. 이 가정이 곧 이 프로젝트의 출발점입니다.</p>
+</section>
+
+<section id="goals">
+<h2><span class="num">03</span>목표 · 비목표</h2>
+<p class="sub">하기로 한 것과, 하지 않기로 한 것.</p>
+
+<h3>목표 (Goals)</h3>
+<div class="goals">
+  <div class="goal">
+    <div class="num">G1</div>
+    <div class="text">읽는 즐거움 — 본문 타이포그래피와 코드 블록을 1순위로.</div>
+  </div>
+  <div class="goal">
+    <div class="num">G2</div>
+    <div class="text">시리즈/연재 구조 — 한 주제를 여러 편으로 묶어 보여줄 것.</div>
+  </div>
+  <div class="goal">
+    <div class="num">G3</div>
+    <div class="text">작성 동선 — 마크다운으로 빠르게 쓰고 라이브 프리뷰로 확인.</div>
+  </div>
+  <div class="goal">
+    <div class="num">G4</div>
+    <div class="text">다크모드 동등 — 라이트와 동등한 품질의 다크 테마 제공.</div>
+  </div>
+  <div class="goal">
+    <div class="num">G5</div>
+    <div class="text">한국어 우선 — 글꼴, 줄바꿈, 자간을 한국어 본문에 최적화.</div>
+  </div>
+  <div class="goal">
+    <div class="num">G6</div>
+    <div class="text">광고/추적 없음 — 외부 트래커, 디스플레이 광고 일체 미설치.</div>
+  </div>
+</div>
+
+<h3>비목표 (Non-goals)</h3>
+<ul class="bullets">
+  <li><strong>다중 작성자</strong>를 지원하지 않습니다. 1인 블로그를 전제합니다.</li>
+  <li><strong>SNS형 상호작용</strong> (좋아요, 팔로우, 알림 피드)을 만들지 않습니다.</li>
+  <li><strong>수집 파이프라인</strong>을 직접 만들지 않습니다 — 방문 집계는 Umami에 위임하고, <code class="ic">/admin/stats</code>는 그 공유 링크를 읽어 보여주기만 합니다.</li>
+  <li><strong>SEO 광적 최적화</strong>는 하지 않습니다. 사이트맵·OG·canonical 정도만.</li>
+  <li><strong>모바일 앱</strong>을 만들지 않습니다. 모바일 웹에서 읽기 좋게.</li>
+</ul>
+
+<div class="cb warn">
+  <span class="glyph">!</span>
+  <div class="body"><strong>비목표는 의식적으로 보호한다.</strong> "기왕이면 추가해도 좋잖아?"라는 말이 들리면, 이 섹션을 다시 펴고 거절한다.</div>
+</div>
+</section>
+
+<section id="personas">
+<h2><span class="num">04</span>독자 · 작성자</h2>
+<p class="sub">이 사이트의 두 사용자.</p>
+
+<div class="personas">
+  <div class="persona">
+    <div class="top">
+      <div class="av" style="background: #5a7480;">민</div>
+      <div>
+        <div class="name">민지 · 3년차 백엔드</div>
+        <div class="role">READER · 검색 유입</div>
+      </div>
+    </div>
+    <p class="quote">"jpa n+1을 쳤다가, 진짜로 이해할 수 있는 글을 찾고 있어요."</p>
+    <ul class="needs">
+      <li>코드 블록을 옆으로 스크롤하지 않고 한 화면에 보이게</li>
+      <li>이 글이 다음 글로 자연스럽게 이어지면 더 읽음</li>
+      <li>다크모드 (밤에 침대에서 읽음)</li>
+    </ul>
+  </div>
+  <div class="persona">
+    <div class="top">
+      <div class="av" style="background: #7a8a5a;">동</div>
+      <div>
+        <div class="name">동딩 · 작성자 본인</div>
+        <div class="role">AUTHOR · 1인 운영</div>
+      </div>
+    </div>
+    <p class="quote">"쓰는 게 부담되면 결국 안 써요. 작성 화면이 가벼워야 해요."</p>
+    <ul class="needs">
+      <li>마크다운 + 라이브 프리뷰, 자동 저장</li>
+      <li>초안과 발행 글을 한 화면에서 관리</li>
+      <li>옛날에 쓴 글을 다시 검색해 인용할 일이 잦음</li>
+    </ul>
+  </div>
+</div>
+</section>
+
+<section id="sitemap">
+<h2><span class="num">05</span>정보 구조</h2>
+<p class="sub">URL과 노출/비노출 구분.</p>
+
+<div class="sitemap">
+  <div class="root">/</div>
+  <div class="branch">
+    <div class="node"><span class="arrow">└</span> <span>/</span> <span class="tag public">public</span> <span style="color:var(--ink-muted)">— 홈 (피처드 + 최근 글)</span></div>
+    <div class="node"><span class="arrow">└</span> <span>/posts</span> <span class="tag public">public</span> <span style="color:var(--ink-muted)">— 글 목록 (연도별)</span></div>
+    <div class="node"><span class="arrow">└</span> <span>/posts/[slug]</span> <span class="tag public">public</span> <span style="color:var(--ink-muted)">— 상세</span></div>
+    <div class="node"><span class="arrow">└</span> <span>/category/[id]</span> <span class="tag public">public</span></div>
+    <div class="node"><span class="arrow">└</span> <span>/tags/[tag]</span> <span class="tag public">public</span></div>
+    <div class="node"><span class="arrow">└</span> <span>/series</span> <span class="tag public">public</span> <span style="color:var(--ink-muted)">— 연재 모음</span></div>
+    <div class="node"><span class="arrow">└</span> <span>/bookmarks</span> <span class="tag public">public</span> <span style="color:var(--ink-muted)">— linkroll</span></div>
+    <div class="node"><span class="arrow">└</span> <span>/about</span> <span class="tag public">public</span></div>
+    <div class="node"><span class="arrow">└</span> <span>/search</span> <span class="tag public">public</span></div>
+    <div class="node"><span class="arrow">└</span> <span>/login</span> <span class="tag public">public</span> <span style="color:var(--ink-muted)">— 관리자 로그인 (가입 없음)</span></div>
+    <div class="node"><span class="arrow">└</span> <span>/admin</span> <span class="tag admin">auth</span> <span style="color:var(--ink-muted)">— 대시보드</span></div>
+    <div class="node"><span class="arrow">└</span> <span>/admin/stats</span> <span class="tag admin">auth</span> <span style="color:var(--ink-muted)">— 방문 통계 (Umami)</span></div>
+    <div class="node"><span class="arrow">└</span> <span>/studio</span> <span class="tag admin">auth</span> <span style="color:var(--ink-muted)">— 작성/편집</span></div>
+    <div class="node"><span class="arrow">└</span> <span>/settings</span> <span class="tag admin">auth</span></div>
+    <div class="node"><span class="arrow">└</span> <span>/api/*</span> <span class="tag admin">auth</span> <span style="color:var(--ink-muted)">— 글·시리즈·카테고리·설정·통계 프록시</span></div>
+    <div class="node"><span class="arrow">└</span> <span>/card</span> <span class="tag public">public</span> <span style="color:var(--ink-muted)">— OG 이미지 생성</span></div>
+    <div class="node"><span class="arrow">└</span> <span>/sitemap.xml</span> <span class="tag public">public</span></div>
+  </div>
+</div>
+
+<h3>네비게이션 원칙</h3>
+<ul class="bullets">
+  <li><strong>헤더</strong>는 아바타 + 4개 링크 (Posts · Series · Linkroll · About) + ⌘K + 테마 토글. 카테고리는 헤더가 아니라 홈 하단과 목록 사이드바에서 만납니다 — 5개가 늘어날 여지가 있어 헤더에 고정하지 않습니다.</li>
+  <li><strong>Series · Linkroll</strong>은 헤더에 명시합니다 (DEC-10). ⌘K만으로는 "그 페이지가 존재함"을 알릴 수 없습니다.</li>
+  <li><strong>Admin · Studio · Stats · Settings</strong>는 로그인했을 때만 계정 드롭다운 안에 나타납니다 (DEC-16). 로그아웃 상태에서 직접 접근하면 <code class="ic">/login</code>으로 대체되고, 실제 차단은 서버가 합니다.</li>
+  <li><strong>글 단위 관리자 액션</strong>(수정·복제·삭제)은 메뉴가 아니라 그 글 위 AdminBar에 둡니다 (DEC-09).</li>
+</ul>
+</section>
+
+<section id="pages">
+<h2><span class="num">06</span>페이지 사양</h2>
+<p class="sub">각 페이지의 목적과 핵심 컴포넌트.</p>
+
+<table class="pages">
+  <thead>
+    <tr>
+      <th style="width:32%">PATH · 이름</th>
+      <th>목적 · 핵심 요소</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="path">/<br/><span style="color:var(--ink-muted); font-family:var(--sans); font-size:12px">홈</span></td>
+      <td class="purpose">에디토리얼 히어로 · 피처드 1편(+ 리드 그림 3단 폴백) · 최근 글 6편 그리드 · Trending 5편 · 카테고리. 첫인상이 곧 신뢰.</td>
+    </tr>
+    <tr>
+      <td class="path">/posts<br/><span style="color:var(--ink-muted); font-family:var(--sans); font-size:12px">글 목록</span></td>
+      <td class="purpose">연도별 그룹 · 카테고리 pill 필터. 옛날 글로 거슬러 가는 동선.</td>
+    </tr>
+    <tr>
+      <td class="path">/posts/[slug]<br/><span style="color:var(--ink-muted); font-family:var(--sans); font-size:12px">상세</span></td>
+      <td class="purpose">본문 + sticky TOC + reading progress · 코드블록(파일명·복사·하이라이트·diff) · Callout 4종 · 조회수 · 좋아요 · Giscus 댓글 · 시간순 이전/다음. 시리즈 글이면 상단 배너 + 하단 스텝 네비가 추가됩니다.</td>
+    </tr>
+    <tr>
+      <td class="path">/series<br/><span style="color:var(--ink-muted); font-family:var(--sans); font-size:12px">연재</span></td>
+      <td class="purpose">시리즈 카드 그리드, 발행 진행률 점. 한 주제를 묶어서 보여주는 유일한 페이지.</td>
+    </tr>
+    <tr>
+      <td class="path">/bookmarks<br/><span style="color:var(--ink-muted); font-family:var(--sans); font-size:12px">linkroll</span></td>
+      <td class="purpose">남이 잘 써둔 글 외부 링크 + 짧은 인용 메모. 큐레이션 콘텐츠.</td>
+    </tr>
+    <tr>
+      <td class="path">/about<br/><span style="color:var(--ink-muted); font-family:var(--sans); font-size:12px">소개</span></td>
+      <td class="purpose">짧은 자기소개 · 경력 타임라인 · 관심사 · 연락처. About은 짧을수록 좋다.</td>
+    </tr>
+    <tr>
+      <td class="path">/search<br/><span style="color:var(--ink-muted); font-family:var(--sans); font-size:12px">검색</span></td>
+      <td class="purpose">실시간 필터, 키워드 하이라이팅, 스코프(전체/제목/태그/본문). ⌘K가 가벼운 점프라면 이건 풀 검색.</td>
+    </tr>
+    <tr>
+      <td class="path">/admin<br/><span style="color:var(--ink-muted); font-family:var(--sans); font-size:12px">대시보드</span></td>
+      <td class="purpose">발행/초안 통계 · 월별 발행 추이 · 카테고리 분포 · 초안 테이블 · 최근 댓글.</td>
+    </tr>
+    <tr>
+      <td class="path">/studio<br/><span style="color:var(--ink-muted); font-family:var(--sans); font-size:12px">작성/편집</span></td>
+      <td class="purpose">좌측 마크다운 + 우측 라이브 프리뷰 split. 프론트매터 폼(제목 · slug · 요약 · 분류 · 태그 · 시리즈 회차 · 대표 이미지 · 공개 범위) · 자동저장 · 수정 이력 되돌리기 · 이미지 업로드. 발행 동선의 전부.</td>
+    </tr>
+    <tr>
+      <td class="path">/admin/stats<br/><span style="color:var(--ink-muted); font-family:var(--sans); font-size:12px">통계</span></td>
+      <td class="purpose">방문자 · 페이지뷰 · 세션 · 이탈률 카드 · 일별 페이지뷰 추이(7/30일) · Top Pages · Referrers · Events. 지표를 보러 외부 대시보드로 나가지 않기 위한 페이지.</td>
+    </tr>
+    <tr>
+      <td class="path">/login<br/><span style="color:var(--ink-muted); font-family:var(--sans); font-size:12px">로그인</span></td>
+      <td class="purpose">이메일 + 비밀번호. 가입 화면 없음 — 계정은 관리자 하나. 로그인이 필요한 화면에 직접 들어오면 여기로 대체되고, 인증 후 원래 가려던 곳으로 보냅니다.</td>
+    </tr>
+    <tr>
+      <td class="path">/settings<br/><span style="color:var(--ink-muted); font-family:var(--sans); font-size:12px">설정</span></td>
+      <td class="purpose">프로필 · 소셜 · 댓글(Giscus) · SEO · 발행 설정 · 데이터 내보내기.</td>
+    </tr>
+    <tr>
+      <td class="path">/404<br/><span style="color:var(--ink-muted); font-family:var(--sans); font-size:12px">에러</span></td>
+      <td class="purpose">스택트레이스 위트("NoSuchPostException"). 홈/검색으로 복귀 동선 2개.</td>
+    </tr>
+  </tbody>
+</table>
+</section>
+
+<section id="design">
+<h2><span class="num">07</span>디자인 결정 로그</h2>
+<p class="sub">왜 이렇게 했는가 — 선택의 기록.</p>
+
+<div class="decision">
+  <div class="ref">DEC-01</div>
+  <div class="body">
+    <h3 class="h">크림 베이스 (#f7f4ed)</h3>
+    <p>한국 기술 블로그가 대부분 새하얀 배경을 쓰기 때문에, 의도적으로 크림 톤을 베이스로 잡습니다. 종이 같은 인상 → 글을 읽는 환경.</p>
+    <span class="tag kept">kept</span><span class="tag">visual</span>
+  </div>
+</div>
+
+<div class="decision">
+  <div class="ref">DEC-02</div>
+  <div class="body">
+    <h3 class="h">Pretendard 본문 + JetBrains Mono 코드</h3>
+    <p>한국어 본문에 가장 안정적인 글꼴. Source Serif 4를 강조용으로 잠깐 검토했지만 코드/한글 혼용에서 어울리지 않아 폐기.</p>
+    <span class="tag kept">kept</span><span class="tag rejected">Source Serif: 폐기</span>
+  </div>
+</div>
+
+<div class="decision">
+  <div class="ref">DEC-03</div>
+  <div class="body">
+    <h3 class="h">선택 상태에 좌측 컬러 바를 쓰지 않는다</h3>
+    <p>TOC 활성 항목, 카테고리 사이드바 활성 항목, Callout — 모두 좌측 2~3px 컬러 바를 빼고 배경색·아이콘으로만 강조. AI 시안 트로프와 거리두기.</p>
+    <span class="tag kept">kept</span><span class="tag">2026.04.27</span>
+  </div>
+</div>
+
+<div class="decision">
+  <div class="ref">DEC-04</div>
+  <div class="body">
+    <h3 class="h">코드 블록 — 카드 vs 미니멀, 둘 다 제공</h3>
+    <p>본문 흐름이 우선인 사람과, 코드 강조가 우선인 사람을 모두 만족시키기 어렵다. Tweaks 패널에서 토글로 전환 가능하게.</p>
+    <span class="tag kept">kept</span><span class="tag">tweak</span>
+  </div>
+</div>
+
+<div class="decision">
+  <div class="ref">DEC-05</div>
+  <div class="body">
+    <h3 class="h">word-break: keep-all 전역 적용</h3>
+    <p>한국어 본문에서 단어 중간 줄바꿈을 막는 가장 단순한 해법. 다만 좁은 flex 컨테이너에서는 따로 <code class="ic">whiteSpace: nowrap</code>으로 보호.</p>
+    <span class="tag kept">kept</span><span class="tag">i18n</span>
+  </div>
+</div>
+
+<div class="decision">
+  <div class="ref">DEC-06</div>
+  <div class="body">
+    <h3 class="h">댓글 — Giscus, 자체 구현 ✗</h3>
+    <p>독자 풀이 작은 1인 블로그에서 댓글 DB를 직접 만들 이유가 없다. GitHub Discussions에 위임.</p>
+    <span class="tag kept">kept</span><span class="tag">scope</span>
+  </div>
+</div>
+
+<div class="decision">
+  <div class="ref">DEC-07</div>
+  <div class="body">
+    <h3 class="h">검색 — 클라이언트 측 필터, Algolia ✗</h3>
+    <p>글 200편까지는 클라이언트에서 충분. 200편을 넘기면 그때 다시 검토. 지금부터 Algolia를 도입할 이유 없음.</p>
+    <span class="tag kept">kept</span><span class="tag rejected">Algolia: 보류</span>
+  </div>
+</div>
+
+<div class="decision">
+  <div class="ref">DEC-08</div>
+  <div class="body">
+    <h3 class="h">분석 — Umami</h3>
+    <p>광고/추적 없음 원칙과 호환. GA4를 검토했으나 쿠키 동의 배너가 필요해 폐기. Plausible로 시작했다가 Umami로 옮겼다 — 셀프호스팅 가능하고 공유 링크(read-only)를 그대로 읽어 /admin/stats를 만들 수 있어, 지표를 보러 외부 대시보드로 나가지 않아도 된다.</p>
+    <span class="tag kept">kept</span><span class="tag rejected">GA4 · Plausible: 폐기</span><span class="tag">v1.3.0</span>
+  </div>
+</div>
+
+<div class="decision">
+  <div class="ref">DEC-09</div>
+  <div class="body">
+    <h3 class="h">관리자 UI는 한 곳에 모아 두지 않는다</h3>
+    <p>1인 운영이라도 "관리자 구역"을 /admin에만 가두면 실제 편집은 느려진다. 희관 동작에 따라 관리자 액션을 퍼뜨린다: 헤더 우측에 `＋ 새 글`로 적는 흐름 진입, 포스트 상세 상단에 AdminBar(수정/복제/삭제)로 그 글을 다루는 흐름 진입. /admin은 총괄 대시보드 역할만 유지. 관리자 표면은 대시 테두리 (`로컬 · ADMIN` 점 + dashed border)로 일반 독자 화면과 시각적으로 구분.</p>
+    <span class="tag kept">kept</span><span class="tag">2026-04-27</span>
+  </div>
+</div>
+
+<div class="decision">
+  <div class="ref">DEC-10</div>
+  <div class="body">
+    <h3 class="h">Series · Linkroll은 헤더에 올린다</h3>
+    <p>⌘K 명령팔레트만으로는 "해당 페이지가 존재함"을 알릴 수 없다. Posts/About 염에 Series, Linkroll을 명시적으로 노출. 명령팔레트는 계속 "빠른 재방문" 투스로 존재.</p>
+    <span class="tag kept">kept</span><span class="tag">2026-04-27</span>
+  </div>
+</div>
+
+<div class="decision">
+  <div class="ref">DEC-11</div>
+  <div class="body">
+    <h3 class="h">파괴적 액션은 인라인 컨펌이 아니라 모달로</h3>
+    <p>이전엔 삭제 버튼 옆에 "정말? / 삭제 / 취소"를 인라인으로 띄웠다. 클릭 한 번으로 끝나는 가벼움은 좋았지만 ⓐ 무엇을 삭제하는지 다시 보여주지 않고 ⓑ 부주의한 클릭을 막는 마찰이 거의 없다. 발행된 글 삭제는 외부 링크에 404를 만든다 — 그만한 무게를 줘야 한다. 결정: 삭제는 항상 `ConfirmDialog`(중앙 카드 + backdrop blur + danger 톤). meta 블록에 제목·slug를 다시 노출. 비파괴 액션(복제 등)은 그대로 인라인 + 토스트 피드백. 컴포넌트는 시리즈·링크롤 삭제에서도 재사용한다.</p>
+    <span class="tag kept">kept</span><span class="tag">v1.2.1</span>
+  </div>
+</div>
+
+<div class="decision">
+  <div class="ref">DEC-12</div>
+  <div class="body">
+    <h3 class="h">마크다운 문법은 한 벌, 파서도 한 벌</h3>
+    <p>Studio 미리보기와 실제 글 상세에 서로 다른 렌더 경로를 두면 글이 두 번 어긋난다 — 미리보기에선 callout이 깨지고 상세에선 멀쩡한 식. 결정: 공용 파서 `markdown.jsx`를 만들고 양쪽이 같은 grammar를 공유. 문법은 GitHub/Obsidian 친숙도를 우선해 `> [!INFO|WARNING|TIP|NOTE] 제목` + 멀티라인 callout, ` ```lang:filename ` 코드 블록, H1~H4, 리스트, 링크/이미지, `**bold**` / `*em*` / `` `code` ``, `---`로 정리. <strong>`>`는 callout 전용</strong> — 일반 인용문은 디자인상 거의 안 쓰고, 헷갈림을 줄이려 한 가지 의미로 고정. <code class="ic">&lt;Callout&gt;</code> 같은 JSX 태그는 의도적으로 미지원(글이 마크다운인지 JSX인지 모호해짐).</p>
+    <span class="tag kept">kept</span><span class="tag">v1.3.0</span>
+  </div>
+</div>
+
+<div class="decision">
+  <div class="ref">DEC-13</div>
+  <div class="body">
+    <h3 class="h">카테고리는 /admin이 아니라 /settings에서 관리한다</h3>
+    <p>카테고리는 "구조"에 가까운 설정이다 — 한 번 정하면 자주 안 바뀌고, 바뀌면 사이트 전반(헤더 메뉴, URL, 글 매핑)에 파급된다. /admin은 발행/초안 흐름의 일상 도구로 두고, 구조 변경은 /settings에 모은다(프로필·SEO·발행 정책과 같은 결). 트리 형태(대분류 + 서브)로 인라인 편집·순서변경·추가/삭제. 글이 매핑된 카테고리는 한 번 더 묻는 2단계 컨펌(💀 모달까진 아님 — 미배포 가벼운 마찰만). ID 변경 시 URL이 깨지므로 ID 필드를 별도 줄에 노출해 의식적으로 만지게 한다.</p>
+    <span class="tag kept">kept</span><span class="tag">v1.2.1</span>
+  </div>
+</div>
+
+<div class="decision">
+  <div class="ref">DEC-14</div>
+  <div class="body">
+    <h3 class="h">아바타는 사진이 아니라 일러스트 마크로</h3>
+    <p>실물 사진은 다크/라이트 두 배경에서 톤이 따로 놀고, 16px 파비콘으로 줄이면 형체가 사라진다. 블로그 팔레트(세이지·크림·웜블랙) 안에서 그린 단순한 얼굴 마크를 쓰면 아바타와 파비콘이 같은 그림의 두 크기가 된다. 파비콘은 이목구비를 눈 두 개까지 줄여 16px에서 살아남게 하고, 아바타는 홍조·미소·눈 하이라이트를 더해 큰 크기에서 표정이 보이게 한다. 머리카락은 두상보다 크게 그린다 — 두상 안쪽에 맞춰 칠하면 머리카락이 아니라 헬멧으로 읽히고, 옆머리와 두상 사이에 흰 틈이 남는다.</p>
+    <span class="tag kept">kept</span><span class="tag">v1.3.0</span>
+  </div>
+</div>
+
+<div class="decision">
+  <div class="ref">DEC-15</div>
+  <div class="body">
+    <h3 class="h">아바타는 브랜드 마크이자 유일한 장난감</h3>
+    <p>정적인 마크는 로고와 다를 게 없다. 아바타를 헤더 홈 링크에서 떼어내고 — 누르면 이동하는 대신 표정이 바뀌게 했다. 흰자가 아니라 <strong>흰 점만</strong> 검은자 안에서 커서를 따라본다(검은자까지 굴리면 사시로 읽힌다). 260px 안에서는 온전히 따라보고 420px 밖에서는 기본 위치로 풀려, 화면 어디를 봐도 노려보지 않는다. 연타하면 흔들리고 8연타는 미니 아바타가 쏟아진다. 배경은 세이지에서 슬레이트 블루로 — 세이지는 사이트의 시리즈 색·성공 톤과 겹쳐 아바타가 상태 표시로 오독됐다.</p>
+    <span class="tag kept">kept</span><span class="tag">v1.3.0</span>
+  </div>
+</div>
+
+<div class="decision">
+  <div class="ref">DEC-16</div>
+  <div class="body">
+    <h3 class="h">관리자 진입점은 계정 드롭다운 하나로 접는다</h3>
+    <p>DEC-09에서 관리자 액션을 흐름 가까이 퍼뜨렸더니 헤더에만 <code class="ic">＋ 새 글</code> · <code class="ic">▣</code> · <code class="ic">⚙</code> 세 개가 상주하게 됐다. 항목이 늘 때마다(통계·로그아웃) 헤더가 계속 자란다. 결정: <strong>글 단위 액션은 그 글 옆에</strong>(AdminBar 유지), <strong>사이트 단위 액션은 계정 드롭다운 안에</strong>. 트리거는 아이콘이 아니라 로그인 계정 핸들 — "누가 로그인해 있는지"가 곧 관리자 모드 표시가 된다. 링크가 보인다고 권한이 생기는 건 아니고, 실제 차단은 서버가 한다.</p>
+    <span class="tag kept">kept</span><span class="tag rejected">아이콘 3종: 폐기</span><span class="tag">v1.3.0</span>
+  </div>
+</div>
+
+<div class="decision">
+  <div class="ref">DEC-17</div>
+  <div class="body">
+    <h3 class="h">시리즈는 배지가 아니라 두 겹의 네비게이션</h3>
+    <p>연재물에서 독자가 묻는 건 둘이다 — "지금 몇 번째인가"(읽기 전)와 "다음은 어디인가"(읽고 나서). 하나로 합치면 둘 다 어중간해진다. 글 <strong>상단</strong>엔 얇은 배너로 STEP n / N 만, <strong>하단</strong>엔 이전/다음 단계 카드 + 전체 회차 rail. 아직 안 쓴 회차도 점선 슬롯으로 자리를 잡아 둔다 — 계획이 보이면 연재를 따라올 이유가 생기고, 발행 목표가 나에게도 압박이 된다. 시간순 prev/next는 없애지 않고 <code class="ic">시간순 글 탐색</code> 라벨을 붙여 시리즈 네비와 구분한다.</p>
+    <span class="tag kept">kept</span><span class="tag">v1.3.0</span>
+  </div>
+</div>
+
+<div class="decision">
+  <div class="ref">DEC-18</div>
+  <div class="body">
+    <h3 class="h">리드 그림은 폴백까지 설계한다</h3>
+    <p>홈 Featured 오른쪽 그림에 썸네일만 걸면, 썸네일 없는 글에서 빈 상자가 남는다. 매번 이미지를 만들 생각도 없다. 3단 폴백: <strong>썸네일 &gt; 시리즈 진행 인디케이터 &gt; 카테고리·태그 타이포</strong>. 앞의 둘은 글마다 실제로 다른 정보를 담고, 마지막은 어떤 글이든 성립한다. 타이포 폴백의 색조는 slug를 해시해 뽑는다 — 글마다 다르되 재배포해도 같은 색이 유지되고, 채도를 낮게 잡아 크림/다크 어느 쪽에서도 튀지 않는다.</p>
+    <span class="tag kept">kept</span><span class="tag">v1.3.0</span>
+  </div>
+</div>
+
+<div class="decision">
+  <div class="ref">DEC-19</div>
+  <div class="body">
+    <h3 class="h">숫자는 보여주되 가볍게 — 조회수·좋아요·Trending</h3>
+    <p>지표를 안 보여주면 글이 읽히는지 알 수 없고, 크게 보여주면 블로그가 성과 대시보드가 된다. 조회수는 작성자 줄 끝에 <code class="ic">4,820 views</code> 한 조각으로만 붙인다. 좋아요는 <strong>익명</strong> — 서버는 누가 눌렀는지 모르고 증감만 받는다. 누른 사실은 브라우저가 기억하므로 다른 기기에서 다시 눌리지만, 개인 블로그의 좋아요엔 그 정도면 충분하다. 홈 Trending은 집계가 비면 섹션 자체가 나오지 않는다 — 0을 진열하느니 없는 편이 낫다.</p>
+    <span class="tag kept">kept</span><span class="tag">v1.3.0</span>
+  </div>
+</div>
+
+<div class="decision">
+  <div class="ref">DEC-20</div>
+  <div class="body">
+    <h3 class="h">되돌리기는 저장으로 구현한다</h3>
+    <p>Studio에 이력을 붙일 때 "버전 관리"까지 가면 브랜치·머지 개념이 따라온다. 여기서 필요한 건 하나다 — 방금 망친 문단을 되찾기. 저장할 때마다 <em>직전 상태</em>가 쌓이고, 되돌리기도 결국 저장이라 그 순간이 다시 이력에 남는다(되돌린 걸 되돌릴 수 있다). 제목·본문·분류만 되돌리고 <strong>발행 상태와 주소(slug)는 건드리지 않는다</strong> — 과거 버전으로 돌아갔다고 글이 다시 비공개가 되거나 URL이 바뀌면 사고다.</p>
+    <span class="tag kept">kept</span><span class="tag">v1.3.0</span>
+  </div>
+</div>
+
+<div class="decision">
+  <div class="ref">DEC-21</div>
+  <div class="body">
+    <h3 class="h">관리자 화면도 손에서 열린다 — 반응형은 전면 적용</h3>
+    <p>Studio·Admin·Stats·Settings는 로컬 데스크톱에서만 만들다 보니 고정 폭 그리드로 굳어 있었다. 실제로는 이동 중에 초안을 고치고 댓글을 확인한다. 데스크톱 레이아웃을 기준으로 두되, 태블릿(≤1000px)에서 사이드바·다단 그리드를 접고, 모바일(≤760px)에서 헤더 네비를 시트로, Studio 2단 편집기를 <strong>편집/미리보기 탭</strong>으로 바꾼다. 좁은 화면에서 표는 세로로 부수지 않고 가로 스크롤로 남긴다 — 열 관계가 정보다.</p>
+    <span class="tag kept">kept</span><span class="tag">v1.4.0</span>
+  </div>
+</div>
+
+<div class="decision">
+  <div class="ref">DEC-22</div>
+  <div class="body">
+    <h3 class="h">hover는 어포던스가 아니다</h3>
+    <p>관리 UI의 행 액션(카테고리 정렬·편집·삭제, Linkroll 수정)을 hover로 감춰 화면을 조용하게 유지했다. 터치에는 hover가 없다 — 아이패드에서는 그 기능이 <strong>존재하지 않는 것과 같았다</strong>. 이제 <code>(hover: none)</code>에서는 항상 노출한다. 감추기는 포인터가 있을 때만 쓰는 사치다. 같은 이유로 터치 타깃 최소 34–40px, 입력 필드 16px(그 미만이면 iOS가 화면을 확대한다)을 규칙으로 둔다.</p>
+    <span class="tag kept">kept</span><span class="tag">v1.4.0</span>
+  </div>
+</div>
+
+<div class="decision">
+  <div class="ref">DEC-23</div>
+  <div class="body">
+    <h3 class="h">시리즈 목록은 "살아 있는가"로 줄 세운다</h3>
+    <p>연재 목록에서 독자가 먼저 묻는 건 "이거 아직 쓰고 있나"다. 그래서 기본 정렬은 <strong>최근 연재순</strong> — 마지막 회차가 나온 날짜. 생성순은 토글로 남긴다(시작한 순서대로 훑고 싶은 나 자신용). 최근 연재일은 저장하지 않고 <strong>속한 글에서 파생</strong>한다 — 글을 발행하면 자동으로 맞고, 어긋날 데이터가 애초에 없다. 아직 한 편도 없는 시리즈는 <code class="ic">아직 없음</code>으로 두고 생성일로 줄을 세운다. 카드는 설명 길이와 무관하게 <strong>같은 높이</strong>다 — 높낮이가 다르면 진행 바가 서로 다른 선에 놓여 비교가 안 된다.</p>
+    <span class="tag kept">kept</span><span class="tag">v1.4.0</span>
+  </div>
+</div>
+
+<div class="decision">
+  <div class="ref">DEC-24</div>
+  <div class="body">
+    <h3 class="h">링크 프리뷰는 문법이 아니라 규칙으로 만든다</h3>
+    <p>글에 참고 링크를 붙이는 일은 잦다. 여기에 <code class="ic">::embed</code> 같은 전용 문법을 새로 만들면 외울 게 하나 더 늘 뿐이다. 그래서 <strong>줄에 URL만 있으면 카드</strong>, 문장 안에 있으면 링크로 정했다 — 쓰는 사람이 배울 게 없다. 카드 메타는 <strong>발행 시점에 서버가 OG 태그를 읽어 저장</strong>한다. 읽을 때 긁으면 남의 서버 사정에 내 글 로딩이 묶인다. 못 읽어 온 주소는 빈 카드가 아니라 <strong>도메인 한 줄</strong>로 축소한다 — 채워지지 않은 카드가 제일 지저분하다. 같은 규칙을 <code class="ic">/posts/slug</code>에도 걸어, 내 글끼리의 참조는 항상 채워진 카드가 된다.</p>
+    <span class="tag kept">kept</span><span class="tag">v1.4.0</span>
+  </div>
+</div>
+
+<div class="decision">
+  <div class="ref">DEC-25</div>
+  <div class="body">
+    <h3 class="h">SEO 필드는 결과를 보면서 쓴다</h3>
+    <p>제목·설명·OG 문구는 입력칸만 보고는 잘 썼는지 알 수 없다. 실제로 잘리는 자리는 글자 수가 아니라 <strong>폭</strong>에서 결정되고, 한글은 라틴 문자 두 배를 먹는다. 그래서 SEO 카드 맨 위에 <strong>검색 결과 · SNS 카드 미리보기</strong>를 붙였다 — 타이핑하는 즉시 잘리는 지점이 눈에 보인다. 대상은 <strong>홈 / 글 상세</strong> 두 가지로 나눴다. 글 상세는 <code class="ic">제목 · 짧은 제목</code> 패턴이 실제로 몇 자를 잡아먹는지 확인하는 자리다. 길이 미터는 글자 수가 아니라 <strong>폭 단위</strong>(한글 2)로 센다.</p>
+    <span class="tag kept">kept</span><span class="tag">v1.5.0</span>
+  </div>
+</div>
+</section>
+
+<section id="stack">
+<h2><span class="num">08</span>기술 스택</h2>
+<p class="sub">선택과 그 이유.</p>
+
+<ul class="bullets">
+  <li><strong>Next.js 16 (App Router) + React 19 + Tailwind 4</strong> — 정적 내보내기 위주, 공개 글은 빌드 시 생성하고 이후 발행분은 요청 시(ISR).</li>
+  <li><strong>글 저장소</strong> — Supabase(Postgres). 초기 설계는 MDX 파일이었지만, Studio에서 브라우저로 쓰고 고치려면 파일 커밋이 병목이라 DB로 옮겼습니다. 마크다운 원문은 그대로 본문 컬럼에 들어갑니다.</li>
+  <li><strong>인증</strong> — Supabase Auth. 계정 하나, 공개 가입 차단, 권한은 RLS로 막습니다. 화면의 링크 노출은 편의일 뿐 차단이 아닙니다.</li>
+  <li><strong>조회수 · 좋아요</strong> — Supabase RPC(<code class="ic">increment_view</code> / <code class="ic">toggle_like</code>). 익명이라 서버는 누가 눌렀는지 모르고 증감만 받습니다.</li>
+  <li><strong>댓글</strong> — Giscus (GitHub Discussions).</li>
+  <li><strong>분석</strong> — Umami. 공유 링크(read-only)를 <code class="ic">/api/stats/*</code>로 프록시해 <code class="ic">/admin/stats</code>에서 봅니다.</li>
+  <li><strong>이미지</strong> — Supabase Storage. 본문 안의 이미지는 폭 기준 최대 880px.</li>
+  <li><strong>검색</strong> — 클라이언트 측 필터 (DEC-07). 글 200편까지는 충분.</li>
+  <li><strong>글쓰기 자동화</strong> — MCP 서버(<code class="ic">/api/mcp</code>). 에디터 밖에서도 초안을 만들고 고칠 수 있게.</li>
+</ul>
+
+<pre><code>src/
+├─ app/
+│  ├─ posts/ series/ category/ tags/    # 공개
+│  ├─ studio/ admin/ settings/ login/   # auth
+│  └─ api/                              # posts · series · categories · settings · stats · mcp
+├─ components/
+│  ├─ layout/   # Header · Avatar · AdminMenu · Footer
+│  ├─ post/     # PostCard · SeriesBanner · SeriesStepNav · LikeButton · AdminBar
+│  ├─ prose/    # CodeBlock · Callout · TOC · ReadingProgress
+│  └─ ui/       # CTA · ConfirmDialog · ToastBanner
+└─ lib/         # posts · series · categories · markdown · tokens
+supabase/migrations/</code></pre>
+</section>
+
+<section id="roadmap">
+<h2><span class="num">09</span>로드맵</h2>
+<p class="sub">3단계로 끊어 읽기.</p>
+
+<div class="roadmap">
+  <div class="phase">
+    <div class="label">PHASE 0 · 완료</div>
+    <h4>v1 시안</h4>
+    <ul>
+      <li><span class="check done"></span><span>와이어프레임 3방향 탐색</span></li>
+      <li><span class="check done"></span><span>크림 톤 방향 확정</span></li>
+      <li><span class="check done"></span><span>핵심 컴포넌트 시안 (코드/콜아웃/TOC)</span></li>
+    </ul>
+  </div>
+  <div class="phase">
+    <div class="label">PHASE 1 · 완료</div>
+    <h4>v2 hi-fi</h4>
+    <ul>
+      <li><span class="check done"></span><span>6개 공개 페이지 hi-fi</span></li>
+      <li><span class="check done"></span><span>다크모드 동등 품질</span></li>
+      <li><span class="check done"></span><span>Studio · Admin · Settings</span></li>
+      <li><span class="check done"></span><span>Series · Search · Bookmarks</span></li>
+      <li><span class="check todo"></span><span>모바일 반응형 마무리</span></li>
+    </ul>
+  </div>
+  <div class="phase now">
+    <div class="label">PHASE 2 · 진행 중</div>
+    <h4>실 서비스 이관</h4>
+    <ul>
+      <li><span class="check done"></span><span>Next.js + Supabase 코드 이전</span></li>
+      <li><span class="check done"></span><span>기존 글 마이그레이션 (티스토리 → 마크다운)</span></li>
+      <li><span class="check done"></span><span>Giscus · Umami 연결</span></li>
+      <li><span class="check done"></span><span>sitemap.xml · OG 이미지 생성</span></li>
+      <li><span class="check todo"></span><span>도메인 연결 (blog.dongding.dev)</span></li>
+    </ul>
+  </div>
+</div>
+
+<h3>릴리즈 기준 (Phase 2 종료 조건)</h3>
+<ol class="numbered">
+  <li>모든 공개 페이지가 Lighthouse 95+ (Perf · A11y · BP · SEO).</li>
+  <li>모바일에서 본문이 한 손으로 읽힌다.</li>
+  <li>새 글을 작성해서 발행하기까지 5분 이내에 가능하다.</li>
+  <li>다크모드에서 코드 블록의 가독성이 라이트와 동등하다.</li>
+</ol>
+</section>
+
+<section id="metrics">
+<h2><span class="num">10</span>성공 지표</h2>
+<p class="sub">3개월 후 무엇을 보고 잘됐다고 말할 것인가.</p>
+
+<ul class="bullets">
+  <li><strong>작성 페이스</strong> — 월 2편 이상 발행. (1순위 지표 — 다른 모든 것의 선행 지표)</li>
+  <li><strong>체류 시간</strong> — 본문 페이지 평균 체류 90초 이상.</li>
+  <li><strong>다크모드 사용률</strong> — 30% 이상. (디자인 동등성의 신호)</li>
+  <li><strong>검색 유입 비중</strong> — 전체 트래픽의 60% 이상. (장기 자산화의 신호)</li>
+</ul>
+
+<div class="cb q">
+  <span class="glyph">✓</span>
+  <div class="body"><strong>의도적으로 추적하지 않는 것:</strong> 좋아요, 공유 수, 페이지뷰 절대값. 작성 동기를 망치는 지표.</div>
+</div>
+</section>
+
+<section id="open">
+<h2><span class="num">11</span>미해결 질문</h2>
+<p class="sub">결정을 미뤄둔 것들.</p>
+
+<div class="oq">
+  <p class="q">Q1 — 영문 글을 별도 라우트로 둘 것인가?</p>
+  <p class="ctx">현재 한국어 전제. 1년 안에 영문 작성 가능성이 0이 아니다. <code class="ic">/en</code> 라우트만 비워두고 시작할지, 아예 다국어 구조부터 잡을지.</p>
+</div>
+<div class="oq">
+  <p class="q">Q2 — 시리즈 글 가운데에 끼어들기 글을 어떻게 표시할 것인가?</p>
+  <p class="ctx">시리즈 1·2 발행 후, 별개 주제 글이 끼어든다면 시리즈 진행은 어떻게 시각적으로 끊어 보이게 할 것인가.</p>
+</div>
+<div class="oq">
+  <p class="q">Q3 — 책 리뷰 / 영상 메모 등 짧은 글의 분류</p>
+  <p class="ctx">"긴 글"과 "짧은 메모"는 같은 페이지 흐름에 두기 어색하다. <code class="ic">/notes</code>를 따로 둘지, 카테고리로만 처리할지.</p>
+</div>
+<div class="oq">
+  <p class="q">Q4 — 뉴스레터로 확장할 것인가?</p>
+  <p class="ctx">구독 창구가 지금은 없다. 뉴스레터를 붙일지, RSS만 뒤늦게 낼지, 아니면 구독 없이 갈지. Buttondown / Substack 비용 대비 가치.</p>
+</div>
+</section>
+
+<footer class="foot">
+  <span>PRD · v1.3.0 (작업 중) · 2026.08.07</span>
+  <span><a href="blog.html">→ 시안 보기</a></span>
+</footer>
+
+</main>
+</div>
+
+</body>
+</html>

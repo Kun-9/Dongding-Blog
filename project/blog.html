@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Dong-Ding · 개발 노트</title>
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="assets/favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="icon" href="assets/favicon-16.png" sizes="16x16" type="image/png" />
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    word-break: keep-all; /* keep Korean words intact */
+  }
+  ::selection { background: rgba(255,200,120,0.35); }
+  code, kbd { overflow-wrap: anywhere; word-break: break-word; }
+  pre { max-width: 100%; }
+  a { color: inherit; }
+  html { scroll-behavior: smooth; }
+  /* Avatar (avatar.jsx) — 표정 상태와 흰 점 굤도.
+     흰 점은 검은자 중심에 놓고 transform 으로만 움직인다: 기본값이 곳 쉬는 자리. */
+  .av { display: block; width: 100%; height: 100%; border-radius: 50%; box-shadow: inset 0 0 0 0.5px rgba(0,0,0,0.2); }
+  .av-glint { transform: translate(4.8px, -5.4px); transition: transform 0.16s ease-out; }
+  .av-mouth { fill: none; stroke: #38352c; stroke-width: 6; stroke-linecap: round; opacity: 0; }
+  .av-m-o { fill: #38352c; stroke: none; }
+  .av-arc { fill: none; stroke: #38352c; stroke-width: 7; stroke-linecap: round; opacity: 0; }
+  .av-brow { fill: none; stroke: #4a3a2a; stroke-width: 6; stroke-linecap: round; opacity: 0; transform-box: fill-box; transform-origin: center; transition: transform 0.2s; }
+  .av-eyes, .av-cheeks { transition: opacity 0.13s, transform 0.2s cubic-bezier(0.3,1.5,0.5,1); }
+  .av-eye { transform-box: fill-box; transform-origin: center; transition: transform 0.17s; }
+  .av[data-face="smile"] .av-m-smile { opacity: 1; }
+  .av[data-face="proud"] .av-m-grin, .av[data-face="proud"] .av-arc { opacity: 1; }
+  .av[data-face="proud"] .av-eyes { opacity: 0; }
+  .av[data-face="proud"] .av-cheeks { transform: scale(1.2); }
+  .av[data-face="sleepy"] .av-m-flat { opacity: 1; }
+  .av[data-face="sleepy"] .av-eye { transform: scaleY(0.13); }
+  .av[data-face="wow"] .av-m-o { opacity: 1; }
+  .av[data-face="wow"] .av-eye { transform: scale(1.22); }
+  .av[data-face="wow"] .av-brow { opacity: 1; transform: translateY(-9px); }
+  .av[data-face="sulk"] .av-m-flat { opacity: 1; }
+  .av[data-face="sulk"] .av-eye { transform: scaleY(0.6); }
+  .av[data-face="sulk"] .av-brow { opacity: 1; }
+
+  /* ── Responsive layout primitives ─────────────────────────────── */
+  :root { --gut: 32px; }
+  @media (max-width: 900px) { :root { --gut: 22px; } }
+  @media (max-width: 560px) { :root { --gut: 16px; } }
+  .dd-g2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .dd-g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+  .dd-g4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+  .dd-g5{display:grid;grid-template-columns:repeat(5,minmax(0,1fr))}
+  .dd-g15{display:grid;grid-template-columns:1.5fr 1fr}
+  .dd-featured{display:grid;grid-template-columns:minmax(0,1fr) 280px}
+  .dd-listcols{display:grid;grid-template-columns:240px minmax(0,1fr)}
+  .dd-settingscols{display:grid;grid-template-columns:200px minmax(0,1fr)}
+  .dd-detailcols{display:grid;grid-template-columns:minmax(0,var(--bw,720px)) 220px}
+  .dd-split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .dd-field{display:grid;grid-template-columns:90px minmax(0,1fr)}
+  .dd-row2{display:grid;grid-template-columns:140px minmax(0,1fr)}
+  .dd-sidecol-90{display:grid;grid-template-columns:90px minmax(0,1fr)}
+  .dd-sidecol-120{display:grid;grid-template-columns:120px minmax(0,1fr)}
+  .dd-sidecol-140{display:grid;grid-template-columns:140px minmax(0,1fr)}
+  .dd-linkrow{display:grid;grid-template-columns:24px minmax(0,1.1fr) minmax(0,1.4fr) minmax(220px,auto)}
+  .dd-scroll-x{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .dd-navlinks{display:flex;align-items:center;gap:2px}
+  .dd-menubtn{display:none}
+  .dd-mobilesheet{display:none}
+  @media (max-width: 1100px){
+    .dd-detailcols{grid-template-columns:minmax(0,1fr)}
+    .dd-toc-aside{display:none}
+  }
+  @media (max-width: 1000px){
+    .dd-g3{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .dd-g4{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .dd-g5{grid-template-columns:repeat(3,minmax(0,1fr))}
+    .dd-g15{grid-template-columns:minmax(0,1fr)}
+    .dd-featured{grid-template-columns:minmax(0,1fr);gap:20px!important}
+    .dd-featured>*+*{max-width:460px}
+    .dd-listcols{grid-template-columns:minmax(0,1fr);gap:26px!important}
+    .dd-settingscols{grid-template-columns:minmax(0,1fr);gap:18px!important}
+    .dd-split{grid-template-columns:minmax(0,1fr)}
+    .dd-catnav,.dd-setnav{position:static!important;top:auto!important}
+    .dd-catnav-list,.dd-setnav-list{flex-direction:row!important;overflow-x:auto;gap:6px!important;padding-bottom:6px!important}
+    .dd-catnav-list>li,.dd-setnav-list>li{flex:0 0 auto}
+    .dd-catnav-list li ul{display:none}
+  }
+  @media (max-width: 900px){
+    .dd-linkrow{grid-template-columns:24px minmax(0,1fr);row-gap:8px}
+    .dd-linkrow>*:nth-child(n+3){grid-column:2}
+  }
+  @media (max-width: 760px){
+    .dd-navlinks{display:none}
+    .dd-searchlabel{display:none}
+    .dd-menubtn{display:inline-flex}
+    .dd-mobilesheet{display:block}
+  }
+  @media (max-width: 680px){
+    .dd-g2,.dd-g3{grid-template-columns:minmax(0,1fr)}
+    .dd-g5{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .dd-field,.dd-row2,.dd-sidecol-90,.dd-sidecol-120,.dd-sidecol-140{grid-template-columns:minmax(0,1fr);gap:6px!important}
+    .dd-row2{align-items:start!important}
+  }
+  /* ── Touch: no hover means hover-gated controls must stay put ──── */
+  @media (hover: none){
+    .dd-hoveronly{opacity:1!important;pointer-events:auto!important}
+    .dd-iconbtn{height:34px!important;min-width:34px!important}
+    .dd-catrow{min-height:52px!important}
+  }
+  @media (max-width: 760px){
+    /* 16px 미만이면 iOS가 포커스 시 화면을 확대한다 */
+    input:not([type=range]),textarea,select{font-size:16px!important}
+    .dd-settingscols button:not(.dd-swatch):not(.dd-iconbtn):not(.dd-toggle){min-height:40px}
+    .dd-savebar{flex-direction:column-reverse!important;align-items:stretch!important}
+    .dd-savebar>*{width:100%;justify-content:center;text-align:center}
+  }
+  @media (max-width: 520px){
+    .dd-g4{grid-template-columns:minmax(0,1fr)}
+    .dd-handle{display:none}
+  }
+</style>
+</head>
+<body>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script src="tokens.js?v=5"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="avatar.jsx"></script>
+<script type="text/babel" src="components.jsx"></script>
+<script type="text/babel" src="confirm-dialog.jsx"></script>
+<script type="text/babel" src="prose.jsx"></script>
+<script type="text/babel" src="markdown.jsx"></script>
+<script type="text/babel" src="comments.jsx"></script>
+<script type="text/babel" src="page-home.jsx"></script>
+<script type="text/babel" src="page-list.jsx"></script>
+<script type="text/babel" src="page-detail.jsx"></script>
+<script type="text/babel" src="page-about-404.jsx"></script>
+<script type="text/babel" src="page-extras.jsx"></script>
+<script type="text/babel" src="page-stats.jsx"></script>
+<script type="text/babel" src="page-settings.jsx"></script>
+
+<div id="root"></div>
+
+<script type="text/babel">
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "dark": true,
+  "bodySize": 17,
+  "bodyWidth": 720,
+  "heroStyle": "editorial",
+  "cardLayout": "card",
+  "codeStyle": "card",
+  "viewer": "admin"
+}/*EDITMODE-END*/;
+
+function App() {
+  const [tRaw, setTweak] = useTweaks(TWEAK_DEFAULTS);
+  // 로그인 여부는 tweak 하나로 갈린다. isAdmin 은 그 파생값 — 컴포넌트는 계속
+  // t.isAdmin 만 보면 된다.
+  const t = React.useMemo(() => ({ ...tRaw, isAdmin: tRaw.viewer === 'admin' }), [tRaw]);
+  const c = window.useTheme(t);
+
+  // simple hash router
+  const [route, setRoute] = React.useState(() => parseHash(window.location.hash));
+  React.useEffect(() => {
+    const onHash = () => setRoute(parseHash(window.location.hash));
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+
+  function parseHash(h) {
+    const s = (h || '').replace(/^#/, '');
+    if (!s || s === '/' || s === '/home') return { type: 'home' };
+    if (s === '/posts') return { type: 'posts' };
+    if (s === '/about') return { type: 'about' };
+    if (s === '/404') return { type: '404' };
+    if (s === '/studio') return { type: 'studio' };
+    if (s === '/admin') return { type: 'admin' };
+    if (s === '/admin/stats') return { type: 'stats' };
+    if (s === '/login') return { type: 'login' };
+    if (s === '/settings') return { type: 'settings' };
+    if (s === '/series') return { type: 'series' };
+    if (s === '/bookmarks') return { type: 'bookmarks' };
+    const sq = s.match(/^\/search(?:\?q=(.*))?$/);
+    if (sq) return { type: 'search', q: decodeURIComponent(sq[1] || '') };
+    const m = s.match(/^\/posts\/(.+)$/);
+    if (m) return { type: 'post', slug: m[1] };
+    const c = s.match(/^\/category\/(.+)$/);
+    if (c) return { type: 'category', value: c[1] };
+    const tg = s.match(/^\/tags\/(.+)$/);
+    if (tg) return { type: 'tag', value: tg[1] };
+    return { type: '404' };
+  }
+
+  const onNav = React.useCallback((target) => {
+    let hash = '#/';
+    if (target === 'home') hash = '#/';
+    else if (target === 'posts') hash = '#/posts';
+    else if (target === 'about') hash = '#/about';
+    else if (target === '404') hash = '#/404';
+    else if (target === 'studio') hash = '#/studio';
+    else if (target === 'admin') hash = '#/admin';
+    else if (target === 'stats') hash = '#/admin/stats';
+    else if (target === 'login') hash = '#/login';
+    else if (target === 'settings') hash = '#/settings';
+    else if (target === 'series') hash = '#/series';
+    else if (target === 'bookmarks') hash = '#/bookmarks';
+    else if (target === 'search') hash = '#/search';
+    else if (target.startsWith('post:')) hash = `#/posts/${target.slice(5)}`;
+    else if (target.startsWith('category:')) hash = `#/category/${target.slice(9)}`;
+    else if (target.startsWith('tag:')) hash = `#/tags/${target.slice(4)}`;
+    window.location.hash = hash;
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, []);
+
+  // active key for header highlighting
+  let active = 'home';
+  if (route.type === 'posts') active = 'posts';
+  else if (route.type === 'about') active = 'about';
+  else if (route.type === 'series') active = 'series';
+  else if (route.type === 'bookmarks') active = 'bookmarks';
+  else if (route.type === 'admin') active = 'admin';
+  else if (route.type === 'studio') active = 'studio';
+  else if (route.type === 'stats') active = 'stats';
+  else if (route.type === 'category') active = `category:${route.value}`;
+
+  // 로그인이 필요한 화면은 방문자에게 로그인 폼으로 대체된다 — 서버가 막는 걸 시안에서도 그대로.
+  const ADMIN_ONLY = ['studio', 'admin', 'stats', 'settings'];
+  const gated = !t.isAdmin && ADMIN_ONLY.includes(route.type);
+  const view = gated ? { type: 'login' } : route;
+
+  const scenicGlow = !t.dark
+    ? `radial-gradient(ellipse 1200px 600px at 90% -20%, rgba(255,210,170,0.35), transparent 60%), radial-gradient(ellipse 900px 500px at 0% 10%, rgba(190,205,225,0.25), transparent 60%)`
+    : `radial-gradient(ellipse 1200px 600px at 90% -20%, rgba(110,75,40,0.18), transparent 60%), radial-gradient(ellipse 900px 500px at 0% 10%, rgba(40,55,80,0.18), transparent 60%)`;
+
+  return (
+    <div style={{
+      minHeight: '100vh', background: c.bg, color: c.ink,
+      backgroundImage: scenicGlow, backgroundAttachment: 'fixed',
+      transition: 'background-color 0.2s, color 0.2s',
+    }}>
+      <window.Header active={active} c={c} t={t} onNav={onNav} setTweak={setTweak} />
+      {view.type === 'home' && <window.HomePage c={c} t={t} onNav={onNav} setTweak={setTweak} />}
+      {view.type === 'posts' && <window.PostListPage c={c} t={t} onNav={onNav} filter={null} />}
+      {view.type === 'category' && <window.PostListPage c={c} t={t} onNav={onNav} filter={{ type: 'category', value: view.value }} />}
+      {view.type === 'tag' && <window.PostListPage c={c} t={t} onNav={onNav} filter={{ type: 'tag', value: view.value }} />}
+      {view.type === 'post' && <window.PostDetailPage c={c} t={t} slug={view.slug} onNav={onNav} />}
+      {view.type === 'about' && <window.AboutPage c={c} t={t} onNav={onNav} />}
+      {view.type === '404' && <window.NotFoundPage c={c} t={t} onNav={onNav} />}
+      {view.type === 'studio' && <window.StudioPage c={c} t={t} onNav={onNav} />}
+      {view.type === 'admin' && <window.AdminPage c={c} t={t} onNav={onNav} />}
+      {view.type === 'stats' && <window.StatsPage c={c} t={t} onNav={onNav} />}
+      {view.type === 'login' && <window.LoginPage c={c} t={t} onNav={onNav} setTweak={setTweak} next={gated ? route.type : 'studio'} />}
+      {view.type === 'settings' && <window.SettingsPage c={c} t={t} onNav={onNav} />}
+      {view.type === 'series' && <window.SeriesPage c={c} t={t} onNav={onNav} />}
+      {view.type === 'bookmarks' && <window.BookmarksPage c={c} t={t} onNav={onNav} />}
+      {view.type === 'search' && <window.SearchPage c={c} t={t} onNav={onNav} query={view.q} />}
+      <window.Footer c={c} />
+
+      <TweaksPanel title="Tweaks">
+        <TweakSection label="Theme" />
+        <TweakToggle label="Dark mode" value={t.dark} onChange={(v) => setTweak('dark', v)} />
+        <TweakSection label="Viewer" />
+        <TweakRadio label="보기 기준" value={tRaw.viewer}
+          options={[{ value: 'guest', label: '방문자' }, { value: 'admin', label: '관리자' }]}
+          onChange={(v) => setTweak('viewer', v)} />
+        <div style={{ padding: '2px 2px 6px', fontSize: 10.5, lineHeight: 1.5, opacity: 0.6 }}>
+          관리자 — 헤더 계정 메뉴 · 글 상세 AdminBar · 시리즈/링크롤 편집.<br />
+          방문자 — Studio · Admin · Stats · Settings는 로그인 화면으로 대체.
+        </div>
+
+        <TweakSection label="Reading" />
+        <TweakSlider label="본문 크기" value={t.bodySize} min={14} max={20} step={1} unit="px" onChange={(v) => setTweak('bodySize', v)} />
+        <TweakSlider label="본문 너비" value={t.bodyWidth} min={600} max={840} step={20} unit="px" onChange={(v) => setTweak('bodyWidth', v)} />
+
+        <TweakSection label="Variants" />
+        <TweakRadio label="Hero" value={t.heroStyle}
+          options={['editorial', 'minimal', 'kr-display']}
+          onChange={(v) => setTweak('heroStyle', v)} />
+        <TweakRadio label="Card" value={t.cardLayout}
+          options={['card', 'list', 'magazine']}
+          onChange={(v) => setTweak('cardLayout', v)} />
+        <TweakRadio label="Code" value={t.codeStyle}
+          options={['card', 'minimal']}
+          onChange={(v) => setTweak('codeStyle', v)} />
+
+        <TweakSection label="Pages" />
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+          {[
+            ['Home', 'home'], ['Posts', 'posts'], ['Detail', 'post:jpa-n-plus-1'],
+            ['About', 'about'], ['404', '404'],
+            ['Studio', 'studio'], ['Admin', 'admin'], ['Stats', 'stats'], ['Settings', 'settings'],
+            ['Series', 'series'], ['Search', 'search'], ['Linkroll', 'bookmarks'], ['Login', 'login'],
+          ].map(([label, t]) => (
+            <button key={t} onClick={() => onNav(t)} style={{
+              padding: '4px 8px', borderRadius: 6, border: '0.5px solid rgba(0,0,0,0.1)',
+              background: 'rgba(255,255,255,0.6)', font: 'inherit', fontSize: 11, cursor: 'pointer',
+            }}>{label}</button>
+          ))}
+        </div>
+      </TweaksPanel>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

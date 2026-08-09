@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // claude.ai/design 시안 미러. 참조용 사본이라 고치지 않는다 — project/SYNC.md 참조.
+    "project/**",
   ]),
 ]);
 
