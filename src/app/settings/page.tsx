@@ -176,13 +176,13 @@ function SettingsView() {
   };
 
   return (
-    <main className="mx-auto grid max-w-[1080px] grid-cols-[200px_1fr] gap-8 px-8 pb-16 pt-10">
-      {/* Side nav */}
-      <aside className="sticky top-20 self-start">
+    <main className="mx-auto grid max-w-[1080px] grid-cols-[200px_1fr] gap-8 px-[var(--gut)] pb-16 pt-10 max-[1000px]:grid-cols-1 max-[1000px]:gap-[18px]">
+      {/* Side nav — 좁은 화면에선 가로 스크롤 스트립 */}
+      <aside className="sticky top-20 min-w-0 self-start max-[1000px]:static max-[1000px]:top-auto">
         <div className="mb-3.5 whitespace-nowrap font-sans text-[11px] font-bold uppercase tracking-[0.1em] text-ink-muted">
           SETTINGS
         </div>
-        <ul className="m-0 flex list-none flex-col gap-0.5 p-0">
+        <ul className="m-0 flex list-none flex-col gap-0.5 p-0 max-[1000px]:flex-row max-[1000px]:gap-1.5 max-[1000px]:overflow-x-auto max-[1000px]:pb-1.5 max-[1000px]:[&>li]:flex-none">
           {SECTIONS.map(([id, lbl]) => (
             <li key={id}>
               <a
@@ -213,7 +213,7 @@ function SettingsView() {
       {/* Content */}
       <div>
         <header className="mb-7">
-          <h1 className="m-0 font-sans text-[36px] font-semibold tracking-[-0.03em] text-ink">
+          <h1 className="m-0 font-sans text-[clamp(27px,6vw,36px)] font-semibold tracking-[-0.03em] text-ink">
             설정
           </h1>
           <p className="mt-2 text-sm leading-[1.6] text-ink-muted">
@@ -422,16 +422,16 @@ function SettingsView() {
 
         {/* SAVE BAR */}
         <div
-          className="sticky bottom-3 z-30 mt-6 flex items-center justify-between gap-3 rounded-xl border border-border-token bg-surface px-4 py-3 shadow-lg"
+          className="sticky bottom-3 z-30 mt-6 flex items-center justify-between gap-3 rounded-xl border border-border-token bg-surface px-4 py-3 shadow-lg max-[680px]:flex-col max-[680px]:items-stretch"
           style={{ backdropFilter: "saturate(160%) blur(8px)" }}
         >
           <StatusLine status={displayStatus} dirty={dirty} />
-          <div className="flex gap-2">
+          <div className="flex gap-2 max-[680px]:[&>button]:flex-1">
             <button
               type="button"
               onClick={reset}
               disabled={!dirty || status === "saving"}
-              className="cursor-pointer rounded-md border border-border-token bg-transparent px-3 py-1.5 font-sans text-[12.5px] font-medium text-ink disabled:cursor-not-allowed disabled:opacity-40"
+              className="cursor-pointer rounded-md border border-border-token bg-transparent px-3 py-1.5 font-sans text-[12.5px] font-medium text-ink disabled:cursor-not-allowed disabled:opacity-40 max-[680px]:min-h-[40px]"
             >
               되돌리기
             </button>
@@ -439,7 +439,7 @@ function SettingsView() {
               type="button"
               onClick={save}
               disabled={!dirty || status === "saving"}
-              className="rounded-md border border-transparent px-3.5 py-1.5 font-sans text-[12.5px] font-semibold disabled:opacity-50"
+              className="rounded-md border border-transparent px-3.5 py-1.5 font-sans text-[12.5px] font-semibold disabled:opacity-50 max-[680px]:min-h-[40px]"
               style={{
                 background: "var(--ink)",
                 color: "var(--bg)",
@@ -568,7 +568,7 @@ function Card({
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="grid grid-cols-[140px_1fr] items-center gap-3.5">
+    <div className="grid grid-cols-[140px_1fr] items-center gap-3.5 max-[680px]:grid-cols-1 max-[680px]:items-start max-[680px]:gap-1.5">
       <label className="whitespace-nowrap font-sans text-[13px] font-medium tracking-[-0.01em] text-ink-soft">
         {label}
       </label>

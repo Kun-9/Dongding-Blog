@@ -9,7 +9,7 @@ export async function Footer() {
   const site = await getSite();
 
   return (
-    <footer className="mx-auto mt-20 flex max-w-[1180px] flex-wrap items-center justify-between gap-4 border-t border-border-token px-8 py-8 font-sans text-[13px] text-ink-muted">
+    <footer className="mx-auto mt-20 flex max-w-[1180px] flex-wrap items-center justify-between gap-4 border-t border-border-token px-[var(--gut)] py-8 font-sans text-[13px] text-ink-muted">
       <div>{site.copyright}</div>
       <div className="flex items-center gap-[18px]">
         <a

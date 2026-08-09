@@ -14,12 +14,12 @@ export default async function Page() {
   const series = await getAllSeriesWithPosts();
 
   return (
-    <main className="mx-auto max-w-[880px] px-5 pt-10 md:px-8 md:pt-16">
+    <main className="mx-auto max-w-[880px] px-[var(--gut)] pt-10 md:pt-16">
       <header className="mb-8">
         <div className="mb-3 font-sans text-[11px] font-bold uppercase tracking-[0.1em] text-ink-muted">
           SERIES
         </div>
-        <h1 className="m-0 font-sans text-[40px] font-semibold leading-[1.1] tracking-[-0.035em] text-ink">
+        <h1 className="m-0 font-sans text-[clamp(29px,7vw,40px)] font-semibold leading-[1.1] tracking-[-0.035em] text-ink">
           연재 모음
         </h1>
         <p className="mt-3 max-w-[540px] text-[15px] leading-[1.6] text-ink-muted">

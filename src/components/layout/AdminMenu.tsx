@@ -62,7 +62,9 @@ export function AdminMenu() {
           className="h-[7px] w-[7px] rounded-full"
           style={{ background: "var(--accent)" }}
         />
-        <span className="max-w-[110px] truncate">{handle}</span>
+        <span className="max-w-[110px] truncate max-[520px]:hidden">
+          {handle}
+        </span>
         <span className="text-[9px] leading-none">▾</span>
       </button>
 

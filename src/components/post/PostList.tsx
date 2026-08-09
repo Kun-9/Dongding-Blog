@@ -54,9 +54,10 @@ export async function PostList({ filter }: Props) {
   }
 
   return (
-    <main className="mx-auto max-w-[1180px] px-5 pt-10 md:px-8 md:pt-16">
-      <div className="grid grid-cols-1 gap-8 md:grid-cols-[240px_minmax(0,1fr)] md:gap-12">
-        <div className="hidden md:block">
+    <main className="mx-auto max-w-[1180px] px-[var(--gut)] pt-10 md:pt-16">
+      {/* ≤1000px 에선 사이드바가 사라지지 않고 가로 스크롤 스트립으로 접힌다. */}
+      <div className="grid grid-cols-[240px_minmax(0,1fr)] gap-12 max-[1000px]:grid-cols-1 max-[1000px]:gap-[26px]">
+        <div className="min-w-0">
           <CategorySidebar filter={filter} />
         </div>
         <div>
@@ -64,7 +65,7 @@ export async function PostList({ filter }: Props) {
             <div className="mb-2.5 font-sans text-[11px] font-bold uppercase tracking-[0.1em] text-ink-muted">
               {eyebrow}
             </div>
-            <h1 className="m-0 font-sans text-[40px] font-semibold leading-[1.05] tracking-[-0.035em] text-ink">
+            <h1 className="m-0 font-sans text-[clamp(29px,7vw,40px)] font-semibold leading-[1.05] tracking-[-0.035em] text-ink">
               {title}
             </h1>
             <p className="mt-2.5 text-[15px] leading-[1.6] text-ink-muted">
@@ -78,7 +79,8 @@ export async function PostList({ filter }: Props) {
                 <div className="mb-3 font-mono text-[13px] font-semibold tabular-nums tracking-[-0.01em] text-ink-muted">
                   {y}
                 </div>
-                <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+                {/* 사이드바가 붙는 구간에선 뷰포트 브레이크포인트가 안 맞는다 — 실제 남은 폭 기준으로 접는다. */}
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3.5">
                   {byYear[y].map((p) => (
                     <PostCard key={p.slug} post={p} layout="card" />
                   ))}

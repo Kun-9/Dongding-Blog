@@ -14,12 +14,12 @@ export default async function Page() {
   const items = await getAllBookmarks();
 
   return (
-    <main className="mx-auto max-w-[760px] px-8 pt-16">
+    <main className="mx-auto max-w-[760px] px-[var(--gut)] pt-16">
       <header className="mb-8">
         <div className="mb-3 font-sans text-[11px] font-bold uppercase tracking-[0.1em] text-ink-muted">
           LINKROLL
         </div>
-        <h1 className="m-0 font-sans text-[40px] font-semibold leading-[1.1] tracking-[-0.035em] text-ink">
+        <h1 className="m-0 font-sans text-[clamp(29px,7vw,40px)] font-semibold leading-[1.1] tracking-[-0.035em] text-ink">
           읽고 좋았던 글
         </h1>
         <p className="mt-3 max-w-[540px] text-[15px] leading-[1.6] text-ink-muted">

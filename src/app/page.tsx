@@ -34,7 +34,7 @@ export default async function Page() {
 
   if (!featured) {
     return (
-      <main className="mx-auto max-w-[760px] px-8 pt-16">
+      <main className="mx-auto max-w-[760px] px-[var(--gut)] pt-16">
         <p className="text-ink-muted">아직 글이 없습니다.</p>
       </main>
     );
@@ -43,7 +43,7 @@ export default async function Page() {
   return (
     <main>
       {/* Editorial Hero */}
-      <section className="relative mx-auto max-w-[1180px] px-5 pb-8 pt-12 md:px-8 md:pt-16">
+      <section className="relative mx-auto max-w-[1180px] px-[var(--gut)] pb-8 pt-12 md:pt-16">
         <div className="relative max-w-[720px]">
           <div className="mb-3.5 inline-flex items-center gap-2 whitespace-nowrap font-sans text-xs font-semibold uppercase tracking-[0.08em] text-ink-muted">
             <span
@@ -52,7 +52,7 @@ export default async function Page() {
             />
             ISSUE 12 · APRIL 2026
           </div>
-          <h1 className="m-0 font-sans text-[56px] font-semibold leading-[1.05] tracking-[-0.04em] text-ink">
+          <h1 className="m-0 font-sans text-[clamp(42px,9vw,56px)] font-semibold leading-[1.05] tracking-[-0.04em] text-ink">
             안녕하세요,
             <br />
             {site.author}입니다.
@@ -72,7 +72,7 @@ export default async function Page() {
       </section>
 
       {/* Featured */}
-      <section className="mx-auto mt-6 max-w-[1180px] px-5 md:px-8">
+      <section className="mx-auto mt-6 max-w-[1180px] px-[var(--gut)]">
         <div className="mb-6 border-b border-border-token pb-3 font-sans text-[11px] font-bold uppercase tracking-[0.1em] text-ink-muted">
           Featured
         </div>
@@ -83,7 +83,7 @@ export default async function Page() {
               <span className="opacity-40">·</span>
               <span>{featured.readTime}분 읽기</span>
             </div>
-            <h2 className="m-0 font-sans text-[36px] font-semibold leading-[1.2] tracking-[-0.03em] text-ink">
+            <h2 className="m-0 font-sans text-[clamp(27px,6vw,36px)] font-semibold leading-[1.2] tracking-[-0.03em] text-ink">
               <Link
                 href={`/posts/${featured.slug}`}
                 className="text-inherit no-underline before:absolute before:inset-0 before:content-['']"
@@ -110,7 +110,7 @@ export default async function Page() {
       </section>
 
       {/* Recent grid */}
-      <section className="mx-auto mt-10 max-w-[1180px] px-5 md:px-8">
+      <section className="mx-auto mt-10 max-w-[1180px] px-[var(--gut)]">
         <div className="mb-6 flex items-baseline justify-between border-b border-border-token pb-3">
           <div className="font-sans text-[11px] font-bold uppercase tracking-[0.1em] text-ink-muted">
             Recent
@@ -132,7 +132,7 @@ export default async function Page() {
       <TopPosts posts={all.map((p) => ({ slug: p.slug, title: p.title }))} />
 
       {/* Categories */}
-      <section className="mx-auto mt-16 max-w-[1180px] px-5 pb-12 md:px-8">
+      <section className="mx-auto mt-16 max-w-[1180px] px-[var(--gut)] pb-12">
         <div className="mb-6 border-b border-border-token pb-3 font-sans text-[11px] font-bold uppercase tracking-[0.1em] text-ink-muted">
           Categories
         </div>

@@ -78,7 +78,7 @@ export function SearchClient({ posts, categories }: Props) {
   };
 
   return (
-    <main className="mx-auto max-w-[880px] px-8 pt-10">
+    <main className="mx-auto max-w-[880px] px-[var(--gut)] pt-10">
       <header className="mb-6">
         <div className="mb-2.5 font-sans text-[11px] font-bold uppercase tracking-[0.1em] text-ink-muted">
           SEARCH

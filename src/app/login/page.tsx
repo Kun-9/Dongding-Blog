@@ -23,7 +23,7 @@ export default async function Page({
       <div className="mb-6 font-sans text-[11px] font-bold uppercase tracking-[0.1em] text-ink-muted">
         Studio
       </div>
-      <h1 className="m-0 font-sans text-[32px] font-semibold leading-[1.15] tracking-[-0.03em] text-ink">
+      <h1 className="m-0 font-sans text-[clamp(24px,5vw,32px)] font-semibold leading-[1.15] tracking-[-0.03em] text-ink">
         로그인
       </h1>
       <p className="mb-8 mt-3 text-[14px] leading-[1.6] text-ink-muted">

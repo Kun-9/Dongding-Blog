@@ -664,7 +664,7 @@ function CatRow({
         </span>
 
         <div
-          className="flex gap-0.5 transition-opacity duration-[120ms]"
+          className="touch-always flex gap-0.5 transition-opacity duration-[120ms]"
           style={{
             opacity: hover || isEditing ? 1 : 0,
             pointerEvents: hover || isEditing ? "auto" : "none",
@@ -756,9 +756,10 @@ function IconBtn({
       disabled={disabled}
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
-      className="inline-flex h-[26px] items-center justify-center rounded-[5px] whitespace-nowrap transition-[background,color,border-color] duration-[100ms]"
+      className={`inline-flex h-[26px] items-center justify-center rounded-[5px] whitespace-nowrap transition-[background,color,border-color] duration-[100ms] max-[760px]:h-[34px] ${
+        wide ? "min-w-0" : "min-w-[26px] max-[760px]:min-w-[34px]"
+      }`}
       style={{
-        minWidth: wide ? 0 : 26,
         padding: wide ? "0 8px" : 0,
         border: `1px solid ${
           hov && !disabled ? "var(--border-strong)" : "transparent"

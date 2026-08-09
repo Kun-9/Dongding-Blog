@@ -184,7 +184,7 @@ function BookmarkRow({
     <li
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
-      className="relative grid grid-cols-[90px_1fr] gap-[18px] py-5"
+      className="relative grid grid-cols-[90px_1fr] gap-[18px] max-[680px]:grid-cols-1 max-[680px]:gap-1.5 py-5"
       style={{ borderTop: isFirst ? "none" : "1px solid var(--border)" }}
     >
       <div className="pt-0.5">
@@ -218,9 +218,11 @@ function BookmarkRow({
         </p>
       </div>
 
-      {isAdmin && hover && (
+      {isAdmin && (
         <div
-          className="absolute right-0 top-3.5 flex gap-1 rounded-[7px] border border-border-token p-[3px]"
+          className={`touch-always absolute right-0 top-3.5 flex gap-1 rounded-[7px] border border-border-token p-[3px] transition-opacity duration-[120ms] ${
+            hover ? "opacity-100" : "pointer-events-none opacity-0"
+          }`}
           style={{
             background: "var(--bg)",
             boxShadow: "0 4px 12px rgba(0,0,0,0.08)",

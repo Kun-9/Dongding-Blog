@@ -49,7 +49,7 @@ export function TopPosts({ posts }: { posts: PostMeta[] }) {
   if (!items?.length) return null;
 
   return (
-    <section className="mx-auto mt-16 max-w-[1180px] px-5 pb-12 md:px-8">
+    <section className="mx-auto mt-16 max-w-[1180px] px-[var(--gut)] pb-12">
       <div className="mb-6 flex items-baseline justify-between border-b border-border-token pb-3">
         <div className="font-sans text-[11px] font-bold uppercase tracking-[0.1em] text-ink-muted">
           Trending

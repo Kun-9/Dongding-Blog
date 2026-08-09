@@ -29,16 +29,17 @@ export async function CategorySidebar({ filter }: Props) {
   const totalPosts = posts.length;
 
   return (
-    <nav className="sticky top-[90px] self-start">
+    <nav className="sticky top-[90px] self-start max-[1000px]:static max-[1000px]:top-auto">
       <div className="mb-3 font-sans text-[11px] font-bold uppercase tracking-[0.08em] text-ink-muted">
         Categories
       </div>
 
-      <ul className="m-0 flex list-none flex-col gap-px p-0">
+      {/* 좁은 화면 — 세로 트리를 가로 스크롤 스트립으로. 서브카테고리는 접는다. */}
+      <ul className="m-0 flex list-none flex-col gap-px p-0 max-[1000px]:flex-row max-[1000px]:gap-1.5 max-[1000px]:overflow-x-auto max-[1000px]:pb-1.5 max-[1000px]:[&_ul]:hidden max-[1000px]:[&>li]:flex-none">
         <li>
           <Link
             href="/posts"
-            className={`flex items-center justify-between rounded-md px-2.5 py-1.5 font-sans text-[13.5px] tracking-[-0.01em] no-underline ${
+            className={`flex items-center justify-between gap-2 whitespace-nowrap rounded-md px-2.5 py-1.5 font-sans text-[13.5px] tracking-[-0.01em] no-underline ${
               isAll ? "bg-hover font-semibold text-ink" : "font-medium text-ink-soft"
             }`}
           >
@@ -58,7 +59,7 @@ export async function CategorySidebar({ filter }: Props) {
             <li key={cat.id}>
               <Link
                 href={`/category/${cat.id}`}
-                className={`flex items-center justify-between rounded-md px-2.5 py-1.5 font-sans text-[13.5px] tracking-[-0.01em] no-underline ${
+                className={`flex items-center justify-between gap-2 whitespace-nowrap rounded-md px-2.5 py-1.5 font-sans text-[13.5px] tracking-[-0.01em] no-underline ${
                   isActive
                     ? "bg-hover font-semibold text-ink"
                     : "font-medium text-ink-soft"

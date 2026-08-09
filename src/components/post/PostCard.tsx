@@ -69,12 +69,13 @@ export async function PostCard({ post, layout = "card" }: Props) {
   // default 'card'
   return (
     <article className="relative rounded-xl border border-border-token bg-surface p-[22px] transition-[border-color,transform] duration-[180ms] hover:border-border-strong">
+      {/* 카드가 좁아져도 한 줄을 유지한다 — 넘치는 건 카테고리 라벨만 잘린다. */}
       <div className="flex items-center gap-2 text-xs text-ink-muted tabular-nums">
-        <span>{fmtDate(post.date)}</span>
-        <span className="opacity-40">·</span>
-        <span>{post.readTime}분</span>
-        <span className="opacity-40">·</span>
-        <span>{catLabel}</span>
+        <span className="shrink-0">{fmtDate(post.date)}</span>
+        <span className="shrink-0 opacity-40">·</span>
+        <span className="shrink-0">{post.readTime}분</span>
+        <span className="shrink-0 opacity-40">·</span>
+        <span className="min-w-0 truncate">{catLabel}</span>
       </div>
       <h3 className="my-2 font-sans text-[19px] font-semibold leading-[1.35] tracking-[-0.025em] text-ink">
         <Link

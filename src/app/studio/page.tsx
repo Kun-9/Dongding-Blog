@@ -93,7 +93,7 @@ export default function Page() {
 
 function EditorFallback({ message }: { message: string }) {
   return (
-    <main className="mx-auto max-w-[1180px] px-8 py-32 text-center text-sm text-ink-muted">
+    <main className="mx-auto max-w-[1180px] px-[var(--gut)] py-32 text-center text-sm text-ink-muted">
       {message}
     </main>
   );
@@ -340,6 +340,8 @@ function StudioEditor() {
   const [confirmingPublish, setConfirmingPublish] = useState(false);
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
   const [toast, setToast] = useState<Toast | null>(null);
+  // 좁은 화면 전용 — 2단이 안 들어가면 편집/미리보기를 탭으로 가른다.
+  const [pane, setPane] = useState<"edit" | "preview">("edit");
   const [localSavedAt, setLocalSavedAt] = useState<number | null>(null);
   const [pendingRecovery, setPendingRecovery] = useState<LocalDraft | null>(
     null,
@@ -1176,7 +1178,7 @@ function StudioEditor() {
     <main>
       {/* Studio toolbar */}
       <div
-        className="sticky top-[60px] z-40 flex items-center gap-3 border-b border-border-token px-8 py-3"
+        className="sticky top-[60px] z-40 flex flex-wrap items-center gap-3 border-b border-border-token px-[var(--gut)] py-3"
         style={{ background: "var(--bg)" }}
       >
         <div className="font-sans text-[11px] font-bold uppercase tracking-[0.1em] text-ink-muted">
@@ -1335,9 +1337,36 @@ function StudioEditor() {
         <ToastBanner toast={toast} onClose={() => setToast(null)} />
       )}
 
-      <div className="grid min-h-[calc(100vh-200px)] grid-cols-1 gap-0 md:grid-cols-2">
+      {/* 좁은 화면 탭 — 데스크톱에선 2단이 그대로 보이므로 나오지 않는다. */}
+      <div className="hidden gap-0.5 border-b border-border-token px-[var(--gut)] py-2 max-[1000px]:flex">
+        {(
+          [
+            ["edit", "편집"],
+            ["preview", "미리보기"],
+          ] as const
+        ).map(([k, label]) => (
+          <button
+            key={k}
+            type="button"
+            onClick={() => setPane(k)}
+            className={`rounded-md border-none px-3 py-1.5 font-sans text-[13px] ${
+              pane === k
+                ? "bg-hover font-semibold text-ink"
+                : "bg-transparent font-medium text-ink-muted"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <div className="grid min-h-[calc(100vh-200px)] grid-cols-2 gap-0 max-[1000px]:grid-cols-1">
         {/* Editor */}
-        <section className="border-b border-border-token px-5 pb-10 pt-6 md:border-b-0 md:border-r md:px-8 md:pb-16 md:pt-7">
+        <section
+          className={`border-r border-border-token px-[var(--gut)] pb-16 pt-7 max-[1000px]:border-r-0 max-[1000px]:pb-10 max-[1000px]:pt-6 ${
+            pane === "edit" ? "" : "max-[1000px]:hidden"
+          }`}
+        >
           <div className="mb-3.5 font-mono text-[11px] tracking-[0.05em] text-ink-muted">
             FRONTMATTER
           </div>
@@ -1597,7 +1626,11 @@ function StudioEditor() {
         </section>
 
         {/* Preview */}
-        <section className="overflow-auto px-5 pb-10 pt-6 md:px-8 md:pb-16 md:pt-7">
+        <section
+          className={`overflow-auto px-[var(--gut)] pb-16 pt-7 max-[1000px]:pb-10 max-[1000px]:pt-6 ${
+            pane === "preview" ? "" : "max-[1000px]:hidden"
+          }`}
+        >
           <div className="mb-3.5 font-mono text-[11px] tracking-[0.05em] text-ink-muted">
             PREVIEW
           </div>
@@ -1606,7 +1639,7 @@ function StudioEditor() {
               {category ? categoryLabelIn(categories, category) : "—"} ·{" "}
               {VISIBILITY_META[visibility].label}
             </div>
-            <h1 className="m-0 font-sans text-[36px] font-semibold leading-[1.15] tracking-[-0.035em] text-ink">
+            <h1 className="m-0 font-sans text-[clamp(27px,6vw,36px)] font-semibold leading-[1.15] tracking-[-0.035em] text-ink">
               {title || "(제목 없음)"}
             </h1>
             <div className="mt-3.5 flex flex-wrap gap-1.5">
@@ -1760,7 +1793,7 @@ function FieldRow({
 }) {
   const Wrapper = plain ? "div" : "label";
   return (
-    <Wrapper className="grid grid-cols-[90px_1fr] items-start gap-3">
+    <Wrapper className="grid grid-cols-[90px_1fr] items-start gap-3 max-[680px]:grid-cols-1 max-[680px]:gap-1.5">
       <span className="pt-[9px] font-mono text-xs text-ink-muted">{label}</span>
       {children}
     </Wrapper>

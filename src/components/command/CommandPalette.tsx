@@ -38,6 +38,12 @@ export function CommandPalette({ onClose, categories, posts }: Props) {
 
   useEffect(() => {
     inputRef.current?.focus();
+    // 팔레트가 떠 있는 동안 뒷배경 스크롤을 막는다.
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
   }, []);
 
   const items = useMemo<CmdItem[]>(() => {

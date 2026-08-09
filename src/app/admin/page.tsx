@@ -54,13 +54,13 @@ export default async function Page() {
     thisWeek === 0 ? "조용한 한 주." : `이번 주 ${thisWeek}편 발행.`;
 
   return (
-    <main className="mx-auto max-w-[1180px] px-5 pt-8 md:px-8 md:pt-10">
+    <main className="mx-auto max-w-[1180px] px-[var(--gut)] pt-8 md:pt-10">
       <header className="mb-8 flex items-start justify-between gap-4">
         <div>
           <div className="mb-2 font-sans text-[11px] font-bold uppercase tracking-[0.1em] text-ink-muted">
             ADMIN
           </div>
-          <h1 className="m-0 font-sans text-[36px] font-semibold tracking-[-0.03em] text-ink">
+          <h1 className="m-0 font-sans text-[clamp(27px,6vw,36px)] font-semibold tracking-[-0.03em] text-ink">
             대시보드
           </h1>
           <p className="mt-2 whitespace-nowrap text-sm text-ink-muted">
@@ -176,7 +176,8 @@ export default async function Page() {
             초안이 없습니다.
           </div>
         ) : (
-          <div className="text-sm">
+          // 좁은 화면에서 열을 접으면 제목·상태·분량의 관계를 잃는다. 가로로 민다.
+          <div className="overflow-x-auto text-sm [&>*]:min-w-[560px]">
             <div className="grid grid-cols-[1fr_100px_100px_110px] px-2.5 py-2 font-mono text-[10.5px] font-semibold uppercase tracking-[0.05em] text-ink-muted">
               <span>TITLE</span>
               <span>STATUS</span>
@@ -221,7 +222,7 @@ export default async function Page() {
             {comments.map((c, i) => (
               <li
                 key={`${c.who}-${i}`}
-                className="grid grid-cols-[120px_1fr] gap-4 py-3.5"
+                className="grid grid-cols-[120px_1fr] gap-4 max-[680px]:grid-cols-1 max-[680px]:gap-1.5 py-3.5"
                 style={{ borderTop: i ? "1px solid var(--border)" : "none" }}
               >
                 <div>

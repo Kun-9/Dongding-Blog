@@ -207,6 +207,53 @@ a {
   color: inherit;
 }
 
+/* 긴 식별자·설정 키가 좁은 화면을 밀어내지 않게. blog.html 과 같은 규칙. */
+code,
+kbd {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+pre {
+  max-width: 100%;
+}
+
+/* ============================================================
+   반응형 — 페이지 좌우 여백. blog.html 의 --gut 을 그대로 옮겼다.
+   ============================================================ */
+:root {
+  --gut: 32px;
+}
+@media (max-width: 900px) {
+  :root {
+    --gut: 22px;
+  }
+}
+@media (max-width: 560px) {
+  :root {
+    --gut: 16px;
+  }
+}
+
+/* iOS 는 16px 미만 입력에 포커스하면 화면을 확대한다. 좁은 화면에서만 강제 —
+   크기를 인라인 style 로 주는 입력이 섞여 있어 !important 가 필요하다. */
+@media (max-width: 760px) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
+/* 터치 기기엔 hover 가 없다 — hover 로만 드러나던 조작 버튼을 상시 노출한다.
+   대상이 인라인 style 로 opacity 를 받는 곳도 있어 !important 로 덮는다. */
+@media (hover: none) {
+  .touch-always {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+}
+
 /* Theme toggle icons — switched via [data-theme] so the correct glyph is
    visible on first paint and there is no hydration flicker. */
 .theme-toggle-dark {

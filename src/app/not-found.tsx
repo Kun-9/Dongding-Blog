@@ -10,7 +10,7 @@ export const metadata = {
 
 export default function NotFound() {
   return (
-    <main className="mx-auto flex max-w-[700px] flex-col items-center justify-center px-8 py-32 text-center">
+    <main className="mx-auto flex max-w-[700px] flex-col items-center justify-center px-[var(--gut)] py-32 text-center">
       <div className="mb-6 inline-flex items-center gap-2 rounded-md border border-border-token bg-surface px-3.5 py-2 font-mono text-[13px] text-ink-muted">
         <span
           className="h-1.5 w-1.5 rounded-full"

@@ -125,7 +125,7 @@ export default async function Page({
     <main>
       <ReadingProgress articleId={ARTICLE_ID} />
 
-      <div className="mx-auto grid max-w-[1180px] grid-cols-1 justify-center gap-10 px-5 md:grid-cols-[minmax(0,700px)_220px] md:gap-16 md:px-8">
+      <div className="mx-auto grid max-w-[1180px] grid-cols-[minmax(0,700px)_220px] justify-center gap-16 px-[var(--gut)] max-[1100px]:grid-cols-1 max-[1100px]:gap-10">
         <article id={ARTICLE_ID} className="pb-8 pt-10 md:pt-14">
           <div className="mb-5 flex items-center gap-2 font-sans text-xs text-ink-muted">
             <Link href="/" className="text-ink-muted no-underline">
@@ -173,7 +173,7 @@ export default async function Page({
           )}
 
           <header className="mb-9">
-            <h1 className="m-0 font-sans text-[40px] font-semibold leading-[1.15] tracking-[-0.035em] text-ink">
+            <h1 className="m-0 font-sans text-[clamp(29px,7vw,40px)] font-semibold leading-[1.15] tracking-[-0.035em] text-ink">
               {post.meta.title}
             </h1>
             <p className="mb-5 mt-3.5 text-[17px] leading-[1.6] tracking-[-0.005em] text-ink-muted">
@@ -223,7 +223,7 @@ export default async function Page({
           <Comments />
         </article>
 
-        <aside className="hidden md:block md:pt-14">
+        <aside className="pt-14 max-[1100px]:hidden">
           <div className="sticky top-[90px] self-start">
             {toc.length > 0 && <TOC items={toc} sticky={false} />}
             <div className="mt-7 border-t border-border-token pt-5">
@@ -241,7 +241,7 @@ export default async function Page({
       </div>
 
       {/* Prev/Next (chronological) */}
-      <section className="mx-auto mt-8 max-w-[1180px] px-5 pb-12 md:px-8 md:pb-16">
+      <section className="mx-auto mt-8 max-w-[1180px] px-[var(--gut)] pb-12 md:pb-16">
         {seriesCtx && (
           <div className="mb-3 font-sans text-[10.5px] font-bold uppercase tracking-[0.14em] text-ink-muted">
             시간순 글 탐색

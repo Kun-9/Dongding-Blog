@@ -27,12 +27,12 @@ export default async function Page() {
   const site = await getSite();
 
   return (
-    <main className="mx-auto max-w-[720px] px-8 pt-16">
+    <main className="mx-auto max-w-[720px] px-[var(--gut)] pt-16">
       <header className="mb-10">
         <div className="mb-3 font-sans text-[11px] font-bold uppercase tracking-[0.1em] text-ink-muted">
           About
         </div>
-        <h1 className="m-0 font-sans text-[44px] font-semibold leading-[1.1] tracking-[-0.035em] text-ink">
+        <h1 className="m-0 font-sans text-[clamp(33px,7vw,44px)] font-semibold leading-[1.1] tracking-[-0.035em] text-ink">
           안녕하세요,
           <br />
           {site.author}입니다.

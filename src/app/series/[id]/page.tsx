@@ -48,7 +48,7 @@ export default async function Page({
     .filter((i) => !usedIndices.has(i));
 
   return (
-    <main className="mx-auto max-w-[760px] px-5 pt-10 md:px-8 md:pt-16">
+    <main className="mx-auto max-w-[760px] px-[var(--gut)] pt-10 md:pt-16">
       <header className="mb-10">
         <div className="mb-3">
           <Link
@@ -58,7 +58,7 @@ export default async function Page({
             ← SERIES
           </Link>
         </div>
-        <h1 className="m-0 font-sans text-[36px] font-semibold leading-[1.15] tracking-[-0.035em] text-ink">
+        <h1 className="m-0 font-sans text-[clamp(27px,6vw,36px)] font-semibold leading-[1.15] tracking-[-0.035em] text-ink">
           {s.title}
         </h1>
         <p className="mt-3 max-w-[560px] text-[15px] leading-[1.65] text-ink-muted">

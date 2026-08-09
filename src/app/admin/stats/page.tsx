@@ -160,7 +160,7 @@ export default function StatsPage() {
 
   if (error) {
     return (
-      <main className="mx-auto max-w-[1180px] px-5 pt-8 md:px-8 md:pt-10">
+      <main className="mx-auto max-w-[1180px] px-[var(--gut)] pt-8 md:pt-10">
         <h1 className="m-0 font-sans text-[28px] font-semibold text-ink">
           통계
         </h1>
@@ -200,13 +200,13 @@ export default function StatsPage() {
   const max = Math.max(1, ...filledPageviews.map((p) => p.y));
 
   return (
-    <main className="mx-auto max-w-[1180px] px-5 pt-8 md:px-8 md:pt-10">
+    <main className="mx-auto max-w-[1180px] px-[var(--gut)] pt-8 md:pt-10">
       <header className="mb-8 flex items-baseline justify-between">
         <div>
           <div className="mb-2 font-sans text-[11px] font-bold uppercase tracking-[0.1em] text-ink-muted">
             ADMIN · STATS
           </div>
-          <h1 className="m-0 font-sans text-[36px] font-semibold tracking-[-0.03em] text-ink">
+          <h1 className="m-0 font-sans text-[clamp(27px,6vw,36px)] font-semibold tracking-[-0.03em] text-ink">
             통계
           </h1>
         </div>
