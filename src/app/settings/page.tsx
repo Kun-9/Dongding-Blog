@@ -11,6 +11,8 @@ import { useRouter } from "next/navigation";
 import type { ChangeEvent, ReactNode } from "react";
 import { site } from "@/lib/site";
 import siteJson from "@/lib/site.json";
+import { fmtDate } from "@/lib/tokens";
+import { seoClip, seoUnits } from "@/lib/seo-text";
 import { safeWriteJSON } from "@/lib/storage";
 import { API } from "@/lib/api-routes";
 import {
@@ -336,6 +338,7 @@ function SettingsView() {
 
         {/* SEO */}
         <Card id="settings-seo" title="SEO · 메타" source="supabase · site_settings → og">
+          <SeoPreview form={form} />
           <Row label="사이트 제목">
             <TextInput
               value={form.title}
@@ -533,6 +536,366 @@ function StatusLine({
     <span className="font-mono text-[12px] text-ink-muted">
       {dirty ? "● 변경됨 — 저장하지 않은 내용이 있습니다" : "변경사항 없음"}
     </span>
+  );
+}
+
+// ── SEO 미리보기 ────────────────────────────────────────────────────────
+
+/** GET /api/posts 가 주는 표본 글 — 글 OG 이미지가 그리는 필드와 같다. */
+interface SamplePost {
+  slug: string;
+  title: string;
+  summary: string;
+  date: string;
+  readTime: number;
+  label: string | null;
+}
+
+// OG 이미지는 테마와 무관하게 늘 라이트 팔레트로 그려진다 (`og-tokens.ts`).
+const OG_BG = "#f7f4ed";
+const OG_INK = "#1c1c1c";
+const OG_INK_INVERSE = "#fcfbf8";
+const OG_INK_MUTED = "#5f5f5d";
+
+/** 1200px 기준 치수를 컨테이너 폭 비율로. 카드가 좁아져도 실물 비례를 지킨다. */
+const cq = (px: number) => `${(px / 1200) * 100}cqw`;
+
+function SeoPreview({ form }: { form: SiteData }) {
+  const [surface, setSurface] = useState<"search" | "social">("search");
+  const [target, setTarget] = useState<"home" | "post">("home");
+  const [post, setPost] = useState<SamplePost | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(API.posts)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: unknown) => {
+        if (!cancelled && data) setPost(data as SamplePost);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // 글이 한 편도 없으면 글 상세 미리보기를 만들 재료가 없다.
+  const sample = target === "post" ? post : null;
+  const canonicalHost = form.url
+    .replace(/^https?:\/\//, "")
+    .replace(/\/+$/, "");
+  const title = sample ? `${sample.title} · ${form.shortTitle}` : form.title;
+  const desc = sample ? sample.summary : form.description;
+
+  return (
+    <div
+      className="rounded-lg border border-border-token px-3.5 pb-3.5 pt-3"
+      style={{ background: "var(--bg)" }}
+    >
+      <div className="mb-3 flex flex-wrap items-center gap-2.5">
+        <span className="mr-auto font-mono text-[10.5px] font-semibold uppercase tracking-[0.09em] text-ink-muted">
+          preview
+        </span>
+        {post && (
+          <Segmented
+            value={target}
+            onChange={setTarget}
+            options={[
+              ["home", "홈"],
+              ["post", "글 상세"],
+            ]}
+          />
+        )}
+        <Segmented
+          value={surface}
+          onChange={setSurface}
+          options={[
+            ["search", "검색 결과"],
+            ["social", "SNS 카드"],
+          ]}
+        />
+      </div>
+
+      {surface === "search" ? (
+        <SearchResult
+          host={canonicalHost}
+          siteName={form.shortTitle}
+          title={title}
+          desc={desc}
+          sample={sample}
+        />
+      ) : (
+        <OgCard form={form} sample={sample} />
+      )}
+
+      <div className="mt-3.5 flex flex-wrap gap-4 border-t border-dashed border-border-token pt-3">
+        <SeoMeter label="제목" n={seoUnits(title)} max={60} />
+        <SeoMeter label="설명" n={seoUnits(desc)} max={155} />
+        <span className="self-center font-mono text-[11px] text-ink-muted">
+          한글 1자 = 2
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function SearchResult({
+  host,
+  siteName,
+  title,
+  desc,
+  sample,
+}: {
+  host: string;
+  siteName: string;
+  title: string;
+  desc: string;
+  sample: SamplePost | null;
+}) {
+  return (
+    <div className="max-w-[600px]">
+      <div className="mb-1.5 flex items-center gap-2.5">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/icon.svg"
+          width={22}
+          height={22}
+          alt=""
+          className="block rounded-full border border-border-token bg-surface"
+        />
+        <div className="min-w-0">
+          <div className="font-sans text-[12.5px] leading-[1.3] tracking-[-0.005em] text-ink">
+            {siteName || "—"}
+          </div>
+          <div className="truncate font-sans text-[11.5px] leading-[1.3] text-ink-muted">
+            {host}
+            {sample ? ` › posts › ${sample.slug}` : ""}
+          </div>
+        </div>
+      </div>
+      <div
+        className="mb-[3px] font-sans text-[18px] leading-[1.35] tracking-[-0.02em]"
+        style={{ color: "var(--seo-link)" }}
+      >
+        {seoClip(title, 60) || "제목 없음"}
+      </div>
+      <div className="font-sans text-[13px] leading-[1.55] tracking-[-0.005em] text-ink-soft">
+        {sample && (
+          <span className="text-ink-muted">{fmtDate(sample.date)} — </span>
+        )}
+        {seoClip(desc, 155) || "설명을 입력하면 여기에 표시됩니다."}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * `opengraph-image.tsx` 와 `posts/[slug]/opengraph-image.tsx` 가 실제로 그리는
+ * 레이아웃을 그대로 축소해 재현한다. 치수는 두 파일의 px 값을 cq() 로 옮긴 것 —
+ * 한쪽을 고치면 여기도 같이 고쳐야 미리보기가 거짓말을 하지 않는다.
+ */
+function OgCard({
+  form,
+  sample,
+}: {
+  form: SiteData;
+  sample: SamplePost | null;
+}) {
+  return (
+    <div className="max-w-[460px] overflow-hidden rounded-lg border border-border-token bg-surface">
+      {/*
+        cq() 를 쓰는 쪽은 반드시 이 컨테이너의 자식이어야 한다. container-type 을
+        준 요소 자신의 cqw 는 그 컨테이너가 아니라 바깥(없으면 뷰포트) 기준으로
+        풀려서, 패딩이 카드 폭이 아닌 화면 폭에 비례해 버린다.
+      */}
+      <div
+        style={{
+          containerType: "inline-size",
+          aspectRatio: "1200 / 630",
+          background: OG_BG,
+        }}
+      >
+        <OgCardBody form={form} sample={sample} />
+      </div>
+    </div>
+  );
+}
+
+function OgCardBody({
+  form,
+  sample,
+}: {
+  form: SiteData;
+  sample: SamplePost | null;
+}) {
+  // 글 OG 하단의 주소는 빌드 시점 도메인이라 설정 화면 값을 따르지 않는다.
+  const deployHost = new URL(site.url).host;
+
+  return (
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "space-between",
+        padding: sample ? `${cq(72)} ${cq(80)}` : cq(80),
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: sample ? cq(14) : cq(16),
+          color: OG_INK_MUTED,
+          fontSize: cq(22),
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+        }}
+      >
+        <span
+          style={{
+            width: sample ? cq(44) : cq(48),
+            height: sample ? cq(44) : cq(48),
+            flexShrink: 0,
+            background: OG_INK,
+            color: OG_INK_INVERSE,
+            borderRadius: sample ? cq(10) : cq(12),
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: sample ? cq(22) : cq(24),
+            fontWeight: 700,
+          }}
+        >
+          동
+        </span>
+        <span>{sample ? (sample.label ?? form.shortTitle) : form.og.label}</span>
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column" }}>
+        {sample ? (
+          <span
+            style={{
+              fontSize: cq(60),
+              fontWeight: 700,
+              color: OG_INK,
+              letterSpacing: "-0.035em",
+              lineHeight: 1.15,
+            }}
+          >
+            {sample.title}
+          </span>
+        ) : (
+          form.og.headline.map((line) => (
+            <span
+              key={line}
+              style={{
+                fontSize: cq(84),
+                fontWeight: 700,
+                color: OG_INK,
+                letterSpacing: "-0.04em",
+                lineHeight: 1.05,
+              }}
+            >
+              {line}
+            </span>
+          ))
+        )}
+        <span
+          style={{
+            marginTop: sample ? cq(24) : cq(32),
+            fontSize: sample ? cq(24) : cq(28),
+            color: OG_INK_MUTED,
+            lineHeight: 1.5,
+          }}
+        >
+          {sample ? sample.summary : form.og.tagline}
+        </span>
+      </div>
+
+      {sample && (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            color: OG_INK_MUTED,
+            fontSize: cq(20),
+          }}
+        >
+          <span>
+            {fmtDate(sample.date)} · {sample.readTime}분 읽기
+          </span>
+          <span>{deployHost}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+function SeoMeter({
+  label,
+  n,
+  max,
+}: {
+  label: string;
+  n: number;
+  max: number;
+}) {
+  const over = n > max;
+  return (
+    <div className="flex min-w-[150px] items-center gap-2">
+      <span className="whitespace-nowrap font-sans text-[12px] text-ink-muted">
+        {label}
+      </span>
+      <div className="relative h-[3px] min-w-[54px] flex-1 overflow-hidden rounded-full bg-surface-alt">
+        <div
+          className="absolute inset-y-0 left-0 rounded-full transition-[width] duration-150"
+          style={{
+            width: `${Math.min(100, (n / max) * 100)}%`,
+            background: over ? "var(--seo-over)" : "var(--ink-soft)",
+            opacity: over ? 1 : 0.55,
+          }}
+        />
+      </div>
+      <code
+        className="whitespace-nowrap font-mono text-[11px] tabular-nums"
+        style={{ color: over ? "var(--seo-over)" : "var(--ink-soft)" }}
+      >
+        {n}/{max}
+        {over ? " 잘림" : ""}
+      </code>
+    </div>
+  );
+}
+
+function Segmented<T extends string>({
+  value,
+  onChange,
+  options,
+}: {
+  value: T;
+  onChange: (v: T) => void;
+  options: [T, string][];
+}) {
+  return (
+    <div className="inline-flex gap-0.5 rounded-md border border-border-token bg-surface-alt p-0.5">
+      {options.map(([v, label]) => (
+        <button
+          key={v}
+          type="button"
+          onClick={() => onChange(v)}
+          className={`cursor-pointer rounded-[5px] border-none px-2.5 py-1 font-sans text-[12px] font-medium transition-colors ${
+            v === value
+              ? "bg-surface text-ink shadow-sm"
+              : "bg-transparent text-ink-muted hover:text-ink"
+          }`}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
   );
 }
 

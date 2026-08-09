@@ -5,10 +5,35 @@
 import { NextResponse } from "next/server";
 import { dbAdmin } from "@/lib/supabase";
 import { syncLinkMeta } from "@/lib/link-meta";
+import { getAllPosts, getFeaturedPost } from "@/lib/posts";
+import { getCategory } from "@/lib/categories";
 import { PostBodySchema, requireApiUser, revalidateContent, toRow } from "./_shared";
 
 /** unique 위반 — 같은 slug 가 이미 있다. */
 const UNIQUE_VIOLATION = "23505";
+
+/**
+ * 설정 화면 SEO 미리보기가 쓸 표본 글 한 건. 공개된 글의 메타만 돌려주므로
+ * 인증을 걸지 않는다 — 어차피 목록 페이지에 다 나와 있는 값이다.
+ * 필드 구성은 글 OG 이미지(`posts/[slug]/opengraph-image.tsx`)가 그리는 것과
+ * 맞춘다. 미리보기가 실물과 다르면 없느니만 못하다.
+ * ponytail: 표본 한 건만 준다. 목록이 필요해지면 그때 페이징을 붙인다.
+ */
+export async function GET() {
+  const sample = (await getFeaturedPost()) ?? (await getAllPosts())[0];
+  if (!sample) return NextResponse.json(null);
+
+  const cat = await getCategory(sample.category);
+
+  return NextResponse.json({
+    slug: sample.slug,
+    title: sample.title,
+    summary: sample.summary,
+    date: sample.date,
+    readTime: sample.readTime,
+    label: cat?.name ?? null,
+  });
+}
 
 export async function POST(req: Request) {
   const blocked = await requireApiUser();

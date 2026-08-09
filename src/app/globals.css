@@ -77,6 +77,11 @@
   --link-tile-l: 87%;
   --link-tile-ink-l: 30%;
 
+  /* 설정 SEO 미리보기의 검색결과 제목 — 구글 링크색 재현용이라 테마 팔레트 밖이다. */
+  --seo-link: #2a5599;
+  /* 길이 미터가 한도를 넘었을 때 */
+  --seo-over: #a07a35;
+
   --header-bg: rgba(247, 244, 237, 0.82);
 }
 
@@ -136,6 +141,9 @@
 
   --link-tile-l: 26%;
   --link-tile-ink-l: 78%;
+
+  --seo-link: #93b4e6;
+  --seo-over: #c2a05a;
 
   --header-bg: rgba(22, 21, 19, 0.85);
 }
