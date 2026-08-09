@@ -251,6 +251,7 @@ export type Database = {
       series: {
         Row: {
           color: string
+          created_at: string
           description: string
           id: string
           planned_count: number
@@ -259,6 +260,7 @@ export type Database = {
         }
         Insert: {
           color?: string
+          created_at?: string
           description?: string
           id: string
           planned_count?: number
@@ -267,6 +269,7 @@ export type Database = {
         }
         Update: {
           color?: string
+          created_at?: string
           description?: string
           id?: string
           planned_count?: number

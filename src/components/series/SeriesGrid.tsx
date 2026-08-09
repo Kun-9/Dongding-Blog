@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAdmin } from "@/lib/hooks";
@@ -15,10 +15,39 @@ type EditorMode =
   | { kind: "create" }
   | { kind: "edit"; existing: Series };
 
+type Sort = "recent" | "created";
+
+const SORTS: [Sort, string][] = [
+  ["recent", "최근 연재순"],
+  ["created", "생성순"],
+];
+
+/** 최근 연재일 — 소속 글에서 파생한다. 글이 없으면 빈 문자열. */
+function lastPostDate(s: SeriesWithPosts): string {
+  return s.posts.reduce((m, p) => (p.date > m ? p.date : m), "");
+}
+
+function fmtYmd(d: string): string {
+  return d ? d.replace(/-/g, ".") : "—";
+}
+
 export function SeriesGrid({ series }: { series: SeriesWithPosts[] }) {
   const router = useRouter();
   const isAdmin = useAdmin();
   const [editor, setEditor] = useState<EditorMode | null>(null);
+  const [sort, setSort] = useState<Sort>("recent");
+
+  const sorted = useMemo(
+    () =>
+      [...series].sort((a, b) => {
+        if (sort === "created") return b.createdAt.localeCompare(a.createdAt);
+        return (
+          lastPostDate(b).localeCompare(lastPostDate(a)) ||
+          b.createdAt.localeCompare(a.createdAt)
+        );
+      }),
+    [series, sort],
+  );
 
   const close = () => setEditor(null);
   const refresh = () => router.refresh();
@@ -53,11 +82,34 @@ export function SeriesGrid({ series }: { series: SeriesWithPosts[] }) {
         />
       )}
 
-      <div className="grid grid-cols-1 gap-3.5 pb-16 sm:grid-cols-2">
-        {series.map((s) => (
+      <div className="mb-3.5 flex items-center justify-between gap-3">
+        <div className="font-mono text-[11.5px] tabular-nums text-ink-muted">
+          {series.length}개 시리즈
+        </div>
+        <div className="flex gap-0.5 rounded-lg border border-border-token bg-surface p-0.5">
+          {SORTS.map(([k, label]) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => setSort(k)}
+              className={`whitespace-nowrap rounded-md border-none px-[11px] py-[5px] font-sans text-[12px] tracking-[-0.005em] ${
+                sort === k
+                  ? "bg-surface-alt font-semibold text-ink"
+                  : "bg-transparent font-medium text-ink-muted"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3.5 pb-16 [grid-auto-rows:1fr] sm:grid-cols-2">
+        {sorted.map((s) => (
           <SeriesCard
             key={s.id}
             s={s}
+            sort={sort}
             isAdmin={isAdmin}
             onEdit={() => setEditor({ kind: "edit", existing: s })}
             onDeleted={refresh}
@@ -68,13 +120,22 @@ export function SeriesGrid({ series }: { series: SeriesWithPosts[] }) {
   );
 }
 
+/** 현재 정렬 기준이 되는 쪽을 진하게 — 어느 날짜로 줄이 세워졌는지 보인다. */
+function metaCol(active: boolean): string {
+  return `whitespace-nowrap font-mono text-[11px] leading-[1.5] tabular-nums ${
+    active ? "text-ink-soft" : "text-ink-muted opacity-75"
+  }`;
+}
+
 function SeriesCard({
   s,
+  sort,
   isAdmin,
   onEdit,
   onDeleted,
 }: {
   s: SeriesWithPosts;
+  sort: Sort;
   isAdmin: boolean;
   onEdit: () => void;
   onDeleted: () => void;
@@ -84,6 +145,7 @@ function SeriesCard({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const total = Math.max(s.count, s.posts.length);
+  const last = lastPostDate(s);
 
   const remove = async () => {
     setBusy(true);
@@ -112,11 +174,11 @@ function SeriesCard({
     <div
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
-      className="relative"
+      className="relative h-full"
     >
       <Link
         href={`/series/${s.id}`}
-        className="flex min-h-[200px] flex-col gap-3.5 rounded-xl border border-border-token bg-surface p-5 no-underline transition-[border-color,transform] duration-200 hover:border-border-strong hover:-translate-y-0.5"
+        className="flex h-full min-h-[232px] flex-col gap-3.5 rounded-xl border border-border-token bg-surface p-5 no-underline transition-[border-color,transform] duration-200 hover:border-border-strong hover:-translate-y-0.5"
       >
         <div className="flex items-center justify-between">
           <div
@@ -130,32 +192,46 @@ function SeriesCard({
           </div>
         </div>
         <div>
-          <div className="mb-1.5 font-sans text-[22px] font-semibold tracking-[-0.025em] text-ink">
+          <div className="mb-1.5 line-clamp-2 font-sans text-[22px] font-semibold leading-[1.25] tracking-[-0.025em] text-ink">
             {s.title}
           </div>
-          <div className="text-sm leading-[1.6] text-ink-soft">{s.desc}</div>
+          <div className="line-clamp-2 text-sm leading-[1.6] text-ink-soft">
+            {s.desc}
+          </div>
         </div>
-        <div className="mt-auto flex gap-1">
-          {Array.from({ length: total }).map((_, i) => (
-            <div
-              key={i}
-              className="h-1 flex-1 rounded-sm"
-              style={{
-                background:
-                  i < s.posts.length ? s.color : "var(--surface-alt)",
-              }}
-            />
-          ))}
+        <div className="mt-auto grid gap-2.5">
+          <div className="flex items-baseline justify-between gap-2.5">
+            <div className={metaCol(sort === "recent")}>
+              최근 연재 {last ? fmtYmd(last) : "아직 없음"}
+            </div>
+            <div className={metaCol(sort === "created")}>
+              생성 {fmtYmd(s.createdAt)}
+            </div>
+          </div>
+          <div className="flex gap-1">
+            {Array.from({ length: total }).map((_, i) => (
+              <div
+                key={i}
+                className="h-1 flex-1 rounded-sm"
+                style={{
+                  background:
+                    i < s.posts.length ? s.color : "var(--surface-alt)",
+                }}
+              />
+            ))}
+          </div>
         </div>
       </Link>
 
-      {isAdmin && hover && !confirming && (
+      {isAdmin && !confirming && (
         <div
           onClick={(e) => {
             e.stopPropagation();
             e.preventDefault();
           }}
-          className="absolute right-2.5 top-2.5 flex gap-1 rounded-[7px] border border-border-token p-[3px]"
+          className={`touch-always absolute right-2.5 top-2.5 flex gap-1 rounded-[7px] border border-border-token p-[3px] transition-opacity duration-[120ms] ${
+            hover ? "opacity-100" : "pointer-events-none opacity-0"
+          }`}
           style={{
             background: "var(--bg)",
             boxShadow: "0 4px 12px rgba(0,0,0,0.08)",

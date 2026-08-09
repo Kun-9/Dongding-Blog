@@ -13,7 +13,7 @@ import { getAllPosts, getAllPostsIncludingDrafts } from "@/lib/posts";
 const loadSeries = cache(async (): Promise<Series[]> => {
   const { data, error } = await db()
     .from("series")
-    .select("id, title, description, color, planned_count, sort")
+    .select("id, title, description, color, planned_count, sort, created_at")
     .order("sort");
   if (error) throw new Error(`시리즈 조회 실패: ${error.message}`);
 
@@ -23,6 +23,7 @@ const loadSeries = cache(async (): Promise<Series[]> => {
     desc: s.description,
     color: s.color,
     count: s.planned_count,
+    createdAt: s.created_at.slice(0, 10),
   }));
 });
 

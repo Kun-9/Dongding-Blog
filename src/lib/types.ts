@@ -50,6 +50,8 @@ export interface Series {
   desc: string;
   count: number;
   color: string;
+  /** YYYY-MM-DD. /series 의 `생성순` 정렬 기준. */
+  createdAt: string;
 }
 
 export interface SeriesWithPosts extends Series {
