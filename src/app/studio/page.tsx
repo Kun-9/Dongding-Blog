@@ -78,7 +78,7 @@ const TOOLBAR_TITLES: Record<ToolbarAction, string> = {
   bold: "굵게",
   italic: "기울임",
   code: "인라인 코드",
-  para: "줄바꿈",
+  para: "문단 나누기",
   codeblock: "코드 블록",
   "callout-info": "Callout — INFO",
   "callout-warning": "Callout — WARNING",
@@ -2232,6 +2232,11 @@ function MarkdownCheatsheet() {
               <CheatsheetRow
                 syntax="/posts/slug"
                 label="이 블로그의 글 카드"
+              />
+              <CheatsheetRow syntax={"첫 줄\n둘째 줄"} label="줄바꿈 — 엔터" />
+              <CheatsheetRow
+                syntax={"문단\n\n다음 문단"}
+                label="문단 나누기 — 빈 줄"
               />
               <CheatsheetRow syntax="---" label="수평선" />
             </tbody>

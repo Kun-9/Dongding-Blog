@@ -326,7 +326,7 @@ function lintSyntax(s: Scan, out: Issue[]): void {
         rule: "html-tag",
         severity: "error",
         line: n,
-        message: `${tag[0]} 같은 태그는 렌더되지 않고 글자 그대로 나옵니다. callout 은 \`> [!INFO]\`, 줄바꿈은 빈 줄로 처리하세요.`,
+        message: `${tag[0]} 같은 태그는 렌더되지 않고 글자 그대로 나옵니다. callout 은 \`> [!INFO]\`, 줄바꿈은 그냥 줄을 바꾸면 됩니다.`,
       });
     }
 

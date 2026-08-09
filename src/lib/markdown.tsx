@@ -6,6 +6,7 @@
  * Inline: **bold**, *italic*, `code`, [text](url), ![alt|width](url), 맨 URL.
  * Image width syntax: `![alt|480](url)` (px) or `![alt|50%](url)` (percent).
  * `>` is RESERVED for callouts. Plain blockquote is not supported.
+ * 문단 안의 줄바꿈은 `<br>` 로 살아난다 (엔터 한 번 = 줄바꿈, 빈 줄 = 문단 분리).
  */
 import { Fragment, type ReactNode } from "react";
 import BananaSlug from "github-slugger";
@@ -229,6 +230,20 @@ function renderInline(text: string, ctx: InlineCtx): ReactNode {
   );
 }
 
+/**
+ * 문단 안의 줄바꿈은 그대로 `<br>` 로 나간다 — 엔터 한 번이 눈에 보이는 줄바꿈,
+ * 빈 줄은 문단 분리. CommonMark 의 soft break 와 다르게 좁힌 규칙이다.
+ */
+function renderLines(lines: string[], ctx: InlineCtx): ReactNode {
+  if (lines.length === 1) return renderInline(lines[0], ctx);
+  return lines.map((line, idx) => (
+    <Fragment key={`${ctx.keyBase}-l-${idx}`}>
+      {idx > 0 && <br />}
+      {renderInline(line, { ...ctx, keyBase: `${ctx.keyBase}-l-${idx}` })}
+    </Fragment>
+  ));
+}
+
 const HEADER_CLASS: Record<1 | 2 | 3 | 4, string> = {
   1: "mb-3.5 mt-0 font-sans text-[30px] font-semibold leading-[1.3] tracking-[-0.025em] text-ink",
   2: "mb-2.5 mt-7 font-sans text-[24px] font-semibold leading-[1.3] tracking-[-0.025em] text-ink",
@@ -404,24 +419,24 @@ export function renderMarkdown(
       )
         bodyLines.pop();
 
-      const paragraphs: string[] = [];
+      const paragraphs: string[][] = [];
       let cur: string[] = [];
       for (const bl of bodyLines) {
         if (bl.trim() === "") {
-          if (cur.length) paragraphs.push(cur.join(" "));
+          if (cur.length) paragraphs.push(cur);
           cur = [];
         } else {
           cur.push(bl);
         }
       }
-      if (cur.length) paragraphs.push(cur.join(" "));
+      if (cur.length) paragraphs.push(cur);
 
       const calloutKey = k();
       out.push(
         <Callout key={calloutKey} kind={kind} title={title || undefined}>
           {paragraphs.map((p, idx) => (
             <p key={idx}>
-              {renderInline(p, {
+              {renderLines(p, {
                 ...inlineBase,
                 keyBase: `${calloutKey}-co-${idx}`,
               })}
@@ -600,7 +615,7 @@ export function renderMarkdown(
         key={baseKey}
         className="mb-5 font-sans text-[17px] leading-[1.85] tracking-[-0.005em] text-ink-soft"
       >
-        {renderInline(paraLines.join(" "), {
+        {renderLines(paraLines, {
           ...inlineBase,
           keyBase: `${baseKey}-p`,
         })}
