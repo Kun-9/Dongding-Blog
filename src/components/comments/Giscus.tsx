@@ -25,8 +25,7 @@ export function Giscus({ repo, repoId, category, categoryId }: Props) {
     host.replaceChildren();
 
     const themeName = resolvedTheme === "dark" ? "dark" : "light";
-    const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
-    const themeUrl = `${window.location.origin}${basePath}/giscus-${themeName}.css`;
+    const themeUrl = `${window.location.origin}/giscus-${themeName}.css`;
 
     const script = document.createElement("script");
     script.src = "https://giscus.app/client.js";

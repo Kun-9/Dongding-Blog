@@ -24,15 +24,11 @@ export function TopPosts({ posts }: { posts: PostMeta[] }) {
 
   useEffect(() => {
     let alive = true;
-    const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
     getTopPages({ days: 7, limit: 20 }).then((top) => {
       if (!alive || !top) return;
       const ranked = top
         .map((row) => {
-          const slug = row.url
-            .replace(basePath, "")
-            .replace(/^\/posts\//, "")
-            .replace(/\/$/, "");
+          const slug = row.url.replace(/^\/posts\//, "").replace(/\/$/, "");
           const post = posts.find((p) => p.slug === slug);
           if (!post) return null;
           return { slug: post.slug, title: post.title, count: row.count };
