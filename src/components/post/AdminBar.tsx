@@ -113,7 +113,7 @@ export function AdminBar({ slug, title, status = "published" }: Props) {
       <div
         className="relative mb-6 flex flex-wrap items-center gap-2.5 rounded-[10px] border border-dashed border-border-token bg-surface-alt px-3.5 py-2.5"
       >
-        {/* Local mode badge */}
+        {/* Admin mode badge */}
         <div className="inline-flex items-center gap-2 border-r border-border-token pr-2.5">
           <span
             className="h-[7px] w-[7px] rounded-full"
@@ -123,7 +123,7 @@ export function AdminBar({ slug, title, status = "published" }: Props) {
             }}
           />
           <span className="font-sans text-[11px] font-bold uppercase tracking-[0.08em] text-ink-muted">
-            Local · Admin
+            Admin
           </span>
         </div>
 
