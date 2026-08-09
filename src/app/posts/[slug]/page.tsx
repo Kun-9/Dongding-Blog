@@ -11,7 +11,10 @@ import {
   getAllPosts,
   getPostBySlug,
   getPostBySlugIncludingDrafts,
+  getPostRefs,
 } from "@/lib/posts";
+import { extractCardTargets } from "@/lib/link-cards";
+import { getLinkMeta } from "@/lib/link-meta";
 import { getSeriesByIdWithPosts } from "@/lib/series";
 import { resolveCategory } from "@/lib/categories";
 import { getSite } from "@/lib/site-db";
@@ -65,7 +68,13 @@ export default async function Page({
     : await getPostBySlug(slug);
   if (!post) notFound();
 
-  const content = renderMarkdown(post.body);
+  // 링크 카드 재료 — 파서가 동기 함수라 렌더 전에 미리 채운다.
+  const targets = extractCardTargets(post.body);
+  const [links, postRefs] = await Promise.all([
+    getLinkMeta(targets.urls),
+    getPostRefs(targets.slugs, { includeDrafts: isDev }),
+  ]);
+  const content = renderMarkdown(post.body, { links, posts: postRefs });
 
   const [cat, { prev, next }, site] = await Promise.all([
     resolveCategory(post.meta.category),

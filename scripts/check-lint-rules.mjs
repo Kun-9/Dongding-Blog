@@ -6,6 +6,7 @@
  */
 import assert from "node:assert/strict";
 import { lintPost, lintCollection } from "../src/lib/lint.ts";
+import { extractCardTargets, linkKey } from "../src/lib/link-cards.ts";
 
 const base = {
   slug: "sample",
@@ -60,8 +61,14 @@ assert.ok(
   !has("| 가 | 나 |\n|---|---|\n| 다 | 라 |\n", "broken-table"),
   "정상 표",
 );
-assert.ok(has("참고: https://example.com 을 보라\n", "bare-url"), "맨 URL");
-assert.ok(!has("[예시](https://example.com)\n", "bare-url"), "링크는 정상");
+// 문장 안 맨 URL 은 자동 링크가 된다 — 더 이상 경고 대상이 아니다.
+assert.deepEqual(
+  rulesOf("참고: https://example.com 을 보라\n").filter(
+    (r) => r !== "thin-body" && r !== "no-toc",
+  ),
+  [],
+  "문장 안 맨 URL 은 무해",
+);
 
 // ── 링크·이미지 ──────────────────────────────────────────────────────────
 const ctx = {
@@ -83,6 +90,22 @@ assert.ok(has("![그림|abc](/posts/sample/a.png)\n", "image-width", ctx), "잘�
 assert.ok(!has("![그림|480](/posts/sample/a.png)\n", "image-width", ctx), "정상 너비");
 assert.ok(has("## 제목\n\n[가기](#없는앵커)\n", "dead-anchor", ctx), "죽은 앵커");
 assert.ok(!has("## 제목\n\n[가기](#제목)\n", "dead-anchor", ctx), "살아있는 앵커");
+
+// ── 링크 카드 ────────────────────────────────────────────────────────────
+assert.ok(has("/posts/nope\n", "missing-post-ref", ctx), "없는 글 카드");
+assert.ok(!has("/posts/other\n", "missing-post-ref", ctx), "있는 글 카드");
+assert.ok(
+  !has("```\n/posts/nope\n```\n", "missing-post-ref", ctx),
+  "펜스 안 카드 줄은 규칙 미적용",
+);
+// URL 카드 줄은 링크 규칙(#앵커·/경로 검사)에 걸리지 않는다.
+assert.deepEqual(
+  rulesOf("## 가\n\n### 나\n\nhttps://example.com/a\n\n/posts/other\n", ctx).filter(
+    (r) => r !== "thin-body",
+  ),
+  [],
+  "정상 카드 줄은 무해",
+);
 
 // ── 메타데이터 ───────────────────────────────────────────────────────────
 assert.ok(
@@ -126,5 +149,27 @@ assert.equal(stats.h2, 1);
 assert.equal(stats.h3, 1);
 assert.equal(stats.codeBlocks, 1);
 assert.equal(stats.images, 1);
+
+// ── 링크 카드 추출 (파서·점검·OG 수집이 공유하는 판정) ────────────────────
+{
+  const t = extractCardTargets(
+    [
+      "https://a.com/x",
+      "  /posts/one  ",
+      "문장 안 https://b.com 은 카드가 아니다",
+      "```",
+      "https://fenced.com",
+      "```",
+      "http://a.com/x/", // 같은 문서 — 키가 같아야 한다
+    ].join("\n"),
+  );
+  assert.deepEqual(t.slugs, ["one"], "카드 slug");
+  assert.deepEqual(
+    t.urls,
+    ["https://a.com/x", "http://a.com/x/"],
+    "카드 URL — 펜스 안과 문장 안은 제외",
+  );
+  assert.equal(linkKey("https://a.com/x"), linkKey("http://a.com/x/"), "캐시 키 정규화");
+}
 
 console.log("lint 규칙 자체 점검 통과");

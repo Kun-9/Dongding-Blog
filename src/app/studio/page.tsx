@@ -21,6 +21,13 @@ import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { categoryLabelIn } from "@/lib/category-utils";
 import { API } from "@/lib/api-routes";
+import {
+  CARD_LINE_RE,
+  cardSlug,
+  extractCardTargets,
+  type LinkCardMeta,
+  type PostRefMeta,
+} from "@/lib/link-cards";
 import { normalizeSlug, slugifyTitle } from "@/lib/slug-utils";
 import type { Category, Series, Visibility } from "@/lib/types";
 
@@ -64,6 +71,7 @@ type ToolbarAction =
   | "callout-warning"
   | "callout-tip"
   | "callout-note"
+  | "linkcard"
   | "divider";
 
 const TOOLBAR_TITLES: Record<ToolbarAction, string> = {
@@ -76,6 +84,7 @@ const TOOLBAR_TITLES: Record<ToolbarAction, string> = {
   "callout-warning": "Callout — WARNING",
   "callout-tip": "Callout — TIP",
   "callout-note": "Callout — NOTE",
+  linkcard: "링크 카드",
   divider: "수평선",
 };
 
@@ -968,6 +977,53 @@ function StudioEditor() {
   const wordCount = body.replace(/\s+/g, "").length;
   const readTime = Math.max(1, Math.round(wordCount / 500));
 
+  /**
+   * 링크 카드 재료. 브라우저는 DB 도 남의 사이트도 못 보므로 서버에 카드 대상만
+   * 던져 받아 온다. 타자마다 나가지 않게 대상 목록이 실제로 바뀐 때만.
+   */
+  const cardKey = useMemo(() => {
+    const { urls, slugs } = extractCardTargets(body);
+    return [...urls, ...slugs].sort().join("\n");
+  }, [body]);
+  // 정렬된 키를 한 번 거쳐 목록이 실제로 바뀐 때만 새 객체가 나오게 한다.
+  const cardTargets = useMemo(() => {
+    const lines = cardKey ? cardKey.split("\n") : [];
+    return {
+      urls: lines.filter((l) => cardSlug(l) === null),
+      slugs: lines.map(cardSlug).filter((s): s is string => s !== null),
+    };
+  }, [cardKey]);
+
+  const [cardData, setCardData] = useState<{
+    links: Record<string, LinkCardMeta>;
+    posts: Record<string, PostRefMeta>;
+  }>({ links: {}, posts: {} });
+
+  useEffect(() => {
+    const { urls, slugs } = cardTargets;
+    // 남은 재료는 비우지 않는다 — 조회는 주소·slug 키로 하므로 안 쓰이는 항목이
+    // 남아 있어도 엉뚱한 카드가 뜨지 않는다.
+    if (urls.length === 0 && slugs.length === 0) return;
+    let alive = true;
+    const timer = setTimeout(() => {
+      fetch(API.linkMeta, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ urls, slugs }),
+      })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => {
+          if (!alive || !d) return;
+          setCardData({ links: d.links ?? {}, posts: d.posts ?? {} });
+        })
+        .catch(() => {});
+    }, 700);
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+    };
+  }, [cardTargets]);
+
   // Studio preview uses editable=true so EditableImage renders the slider
   // panel; the post detail page renders ZoomableImage via the same parser.
   const renderedBody = useMemo(
@@ -975,8 +1031,10 @@ function StudioEditor() {
       renderMarkdown(body, {
         editable: true,
         onImageResize: handlePreviewImageResize,
+        links: cardData.links,
+        posts: cardData.posts,
       }),
-    [body, handlePreviewImageResize],
+    [body, handlePreviewImageResize, cardData],
   );
 
   const insertMd = useCallback(
@@ -1041,6 +1099,14 @@ function StudioEditor() {
         case "callout-note": {
           const kind = action.slice("callout-".length).toUpperCase();
           insertBlock(`> [!${kind}] 제목\n> ` + (sel || "본문 내용"));
+          break;
+        }
+        case "linkcard": {
+          // 선택한 텍스트가 카드로 성립하는 주소면 그걸 쓴다.
+          const picked = sel.trim();
+          insertBlock(
+            CARD_LINE_RE.test(picked) ? picked : "https://example.com",
+          );
           break;
         }
         case "divider":
@@ -1541,6 +1607,7 @@ function StudioEditor() {
                   ["!", "callout-warning", "sans", "group-callout"],
                   ["✓", "callout-tip", "sans", "group-callout"],
                   ["※", "callout-note", "sans", "group-callout"],
+                  ["↗", "linkcard", "sans", "group-block"],
                   ["—", "divider", "sans", "group-block"],
                 ] as const
               ).map(([g, k, font, group], idx, arr) => {
@@ -2154,6 +2221,18 @@ function MarkdownCheatsheet() {
               />
               <CheatsheetRow syntax={"- 항목\n- 항목"} label="리스트" />
               <CheatsheetRow syntax={"1. 항목\n2. 항목"} label="번호 리스트" />
+              <CheatsheetRow
+                syntax={"| 열 | 열 |\n|---|---|\n| 값 | 값 |"}
+                label="표 (헤더 다음 줄에 구분행 필수)"
+              />
+              <CheatsheetRow
+                syntax="https://example.com"
+                label="링크 카드 — URL 만 한 줄"
+              />
+              <CheatsheetRow
+                syntax="/posts/slug"
+                label="이 블로그의 글 카드"
+              />
               <CheatsheetRow syntax="---" label="수평선" />
             </tbody>
           </table>
@@ -2169,6 +2248,10 @@ function MarkdownCheatsheet() {
               <CheatsheetRow syntax="*기울임*" label="이탤릭" />
               <CheatsheetRow syntax="`코드`" label="인라인 코드" />
               <CheatsheetRow syntax="[텍스트](url)" label="링크" />
+              <CheatsheetRow
+                syntax="https://example.com"
+                label="문장 안 주소 — 자동 링크"
+              />
               <CheatsheetRow syntax="![alt](url)" label="이미지" />
               <CheatsheetRow
                 syntax="![alt|480](url)"

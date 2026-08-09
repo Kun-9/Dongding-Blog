@@ -12,6 +12,9 @@
  */
 import BananaSlug from "github-slugger";
 import readingTime from "reading-time";
+// `node scripts/check-lint-rules.mjs` 가 이 파일을 직접 로드한다 — 번들러를 안
+// 거치므로 `@/` alias 가 풀리지 않는다. 이 모듈만 상대 경로 + 확장자로 쓴다.
+import { CARD_LINE_RE, cardSlug } from "./link-cards.ts";
 
 export type Severity = "error" | "warning" | "info";
 
@@ -166,10 +169,6 @@ function scan(body: string): Scan {
 /** 인라인 코드는 규칙 대상에서 뺀다 — `` `<T>` `` 같은 걸 태그로 보면 안 된다. */
 function stripInlineCode(text: string): string {
   return text.replace(/`[^`]*`/g, "");
-}
-
-function stripLinks(text: string): string {
-  return text.replace(/!?\[[^\]]*\]\([^)]*\)/g, "");
 }
 
 /** `renderMarkdown` 과 같은 순서로 H1–H4 앵커 id 를 만든다. */
@@ -340,15 +339,6 @@ function lintSyntax(s: Scan, out: Issue[]): void {
       });
     }
 
-    if (/https?:\/\//.test(stripLinks(bare))) {
-      out.push({
-        rule: "bare-url",
-        severity: "info",
-        line: n,
-        message:
-          "맨 URL 은 자동 링크가 되지 않습니다. `[표시 텍스트](url)` 로 감싸세요.",
-      });
-    }
   }
 }
 
@@ -358,6 +348,22 @@ function lintReferences(s: Scan, ctx: LintContext, out: Issue[]): void {
 
   for (const { n, text, fenced } of s.lines) {
     if (fenced) continue;
+
+    // 카드 줄 — `/posts/slug` 가 없는 글이면 본문에 점선 박스가 남는다.
+    const line = text.trim();
+    if (CARD_LINE_RE.test(line)) {
+      const slug = cardSlug(line);
+      if (slug && ctx.slugs && !ctx.slugs.has(slug)) {
+        out.push({
+          rule: "missing-post-ref",
+          severity: "error",
+          line: n,
+          message: `없는 글을 카드로 걸었습니다: /posts/${slug}. 본문에 "찾을 수 없는 글" 점선 박스가 그대로 나갑니다.`,
+        });
+      }
+      continue;
+    }
+
     const bare = stripInlineCode(text);
 
     for (const m of bare.matchAll(IMAGE_RE)) {

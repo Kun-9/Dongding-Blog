@@ -14,6 +14,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { dbAdmin } from "@/lib/supabase";
 import { identify } from "@/lib/mcp-auth";
+import { syncLinkMeta } from "@/lib/link-meta";
 import { postExists } from "@/app/api/posts/_shared";
 import {
   applyReplacements,
@@ -253,6 +254,7 @@ const handler = createMcpHandler(
           .insert(toRow({ ...args, tags: args.tags ?? [], visibility: args.visibility ?? "draft" }));
         if (error) return fail(`생성 실패: ${error.message}`);
 
+        await syncLinkMeta(args.body).catch(() => {});
         revalidate();
         const created = await loadPost(args.slug);
         if (!created) return fail("생성 직후 글을 다시 읽지 못했습니다.");
@@ -344,6 +346,7 @@ const handler = createMcpHandler(
           .eq("slug", args.slug);
         if (error) return fail(`수정 실패: ${error.message}`);
 
+        await syncLinkMeta(merged.body).catch(() => {});
         revalidate();
         const updated = await loadPost(merged.slug);
         if (!updated) return fail("수정 직후 글을 다시 읽지 못했습니다.");

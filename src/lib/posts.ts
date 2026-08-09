@@ -12,8 +12,10 @@ import readingTime from "reading-time";
 import { z } from "zod";
 import type { PostMeta } from "@/lib/types";
 import { extractTOC } from "@/lib/markdown";
+import type { PostRefMeta } from "@/lib/link-cards";
 import { db, dbAdmin, type BlogClient } from "@/lib/supabase";
-import { categoryIds } from "@/lib/categories";
+import { categoryIds, getCategories } from "@/lib/categories";
+import { categoryLabelIn } from "@/lib/category-utils";
 
 export const TocItemSchema = z.object({
   id: z.string(),
@@ -122,6 +124,36 @@ export async function getPostBySlugIncludingDrafts(
   slug: string,
 ): Promise<{ meta: PostMeta; body: string } | undefined> {
   return (await loadAll()).find((p) => p.meta.slug === slug);
+}
+
+/**
+ * 본문의 `/posts/slug` 카드 줄에 붙일 메타. 파서가 동기 함수라 렌더 전에 미리
+ * 채워 넣는다. 없는 slug 는 그냥 빠지고 카드가 점선 박스로 떨어진다.
+ *
+ * 기본은 공개된 글만 — 방문자에게 안 보이는 글을 카드로 자랑하지 않는다.
+ */
+export async function getPostRefs(
+  slugs: string[],
+  opts?: { includeDrafts?: boolean },
+): Promise<Record<string, PostRefMeta>> {
+  if (slugs.length === 0) return {};
+  const wanted = new Set(slugs);
+
+  const [posts, categories] = await Promise.all([
+    opts?.includeDrafts ? getAllPostsIncludingDrafts() : getAllPosts(),
+    getCategories(),
+  ]);
+  const out: Record<string, PostRefMeta> = {};
+  for (const p of posts) {
+    if (!wanted.has(p.slug)) continue;
+    out[p.slug] = {
+      title: p.title,
+      summary: p.summary || undefined,
+      category: categoryLabelIn(categories, p.category),
+      date: p.date,
+    };
+  }
+  return out;
 }
 
 export async function getAdjacentPosts(

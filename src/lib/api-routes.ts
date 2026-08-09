@@ -24,6 +24,9 @@ export const API = {
 
   settings: "/api/settings",
 
+  /** 미리보기의 링크 카드 재료 (POST {urls, slugs}). */
+  linkMeta: "/api/link-meta/",
+
   stats: {
     summary: "/api/stats/summary",
     pageviews: "/api/stats/pageviews",

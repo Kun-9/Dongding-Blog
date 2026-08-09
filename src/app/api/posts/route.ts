@@ -4,6 +4,7 @@
  */
 import { NextResponse } from "next/server";
 import { dbAdmin } from "@/lib/supabase";
+import { syncLinkMeta } from "@/lib/link-meta";
 import { PostBodySchema, requireApiUser, revalidateContent, toRow } from "./_shared";
 
 /** unique 위반 — 같은 slug 가 이미 있다. */
@@ -40,6 +41,9 @@ export async function POST(req: Request) {
     }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  // 링크 카드 메타 수집. 남의 사이트가 죽어 있다고 저장이 실패하면 안 된다.
+  await syncLinkMeta(data.body).catch(() => {});
 
   revalidateContent();
   return NextResponse.json({ slug: data.slug }, { status: 201 });

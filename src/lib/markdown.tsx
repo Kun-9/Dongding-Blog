@@ -2,17 +2,27 @@
  * Shared markdown parser — used by Studio preview AND post detail page.
  * Block: # ## ### ####, ```lang:filename, > [!KIND] title (multi-line),
  *        - / 1. lists, ---, blank lines.
- * Inline: **bold**, *italic*, `code`, [text](url), ![alt|width](url).
+ *        URL 또는 /posts/slug 만 있는 줄 → 링크 카드.
+ * Inline: **bold**, *italic*, `code`, [text](url), ![alt|width](url), 맨 URL.
  * Image width syntax: `![alt|480](url)` (px) or `![alt|50%](url)` (percent).
  * `>` is RESERVED for callouts. Plain blockquote is not supported.
  */
 import { Fragment, type ReactNode } from "react";
 import BananaSlug from "github-slugger";
 import type { TocItem } from "@/lib/types";
+import {
+  CARD_LINE_RE,
+  cardSlug,
+  linkKey,
+  type LinkCardMeta,
+  type PostRefMeta,
+} from "@/lib/link-cards";
 import { Callout, type CalloutKind } from "@/components/prose/Callout";
 import { CodeBlock } from "@/components/prose/CodeBlock";
 import { EditableImage } from "@/components/prose/EditableImage";
 import { InlineCode } from "@/components/prose/InlineCode";
+import { LinkCard } from "@/components/prose/LinkCard";
+import { PostRefCard } from "@/components/prose/PostRefCard";
 import { ZoomableImage } from "@/components/prose/ZoomableImage";
 
 const CALLOUT_KINDS = ["info", "warning", "tip", "note"] as const;
@@ -26,6 +36,13 @@ export type ImageWidth = `${number}` | `${number}%`;
 export type RenderOptions = {
   editable?: boolean;
   onImageResize?: (imageIndex: number, width: ImageWidth | null) => void;
+  /**
+   * 링크 카드 재료. 파서는 순수 동기 함수라 DB 를 못 본다 — 호출자가 본문에서
+   * 카드 줄을 걷어(`extractCardTargets`) 미리 채워 넣는다. 없으면 외부 링크는
+   * 도메인 한 줄로, 내부 글은 점선 박스로 떨어진다.
+   */
+  links?: Record<string, LinkCardMeta>;
+  posts?: Record<string, PostRefMeta>;
 };
 
 interface InlineCtx {
@@ -123,6 +140,27 @@ function renderInline(text: string, ctx: InlineCtx): ReactNode {
       );
       i += m[0].length;
       continue;
+    }
+
+    // 문장 안에 그대로 적은 주소 — 링크로 만든다. 끝에 붙은 문장부호는 뺀다.
+    if ((ch === "h" || ch === "H") && /^https?:\/\//i.test(rest)) {
+      m = rest.match(/^https?:\/\/[^\s<>]+/i);
+      if (m) {
+        const raw = m[0].replace(/[.,;:!?)\]]+$/, "");
+        push(
+          <a
+            key={`${ctx.keyBase}-u-${n}`}
+            href={raw}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="break-all text-ink underline decoration-ink-subtle decoration-1 underline-offset-2 hover:decoration-ink"
+          >
+            {raw.replace(/^https?:\/\//, "")}
+          </a>,
+        );
+        i += raw.length;
+        continue;
+      }
     }
 
     // Inline code `...`
@@ -260,6 +298,25 @@ export function renderMarkdown(
     if (/^---+\s*$/.test(ln)) {
       out.push(
         <hr key={k()} className="my-7 border-0 border-t border-border-token" />,
+      );
+      i++;
+      continue;
+    }
+
+    // 링크 카드 — URL(또는 내부 글 경로)만 한 줄에 놓인 경우
+    if (CARD_LINE_RE.test(ln.trim())) {
+      const target = ln.trim();
+      const slug = cardSlug(target);
+      out.push(
+        slug ? (
+          <PostRefCard key={k()} slug={slug} post={opts?.posts?.[slug]} />
+        ) : (
+          <LinkCard
+            key={k()}
+            url={target}
+            meta={opts?.links?.[linkKey(target)]}
+          />
+        ),
       );
       i++;
       continue;
@@ -531,6 +588,7 @@ export function renderMarkdown(
       !/^-\s+/.test(lines[i]) &&
       !/^\d+\.\s+/.test(lines[i]) &&
       !/^---+\s*$/.test(lines[i]) &&
+      !CARD_LINE_RE.test(lines[i].trim()) &&
       !isTableStart(lines, i)
     ) {
       paraLines.push(lines[i]);

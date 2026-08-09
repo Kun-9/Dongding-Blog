@@ -73,6 +73,10 @@
   --inline-code-bg: rgba(168, 129, 74, 0.12);
   --inline-code-fg: #7a5a2a;
 
+  /* 링크 카드의 도메인 타일 — 색조(hue)는 호스트에서 나오고 밝기만 테마가 정한다. */
+  --link-tile-l: 87%;
+  --link-tile-ink-l: 30%;
+
   --header-bg: rgba(247, 244, 237, 0.82);
 }
 
@@ -129,6 +133,9 @@
   /* Inline code — mustard tint for dark theme */
   --inline-code-bg: rgba(255, 200, 140, 0.1);
   --inline-code-fg: #e8c89a;
+
+  --link-tile-l: 26%;
+  --link-tile-ink-l: 78%;
 
   --header-bg: rgba(22, 21, 19, 0.85);
 }
