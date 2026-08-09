@@ -126,6 +126,9 @@
     return out.map((node, idx) => (typeof node === 'string' ? <React.Fragment key={`${keyBase}-t-${idx}`}>{node}</React.Fragment> : node));
   }
 
+  // 줄 하나가 통째로 이미지일 때만 블록 이미지로 승격한다.
+  const IMG_LINE = /^!\[([^\]]*)\]\(([^)\s]+)\)(?:\{([A-Za-z0-9]+)\})?$/;
+
   // ── Block parser ────────────────────────────────────────────────────────
   // Returns array of JSX nodes.
   function renderMarkdown(src, c, opts = {}) {
@@ -185,6 +188,22 @@
             : <window.LinkCard key={k()} c={c} url={target} />
         );
         i++;
+        continue;
+      }
+
+      // 이미지 줄 — 한 줄이면 Figure, 연속 줄이면 묶음. `{sm|wide|2|3|4}`로 폭·열 지정.
+      if (IMG_LINE.test(ln.trim())) {
+        const items = [];
+        let opt = '';
+        while (i < lines.length && IMG_LINE.test(lines[i].trim())) {
+          const im = lines[i].trim().match(IMG_LINE);
+          if (!items.length) opt = (im[3] || '').toLowerCase();
+          items.push({ alt: im[1].trim(), src: im[2] });
+          i++;
+        }
+        out.push(items.length === 1
+          ? <window.Figure key={k()} c={c} src={items[0].src} alt={items[0].alt} size={opt} />
+          : <window.ImageGroup key={k()} c={c} items={items} opt={opt} />);
         continue;
       }
 

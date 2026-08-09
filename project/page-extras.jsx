@@ -30,6 +30,7 @@ function StudioPage({ c, t, onNav }) {
   const [slug, setSlug] = useStateX('jpa-dirty-checking');
   const [slugLocked, setSlugLocked] = useStateX(true);
   const [category, setCategory] = useStateX('db');
+  const [subcategory, setSubcategory] = useStateX('db-jpa');
   const [summary, setSummary] = useStateX('flush 시점에 변경 감지가 일어난다는 건 알겠는데, 어떤 자료구조를 쓰는가.');
   const [series, setSeries] = useStateX('jpa-deep');
   const [seriesOrder, setSeriesOrder] = useStateX(3);
@@ -62,6 +63,11 @@ o.setStatus(PAID);  // setter만 호출했는데
 
 > [!WARNING] 주의할 점
 > 스냅샷은 **필드 참조를 그대로 복제**한다. 컬렉션 내부를 \`mutate\`하면 비교가 어긋난다 — \`new ArrayList<>(...)\`로 새 인스턴스를 넣는 편이 안전하다.
+
+![flush 시점에 스냅샷과 현재 필드를 비교하는 구간](/images/jpa-dirty-checking/flush-diff.png){wide}
+
+![스냅샷 적재 직후](/images/jpa-dirty-checking/before.png){2}
+![setter 호출 후](/images/jpa-dirty-checking/after.png)
 
 자세한 건 [Hibernate User Guide](https://docs.jboss.org/hibernate/orm/6.4/userguide/html_single/Hibernate_User_Guide.html)에 정리되어 있다.
 
@@ -131,6 +137,7 @@ https://vladmihalcea.com/hibernate-multiplebagfetchexception
       case 'divider':    insertBlock('---'); break;
       case 'linkcard':   insertBlock(sel && /^https?:\/\//.test(sel.trim()) ? sel.trim() : 'https://example.com/article'); break;
       case 'image':      insertBlock('![' + (sel || '설명') + '](/images/' + slug + '/screenshot.png)'); break;
+      case 'gallery':    insertBlock('![첫 번째](/images/' + slug + '/1.png){2}\n![두 번째](/images/' + slug + '/2.png)'); break;
       default: return;
     }
     setBody(nextBody);
@@ -216,16 +223,15 @@ https://vladmihalcea.com/hibernate-multiplebagfetchexception
             <FieldRow c={c} label="summary">
               <input value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="목록과 OG에 보일 한 줄 요약" style={{ ...inputStyle(c), fontSize: 13 }} />
             </FieldRow>
-            <FieldRow c={c} label="category">
-              <select value={category} onChange={(e) => setCategory(e.target.value)} style={inputStyle(c)}>
-                {window.DD_DATA.categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
-              </select>
+            <FieldRow c={c} label="category" plain>
+              <window.CategoryField c={c} value={category} sub={subcategory}
+                onChange={({ category: nc, sub }) => { setCategory(nc); setSubcategory(sub); }} />
             </FieldRow>
             <FieldRow c={c} label="tags">
               <input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="comma, separated" style={inputStyle(c)} />
             </FieldRow>
-            <FieldRow c={c} label="series">
-              <SeriesField c={c} value={series} order={seriesOrder} currentSlug={slug}
+            <FieldRow c={c} label="series" plain>
+              <window.SeriesField c={c} value={series} order={seriesOrder} currentSlug={slug}
                 newOpen={newSeriesOpen} onToggleNew={() => setNewSeriesOpen(v => !v)}
                 onChange={(next) => {
                   if ('series' in next) setSeries(next.series);
@@ -243,8 +249,8 @@ https://vladmihalcea.com/hibernate-multiplebagfetchexception
           {/* Toolbar */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', padding: '6px 4px', borderRadius: 8, background: c.surfaceAlt, border: `1px solid ${c.border}`, width: 'fit-content' }}>
-              {[['B','bold'],['I','italic'],['‹/›','code'],['¶','para'],['{ }','codeblock'],['◐','callout'],['—','divider'],['↗','linkcard']].map(([g, k]) => (
-                <button key={k} type="button" title={k === 'linkcard' ? '링크 카드 — URL을 한 줄로' : k} onClick={() => insertMd(k)} style={{
+              {[['B','bold'],['I','italic'],['‹/›','code'],['¶','para'],['{ }','codeblock'],['◐','callout'],['—','divider'],['↗','linkcard'],['▤','gallery']].map(([g, k]) => (
+                <button key={k} type="button" title={{ linkcard: '링크 카드 — URL을 한 줄로', gallery: '이미지 묶음 — 연속 줄 그리드' }[k] || k} onClick={() => insertMd(k)} style={{
                   width: 28, height: 28, borderRadius: 5, border: 'none', background: 'transparent',
                   color: c.inkSoft, cursor: 'pointer', fontFamily: g.includes('/') || g === '{ }' ? window.DD_FONTS.mono : window.DD_FONTS.sans,
                   fontSize: 12, fontWeight: 600, fontStyle: k === 'italic' ? 'italic' : 'normal',
@@ -284,7 +290,7 @@ https://vladmihalcea.com/hibernate-multiplebagfetchexception
           <div style={{ fontFamily: window.DD_FONTS.mono, fontSize: 11, color: c.inkMuted, marginBottom: 14, letterSpacing: '0.05em' }}>PREVIEW</div>
           <div style={{ maxWidth: 640 }}>
             <div style={{ fontFamily: window.DD_FONTS.sans, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: c.inkMuted, marginBottom: 8 }}>
-              {window.DD_DATA.categories.find(x => x.id === category)?.name} · 초안
+              {(() => { const cat = window.DD_DATA.categories.find(x => x.id === category); const sb = cat?.subs?.find(x => x.id === subcategory); return `${cat?.name}${sb ? ' · ' + sb.name : ''}`; })()} · 초안
             </div>
             <h1 style={{ margin: 0, fontFamily: window.DD_FONTS.sans, fontSize: 'clamp(27px, 6vw, 36px)', fontWeight: 600, letterSpacing: '-0.035em', lineHeight: 1.15, color: c.ink, textWrap: 'balance' }}>{title}</h1>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '14px 0 0' }}>
@@ -349,6 +355,9 @@ function MarkdownCheatsheet({ c, id }) {
               <Row syntax="1. 항목&#10;2. 항목" label="번호 리스트" />
               <Row syntax="https://example.com/article" label="링크 카드 — URL만 한 줄일 때" />
               <Row syntax="/posts/jpa-n-plus-1" label="이 블로그 글 카드" />
+              <Row syntax="![캡션](url)" label="이미지 — 캡션 + 클릭 확대" />
+              <Row syntax="![캡션](url){sm}&#10;![캡션](url){wide}" label="작게(380px) / 본문 밖으로(880px)" />
+              <Row syntax="![a](u1){2}&#10;![b](u2)" label="연속 줄 = 이미지 묶음. {2}{3}{4}는 열 수" />
               <Row syntax="---" label="수평선" />
             </tbody>
           </table>
@@ -377,12 +386,13 @@ function MarkdownCheatsheet({ c, id }) {
   );
 }
 
-function FieldRow({ c, label, children }) {
+function FieldRow({ c, label, children, plain }) {
+  const Tag = plain ? 'div' : 'label';
   return (
-    <label className="dd-field" style={{ alignItems: 'start', gap: 12, paddingTop: 4 }}>
+    <Tag className="dd-field" style={{ alignItems: 'start', gap: 12, paddingTop: 4 }}>
       <span style={{ fontFamily: window.DD_FONTS.mono, fontSize: 12, color: c.inkMuted, paddingTop: 8 }}>{label}</span>
       {children}
-    </label>
+    </Tag>
   );
 }
 
@@ -451,74 +461,7 @@ function inputStyle(c, isTitle) {
   };
 }
 
-// ── SeriesField — 시리즈 선택 + 회차 슬롯. 이미 찬 슬롯은 누가 차지했는지 알려준다. ──
-function SeriesField({ c, value, order, currentSlug, newOpen, onChange, onToggleNew }) {
-  const list = window.DD_DATA.series;
-  const current = list.find(s => s.id === value);
-  const occupied = new Map();
-  if (current) {
-    window.DD_DATA.posts
-      .filter(p => p.series === current.id && p.slug !== currentSlug && p.seriesOrder)
-      .forEach(p => occupied.set(p.seriesOrder, p));
-  }
-  const slotMax = current ? Math.max(current.count, ...[...occupied.keys(), 0], order) : 0;
-  const taken = occupied.get(order);
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
-        <select value={value} onChange={(e) => { const v = e.target.value; onChange(v ? { series: v } : { series: '', seriesOrder: 0 }); }}
-          style={{ ...inputStyle(c), flex: 1, minWidth: 160 }}>
-          <option value="">없음</option>
-          {list.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
-        </select>
-        {current && (
-          <select value={order > 0 ? String(order) : ''} onChange={(e) => onChange({ seriesOrder: Number(e.target.value) || 0 })}
-            style={{ ...inputStyle(c), width: 'auto' }}>
-            <option value="">순서…</option>
-            {Array.from({ length: slotMax + 1 }, (_, i) => i + 1).map(n => {
-              const t = occupied.get(n);
-              const label = t ? `${n}편 — ${t.title}` : n > current.count ? `${n}편 — 목표 초과 슬롯` : `${n}편 — 비어있음`;
-              return <option key={n} value={n}>{label}</option>;
-            })}
-          </select>
-        )}
-        <button type="button" onClick={onToggleNew} style={{
-          display: 'inline-flex', alignItems: 'center', gap: 4, height: 31, padding: '0 10px',
-          borderRadius: 6, border: `1px solid ${c.border}`, background: 'transparent',
-          color: c.inkSoft, cursor: 'pointer',
-          fontFamily: window.DD_FONTS.sans, fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap',
-        }}><span aria-hidden>＋</span>새 시리즈</button>
-      </div>
-      {taken && (
-        <div style={{ fontFamily: window.DD_FONTS.sans, fontSize: 11.5, color: '#a04a3a' }}>
-          {order}편은 이미 “{taken.title}”가 차지하고 있습니다.
-        </div>
-      )}
-      {current && order > current.count && (
-        <div style={{ fontFamily: window.DD_FONTS.sans, fontSize: 11.5, color: c.inkMuted }}>
-          시리즈 목표 {current.count}편을 넘는 순서입니다 — 시리즈에서 자동 확장됩니다.
-        </div>
-      )}
-      {newOpen && (
-        <div style={{ padding: 12, borderRadius: 8, background: c.surfaceAlt, border: `1px solid ${c.border}`, display: 'grid', gap: 8 }}>
-          <input placeholder="시리즈 제목" style={inputStyle(c)} />
-          <div style={{ display: 'flex', gap: 8 }}>
-            <input placeholder="series-id" style={{ ...inputStyle(c), fontFamily: window.DD_FONTS.mono, fontSize: 13 }} />
-            <input placeholder="목표 편수" style={{ ...inputStyle(c), width: 110 }} />
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-            <button type="button" onClick={onToggleNew} style={{
-              padding: '5px 10px', borderRadius: 6, border: `1px solid ${c.border}`,
-              background: 'transparent', color: c.inkMuted, cursor: 'pointer', font: 'inherit', fontSize: 12,
-            }}>취소</button>
-            <window.CTA c={c} dark size="sm" onClick={(e) => { e.preventDefault(); onToggleNew(); }}>만들기</window.CTA>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+// SeriesField / CategoryField → fields.jsx
 
 // ── ThumbnailField — 대표 이미지. 비워 두면 홈 리드 그림이 시리즈 진행/타이포로 대체된다. ──
 function ThumbnailField({ c, value, onChange }) {

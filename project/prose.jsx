@@ -360,4 +360,131 @@ function ReadingProgress({ c, target }) {
   );
 }
 
-Object.assign(window, { CodeBlock, IC, Callout, TOC, ReadingProgress, LinkCard, PostRefCard });
+
+// ── 이미지 ────────────────────────────────────────────────────────────────
+// 한 장은 Figure(캡션 + 확대), 연속 줄은 ImageGroup(그리드). 폭은 sm / 기본 / wide 셋.
+const IMG_RATIO = { 1: '16 / 9', 2: '4 / 3', 3: '4 / 3', 4: '1 / 1' };
+
+// 못 불러온 이미지는 깨진 아이콘 대신 자리와 파일명을 보여준다 — 발행 전에 오타를 잡으라고.
+function ImgSlot({ src, alt, c, ratio, cover, rounded = 8 }) {
+  const [failed, setFailed] = useStateP(false);
+  const name = String(src || '').split('/').filter(Boolean).pop() || 'image';
+  if (failed) {
+    return (
+      <div style={{
+        width: '100%', aspectRatio: ratio || '16 / 9', borderRadius: rounded,
+        border: `1px dashed ${c.borderStrong}`, background: c.surfaceAlt,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 5,
+      }}>
+        <span aria-hidden style={{ fontFamily: window.DD_FONTS.mono, fontSize: 15, lineHeight: 1, color: c.inkSubtle }}>▣</span>
+        <span style={{ fontFamily: window.DD_FONTS.mono, fontSize: 11, lineHeight: 1.3, color: c.inkMuted, padding: '0 10px', textAlign: 'center', overflowWrap: 'anywhere' }}>{name}</span>
+      </div>
+    );
+  }
+  return (
+    <img src={src} alt={alt || ''} loading="lazy" onError={() => setFailed(true)}
+      style={{
+        display: 'block', width: '100%', borderRadius: rounded, background: c.surfaceAlt,
+        ...(cover ? { aspectRatio: ratio, objectFit: 'cover', height: '100%' } : { height: 'auto' }),
+      }} />
+  );
+}
+
+function Figure({ src, alt, size, c }) {
+  const [zoom, setZoom] = useStateP(false);
+  return (
+    <figure className={size === 'wide' ? 'dd-imgwide' : undefined}
+      style={{ margin: '26px 0', maxWidth: size === 'sm' ? 380 : '100%' }}>
+      <button type="button" onClick={() => setZoom(true)} aria-label="이미지 확대"
+        style={{ display: 'block', width: '100%', padding: 0, border: 'none', background: 'transparent', cursor: 'zoom-in' }}>
+        <ImgSlot src={src} alt={alt} c={c} />
+      </button>
+      {alt ? <figcaption style={{
+        marginTop: 9, fontFamily: window.DD_FONTS.sans, fontSize: 12.5, lineHeight: 1.5,
+        color: c.inkMuted, letterSpacing: '-0.005em',
+      }}>{alt}</figcaption> : null}
+      {zoom && <Lightbox items={[{ src, alt }]} index={0} c={c} onClose={() => setZoom(false)} />}
+    </figure>
+  );
+}
+
+function ImageGroup({ items, opt, c }) {
+  const [zoom, setZoom] = useStateP(-1);
+  const explicit = Number(opt);
+  const cols = explicit >= 1 && explicit <= 4 ? explicit : items.length === 2 ? 2 : items.length === 3 ? 3 : 2;
+  const ratio = IMG_RATIO[cols] || '4 / 3';
+  return (
+    <div className={size2class(opt)} style={{ margin: '26px 0' }}>
+      <div className="dd-imgrid" style={{ '--cols': cols }}>
+        {items.map((it, idx) => (
+          <figure key={idx} style={{ margin: 0, display: 'grid', gap: 6, alignContent: 'start' }}>
+            <button type="button" onClick={() => setZoom(idx)} aria-label={`${idx + 1}번째 이미지 확대`}
+              style={{ display: 'block', padding: 0, border: 'none', background: 'transparent', cursor: 'zoom-in', borderRadius: 8, overflow: 'hidden', lineHeight: 0 }}>
+              <ImgSlot src={it.src} alt={it.alt} c={c} ratio={ratio} cover />
+            </button>
+            {it.alt ? <figcaption style={{
+              fontFamily: window.DD_FONTS.sans, fontSize: 11.5, lineHeight: 1.45, color: c.inkMuted,
+              letterSpacing: '-0.005em', display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2, overflow: 'hidden',
+            }}>{it.alt}</figcaption> : null}
+          </figure>
+        ))}
+      </div>
+      {zoom >= 0 && (
+        <Lightbox items={items} index={zoom} c={c}
+          onClose={() => setZoom(-1)} onMove={(d) => setZoom(v => (v + d + items.length) % items.length)} />
+      )}
+    </div>
+  );
+}
+
+function size2class(opt) { return opt === 'wide' ? 'dd-imgwide' : undefined; }
+
+// 라이트박스 — 루트로 올려 그린다. wide 그룹의 transform 안에서는 position:fixed가 갇힌다.
+function Lightbox({ items, index, c, onClose, onMove }) {
+  const it = items[index] || {};
+  useEffectP(() => {
+    const onKey = (e) => {
+      if (e.key === 'Escape') onClose();
+      else if (onMove && e.key === 'ArrowRight') onMove(1);
+      else if (onMove && e.key === 'ArrowLeft') onMove(-1);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose, onMove]);
+
+  const navBtn = {
+    width: 38, height: 38, borderRadius: 999, cursor: 'pointer',
+    background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.18)',
+    color: '#f2efe8', fontSize: 14, lineHeight: 1,
+  };
+
+  return ReactDOM.createPortal(
+    <div role="dialog" aria-modal="true" onClick={onClose} style={{
+      position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(12,11,10,0.9)',
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      gap: 14, padding: '48px 24px', backdropFilter: 'blur(3px)',
+    }}>
+      <button type="button" onClick={onClose} aria-label="닫기" style={{
+        position: 'absolute', top: 18, right: 20, ...navBtn,
+      }}>✕</button>
+      <img src={it.src} alt={it.alt || ''} onClick={(e) => e.stopPropagation()}
+        onError={(e) => { e.currentTarget.style.display = 'none'; }}
+        style={{ maxWidth: 'min(1100px, 92vw)', maxHeight: '76vh', objectFit: 'contain', borderRadius: 10, background: 'rgba(255,255,255,0.04)' }} />
+      <div onClick={(e) => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: 14, maxWidth: 'min(1100px, 92vw)' }}>
+        {onMove && <button type="button" onClick={() => onMove(-1)} aria-label="이전" style={navBtn}>←</button>}
+        <div style={{ flex: 1, textAlign: 'center', fontFamily: window.DD_FONTS.sans, fontSize: 13, color: 'rgba(242,239,232,0.72)', letterSpacing: '-0.005em' }}>
+          {it.alt}
+          {items.length > 1 && (
+            <span style={{ fontFamily: window.DD_FONTS.mono, fontSize: 11.5, marginLeft: it.alt ? 10 : 0, color: 'rgba(242,239,232,0.45)', fontVariantNumeric: 'tabular-nums' }}>
+              {index + 1} / {items.length}
+            </span>
+          )}
+        </div>
+        {onMove && <button type="button" onClick={() => onMove(1)} aria-label="다음" style={navBtn}>→</button>}
+      </div>
+    </div>,
+    document.getElementById('root') || document.body
+  );
+}
+
+Object.assign(window, { CodeBlock, IC, Callout, TOC, ReadingProgress, LinkCard, PostRefCard, Figure, ImageGroup });

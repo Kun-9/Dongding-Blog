@@ -72,7 +72,7 @@ spring:
         gap: 64, justifyContent: 'center',
       }}>
         {/* Article column */}
-        <article ref={articleRef} style={{ paddingTop: 56, paddingBottom: 32 }}>
+        <article ref={articleRef} className="dd-prose" style={{ paddingTop: 56, paddingBottom: 32 }}>
           {/* Breadcrumb */}
           <div style={{
             fontFamily: window.DD_FONTS.sans, fontSize: 12, color: c.inkMuted,

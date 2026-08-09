@@ -58,6 +58,9 @@
   .dd-g4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
   .dd-g5{display:grid;grid-template-columns:repeat(5,minmax(0,1fr))}
   .dd-g15{display:grid;grid-template-columns:1.5fr 1fr}
+  .dd-imgrid{display:grid;gap:8px;grid-template-columns:repeat(var(--cols,2),minmax(0,1fr))}
+  .dd-imgwide{width:100%}
+  .dd-prose .dd-imgwide{width:min(880px,calc(100% + 64px));margin-left:50%;transform:translateX(-50%)}
   .dd-featured{display:grid;grid-template-columns:minmax(0,1fr) 280px}
   .dd-listcols{display:grid;grid-template-columns:240px minmax(0,1fr)}
   .dd-settingscols{display:grid;grid-template-columns:200px minmax(0,1fr)}
@@ -103,6 +106,8 @@
     .dd-mobilesheet{display:block}
   }
   @media (max-width: 680px){
+    .dd-imgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .dd-prose .dd-imgwide{width:100%;margin-left:0;transform:none}
     .dd-g2,.dd-g3{grid-template-columns:minmax(0,1fr)}
     .dd-g5{grid-template-columns:repeat(2,minmax(0,1fr))}
     .dd-field,.dd-row2,.dd-sidecol-90,.dd-sidecol-120,.dd-sidecol-140{grid-template-columns:minmax(0,1fr);gap:6px!important}
@@ -121,6 +126,7 @@
     .dd-savebar{flex-direction:column-reverse!important;align-items:stretch!important}
     .dd-savebar>*{width:100%;justify-content:center;text-align:center}
   }
+  @media (max-width: 440px){ .dd-imgrid{grid-template-columns:minmax(0,1fr)} }
   @media (max-width: 520px){
     .dd-g4{grid-template-columns:minmax(0,1fr)}
     .dd-handle{display:none}
@@ -141,6 +147,7 @@
 <script type="text/babel" src="prose.jsx"></script>
 <script type="text/babel" src="markdown.jsx"></script>
 <script type="text/babel" src="comments.jsx"></script>
+<script type="text/babel" src="fields.jsx"></script>
 <script type="text/babel" src="page-home.jsx"></script>
 <script type="text/babel" src="page-list.jsx"></script>
 <script type="text/babel" src="page-detail.jsx"></script>

@@ -147,6 +147,7 @@
     <li><a href="#callout">Callout</a></li>
     <li><a href="#lists">리스트 · 수평선</a></li>
     <li><a href="#links">링크 프리뷰</a></li>
+    <li><a href="#images">이미지 · 묶음</a></li>
     <li><a href="#unsupported">지원하지 않는 것</a></li>
     <li><a href="#toolbar">에디터 툴바</a></li>
     <li><a href="#sample">전체 예시</a></li>
@@ -253,7 +254,7 @@
       <tr><td class="s">*기울임*</td><td class="d">이탤릭. 외래어·강조에.</td></tr>
       <tr><td class="s">`코드`</td><td class="d">인라인 코드. 식별자·키워드를 본문에 섞을 때. 따뜻한 앰버 틴트로 표시됨.</td></tr>
       <tr><td class="s">[텍스트](url)</td><td class="d">링크. <code class="ic">http://</code> · <code class="ic">https://</code>는 새 탭으로 열림.</td></tr>
-      <tr><td class="s">![alt](url)</td><td class="d">이미지. 본문 너비 안에서 자동으로 맞춰짐.</td></tr>
+      <tr><td class="s">![alt](url)</td><td class="d">이미지. 문장 안에서는 인라인, 줄에 혼자 있으면 캡션 달린 그림이 된다 → <a href="#images">09</a>.</td></tr>
       <tr><td class="s">https://example.com</td><td class="d">문장 안에 그냥 적은 주소도 링크가 됨. 줄에 혼자 있으면 카드가 된다 → <a href="#links">08</a>.</td></tr>
     </tbody>
   </table>
@@ -519,9 +520,81 @@ https://vladmihalcea.com/hibernate-multiplebagfetchexception
   </p>
 </section>
 
+<!-- ─── Images ─────────────────────────────────────────────── -->
+<section id="images">
+  <h2><span class="num">09</span>이미지 · 묶음</h2>
+  <p class="sub">줄에 혼자 있는 이미지는 그림이 된다. 연속으로 놓으면 묶음.</p>
+
+  <p>본문 폭이 기본값이다. 스크린샷 한 장이면 그대로 두고, 좁은 이미지는 <code class="ic">{sm}</code>, 넓게 봐야 하는 다이어그램은 <code class="ic">{wide}</code>로 본문 폭 밖까지 내보낸다(최대 880px). <strong>alt 텍스트가 곧 캡션</strong>이고, 그림을 누르면 원본 크기로 열린다.</p>
+
+  <table class="syntax">
+    <thead><tr><th>표기</th><th>결과</th></tr></thead>
+    <tbody>
+      <tr><td class="s">![캡션](url)</td><td class="d">본문 폭 그림 + 캡션 한 줄.</td></tr>
+      <tr><td class="s">![캡션](url){sm}</td><td class="d">최대 380px. 세로로 긴 캡처·모바일 화면.</td></tr>
+      <tr><td class="s">![캡션](url){wide}</td><td class="d">본문 폭 밖으로 최대 880px. 좁은 화면에서는 본문 폭으로 접힘.</td></tr>
+      <tr><td class="s">이미지 줄 2개 이상 연속</td><td class="d">묶음(그리드). 2장 → 2열, 3장 → 3열, 4장 이상 → 2열.</td></tr>
+      <tr><td class="s">![a](u1){3}</td><td class="d">첫 줄의 숫자로 열 수 고정 (1–4). 묶음 전체에 적용.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="pair">
+    <div>
+      <div class="h">Input</div>
+<pre class="dark">![스레드 덤프 — 락 대기 구간](/images/threadlocal-leak/dump.png)
+
+![요청 처리 전](/images/threadlocal-leak/before.png){2}
+![요청 처리 후](/images/threadlocal-leak/after.png)</pre>
+    </div>
+    <div>
+      <div class="h">Output</div>
+      <div class="body" style="padding:12px;">
+        <div style="border:1px dashed var(--border-strong); background:var(--surface-alt); border-radius:8px; height:96px; display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-size:11px; color:var(--ink-muted);">dump.png</div>
+        <div style="margin-top:8px; font-size:12.5px; color:var(--ink-muted);">스레드 덤프 — 락 대기 구간</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:18px;">
+          <div>
+            <div style="border:1px dashed var(--border-strong); background:var(--surface-alt); border-radius:8px; height:74px; display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-size:11px; color:var(--ink-muted);">before.png</div>
+            <div style="margin-top:6px; font-size:11.5px; color:var(--ink-muted);">요청 처리 전</div>
+          </div>
+          <div>
+            <div style="border:1px dashed var(--border-strong); background:var(--surface-alt); border-radius:8px; height:74px; display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-size:11px; color:var(--ink-muted);">after.png</div>
+            <div style="margin-top:6px; font-size:11.5px; color:var(--ink-muted);">요청 처리 후</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h3>규칙</h3>
+  <ul class="bullets">
+    <li><strong>묶음은 빈 줄로 끊긴다.</strong> 이미지 줄 사이에 빈 줄을 넣으면 각각 따로 놓인 그림이 된다.</li>
+    <li><strong>묶음 안에서는 잘라 맞춘다.</strong> 칸 비율(2열 4:3 · 4열 1:1)에 맞춰 <code class="ic">cover</code>로 채운다. 전체를 다 보여줘야 하는 그림은 한 장씩 놓을 것.</li>
+    <li><strong>폭 옵션은 첫 줄만 읽는다.</strong> 묶음 전체에 적용되고, 나머지 줄의 <code class="ic">{…}</code>는 무시된다.</li>
+    <li><strong>문장 안의 이미지는 그대로 인라인.</strong> 캡션도 확대도 붙지 않는다.</li>
+    <li><strong>못 불러온 이미지</strong>는 깨진 아이콘 대신 점선 자리 + 파일명으로 표시된다 — 발행 전에 경로 오타를 잡으라고.</li>
+  </ul>
+
+  <div class="dd">
+    <div class="ok">
+      <div class="h">DO</div>
+      <code class="line">![캡처: 재현 화면](/images/post/1.png){2}</code>
+      <code class="line">![캡처: 수정 후](/images/post/2.png)</code>
+    </div>
+    <div class="no">
+      <div class="h">DON'T</div>
+      <code class="line">![](/images/post/1.png)</code>
+      <code class="line">&nbsp;</code>
+      <code class="line">![](/images/post/2.png)</code>
+    </div>
+  </div>
+  <p style="font-size:13.5px; color:var(--ink-muted); margin-top:12px;">
+    alt를 비우면 캡션도 사라지고 스크린리더도 읽을 것이 없다. 그림을 넣을 만한 이유가 있다면 한 줄로 적을 수 있다.
+  </p>
+</section>
+
 <!-- ─── Unsupported ────────────────────────────────────────── -->
 <section id="unsupported">
-  <h2><span class="num">09</span>지원하지 않는 것</h2>
+  <h2><span class="num">10</span>지원하지 않는 것</h2>
   <p class="sub">의도적으로 빠진 표기들. 필요해지면 그때 추가.</p>
 
   <table class="syntax">
@@ -540,7 +613,7 @@ https://vladmihalcea.com/hibernate-multiplebagfetchexception
 
 <!-- ─── Toolbar ────────────────────────────────────────────── -->
 <section id="toolbar">
-  <h2><span class="num">10</span>에디터 툴바</h2>
+  <h2><span class="num">11</span>에디터 툴바</h2>
   <p class="sub">Studio 에디터의 버튼은 커서 위치에 마크다운을 삽입한다. 텍스트가 선택돼 있으면 그 텍스트를 감싼다.</p>
 
   <div class="toolbar-legend">
@@ -575,12 +648,16 @@ https://vladmihalcea.com/hibernate-multiplebagfetchexception
     <span class="btn">↗</span>
     <span class="lab">링크 카드</span>
     <span class="out">https://example.com/article (한 줄 단독)</span>
+
+    <span class="btn">▤</span>
+    <span class="lab">이미지 묶음</span>
+    <span class="out">![첫 번째](…){2}\n![두 번째](…)</span>
   </div>
 </section>
 
 <!-- ─── Sample ─────────────────────────────────────────────── -->
 <section id="sample">
-  <h2><span class="num">11</span>전체 예시</h2>
+  <h2><span class="num">12</span>전체 예시</h2>
   <p class="sub">실제 글 한 편 분량의 마크다운. 위 표기가 어떻게 어우러지는지.</p>
 
 <pre class="dark"># 들어가며

@@ -644,6 +644,24 @@
     <span class="tag kept">kept</span><span class="tag">v1.5.0</span>
   </div>
 </div>
+
+<div class="decision">
+  <div class="ref">DEC-26</div>
+  <div class="body">
+    <h3 class="h">분류 필드는 native select를 쓰지 않는다</h3>
+    <p>카테고리·시리즈를 <code class="ic">&lt;select&gt;</code>로 두니 OS 드롭다운이 열렸다 — 다크 테마를 따르지 않고, 하위 카테고리는 optgroup으로 접히고, 시리즈는 <strong>몇 편까지 찼는지·어느 회차가 비었는지</strong>를 옵션 텍스트로만 설명해야 했다. 분류는 고르는 순간 <strong>구조가 보여야</strong> 하는 필드다. 그래서 전용 컴포넌트로 바꿨다 — 카테고리는 상위 pill + 선택된 상위의 하위 pill 2단(펼친 채 고정), 시리즈는 진행도를 단 커스텀 드롭다운 + <strong>회차 슬롯 레일</strong>(찬 슬롯·빈 슬롯·목표 초과를 색으로 구분). 드롭다운을 열지 않아도 현재 분류 상태가 보이는 것이 목적.</p>
+    <span class="tag kept">kept</span><span class="tag">v1.6.0</span>
+  </div>
+</div>
+
+<div class="decision">
+  <div class="ref">DEC-27</div>
+  <div class="body">
+    <h3 class="h">이미지는 폭을 고르게 하고, 여러 장은 묶는다</h3>
+    <p>스크린샷 한 장이 본문 폭을 다 먹으면 전후 비교가 스크롤 두 번이 된다. 그래서 이미지에 <strong>폭 옵션 셋</strong>(<code class="ic">{sm}</code> 380px · 기본 본문 폭 · <code class="ic">{wide}</code> 880px)과 <strong>연속 줄 = 묶음</strong> 규칙을 넣었다. 새 문법을 만들지 않고 <strong>줄 배치</strong>로 판단한다 — 빈 줄로 끊으면 따로, 붙여 쓰면 그리드. 묶음 칸은 비율을 맞춰 잘라 넣고(<code class="ic">cover</code>), 원본은 라이트박스에서 본다. 못 불러온 이미지는 깨진 아이콘 대신 점선 자리 + 파일명 — 오타를 발행 전에 잡는 쪽이 낫다.</p>
+    <span class="tag kept">kept</span><span class="tag">v1.6.0</span>
+  </div>
+</div>
 </section>
 
 <section id="stack">
