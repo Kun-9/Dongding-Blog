@@ -1,9 +1,9 @@
 /**
  * Server-side Umami client. Used only by /api/stats/* (dev-only).
  *
- * Uses the public share link (same two-step protocol as umami-share.ts), not
- * the Cloud API key — api.umami.is rejects our key with 401 and the share
- * token already grants every stats endpoint this page needs.
+ * Uses the public share link (same two-step protocol as umami-share.ts). Don't
+ * reach for a Cloud API key — api.umami.is 401s on the Hobby plan, and the
+ * share token already grants every stats endpoint this page needs.
  */
 const SHARE_BASE = process.env.NEXT_PUBLIC_UMAMI_SHARE_BASE;
 const SHARE_ID = process.env.NEXT_PUBLIC_UMAMI_SHARE_ID;
