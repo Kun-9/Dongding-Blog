@@ -19,7 +19,7 @@ import {
 import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from "react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-import { categoryLabelIn } from "@/lib/category-utils";
+import { categoryLabelIn, resolveCategoryIn } from "@/lib/category-utils";
 import { API } from "@/lib/api-routes";
 import {
   CARD_LINE_RE,
@@ -1515,26 +1515,15 @@ function StudioEditor() {
                 className="w-full rounded-md border border-border-token bg-surface px-2.5 py-[7px] font-sans text-[13px] tracking-[-0.005em] text-ink outline-none"
               />
             </FieldRow>
-            <FieldRow label="category">
-              <select
+            <FieldRow label="category" plain>
+              <CategoryField
+                categories={categories}
                 value={category}
-                onChange={(e) => {
-                  patch({ category: e.target.value });
+                onChange={(next) => {
+                  patch({ category: next });
                   markDirty();
                 }}
-                className="w-full rounded-md border border-border-token bg-surface px-2.5 py-[7px] font-sans text-[13px] tracking-[-0.005em] text-ink outline-none"
-              >
-                {categories.map((cat) => (
-                  <optgroup key={cat.id} label={cat.name}>
-                    <option value={cat.id}>{cat.name} (전체)</option>
-                    {cat.subs?.map((sub) => (
-                      <option key={sub.id} value={sub.id}>
-                        {sub.name}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
+              />
             </FieldRow>
             <FieldRow label="tags">
               <input
@@ -1845,6 +1834,91 @@ function ThumbnailField({
   );
 }
 
+/**
+ * 카테고리 선택 — 상위 pill 줄 + 선택된 상위의 하위 pill 줄.
+ *
+ * native select 를 쓰지 않는다: OS 드롭다운은 테마를 따르지 않고, 하위가
+ * optgroup 으로 접혀 지금 무엇이 골라져 있는지 열어봐야 안다.
+ *
+ * 저장되는 값은 **여전히 하나**다 — 하위를 고르면 서브 id, "전체" 를 고르면
+ * 부모 id. 상위 줄은 `resolveCategoryIn` 으로 역추적해 칠하기만 한다.
+ */
+function CategoryField({
+  categories,
+  value,
+  onChange,
+}: {
+  categories: Category[];
+  value: string;
+  onChange: (next: string) => void;
+}) {
+  const resolved = resolveCategoryIn(categories, value);
+  const parent = resolved?.parent ?? categories[0];
+  const subs = parent?.subs ?? [];
+
+  const pill = (active: boolean, small = false) =>
+    [
+      "inline-flex items-center gap-1.5 rounded-full border whitespace-nowrap",
+      small ? "h-[26px] px-[11px] text-xs" : "h-[30px] px-[13px] text-[13px]",
+      "font-sans tracking-[-0.01em] transition-colors",
+      active
+        ? "border-accent bg-accent font-semibold text-accent-ink"
+        : "border-border-token bg-transparent font-medium text-ink-muted hover:bg-hover hover:text-ink",
+    ].join(" ");
+
+  if (!parent) return null;
+
+  return (
+    <div className="grid gap-2">
+      <div className="flex flex-wrap gap-1.5">
+        {categories.map((cat) => {
+          const active = cat.id === parent.id;
+          return (
+            <button
+              key={cat.id}
+              type="button"
+              aria-pressed={active}
+              onClick={() => onChange(cat.id)}
+              className={pill(active)}
+            >
+              {cat.name}
+            </button>
+          );
+        })}
+      </div>
+
+      {subs.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 pl-0.5">
+          <span aria-hidden className="mr-0.5 font-mono text-[11px] text-ink-subtle">
+            └
+          </span>
+          {[{ id: parent.id, name: "전체" }, ...subs].map((s) => {
+            const active = s.id === value;
+            return (
+              <button
+                key={s.id}
+                type="button"
+                aria-pressed={active}
+                onClick={() => onChange(s.id)}
+                className={[
+                  pill(false, true),
+                  active
+                    ? "border-border-strong bg-surface-alt font-semibold text-ink"
+                    : "",
+                ].join(" ")}
+              >
+                {s.name}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      <div className="font-mono text-[11px] text-ink-subtle">{value}</div>
+    </div>
+  );
+}
+
 function FieldRow({
   label,
   children,
@@ -1935,32 +2009,6 @@ function SeriesField({
             <option value={value}>(미정의: {value})</option>
           )}
         </select>
-        {value && current && (
-          <select
-            value={order > 0 ? String(order) : ""}
-            onChange={(e) =>
-              onChange({ seriesOrder: Number(e.target.value) || 0 })
-            }
-            className="rounded-md border border-border-token bg-surface px-2.5 py-[7px] font-sans text-[13px] tracking-[-0.005em] text-ink outline-none"
-          >
-            <option value="">순서…</option>
-            {Array.from({ length: slotCount }).map((_, i) => {
-              const n = i + 1;
-              const taken = occupied.get(n);
-              const isOver = n > current.count;
-              const label = taken
-                ? `${n}편 — ${taken.title}${taken.visibility !== "published" ? " (초안)" : ""}`
-                : isOver
-                  ? `${n}편 — 목표 초과 슬롯`
-                  : `${n}편 — 비어있음`;
-              return (
-                <option key={n} value={n}>
-                  {label}
-                </option>
-              );
-            })}
-          </select>
-        )}
         {value && !current && (
           <input
             type="text"
@@ -1983,6 +2031,51 @@ function SeriesField({
           새 시리즈
         </button>
       </div>
+
+      {/* 회차 슬롯 레일 — 찬 칸·빈 칸·목표 초과를 눌러 보지 않고도 구분한다.
+          select 의 옵션 텍스트로 설명하던 것을 자리로 바꿨다. */}
+      {value && current && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="mr-1 font-mono text-[11px] text-ink-subtle">회차</span>
+          {Array.from({ length: slotCount }).map((_, i) => {
+            const n = i + 1;
+            const taken = occupied.get(n);
+            const active = n === order;
+            const isOver = n > current.count;
+            const title = taken
+              ? `${n}편 — ${taken.title}${taken.visibility !== "published" ? " (초안)" : ""}`
+              : isOver
+                ? `${n}편 — 목표 초과 슬롯`
+                : `${n}편 — 비어있음`;
+            return (
+              <button
+                key={n}
+                type="button"
+                title={title}
+                aria-pressed={active}
+                onClick={() => onChange({ seriesOrder: active ? 0 : n })}
+                className={`relative h-[30px] w-[30px] rounded-md font-mono text-xs tabular-nums transition-colors ${
+                  active
+                    ? "border border-accent bg-accent font-bold text-accent-ink"
+                    : taken
+                      ? "border border-border-token bg-surface-alt font-medium text-ink-muted"
+                      : "border border-dashed border-border-strong bg-transparent font-medium text-ink-soft"
+                }`}
+              >
+                {n}
+                {taken && !active && (
+                  <span
+                    aria-hidden
+                    className="absolute bottom-[3px] right-1 h-[3px] w-[3px] rounded-full"
+                    style={{ background: current.color }}
+                  />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {value && current && order > 0 && occupied.has(order) && (
         <div className="font-sans text-[11.5px] text-[#a04a3a]">
           {order}편은 이미 “{occupied.get(order)?.title}”가 차지하고 있습니다.
