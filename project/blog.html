@@ -106,6 +106,9 @@
     .dd-mobilesheet{display:block}
   }
   @media (max-width: 680px){
+    /* 글 관리 행 — 좀은 화면에선 액션이 메타 줄 아래로 내려온다 */
+    .dd-mgrow{grid-template-columns:18px minmax(0,1fr)!important}
+    .dd-mgactions{grid-column:2;justify-content:flex-start;padding-top:10px!important}
     .dd-imgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
     .dd-prose .dd-imgwide{width:100%;margin-left:0;transform:none}
     .dd-g2,.dd-g3{grid-template-columns:minmax(0,1fr)}
@@ -153,6 +156,7 @@
 <script type="text/babel" src="page-detail.jsx"></script>
 <script type="text/babel" src="page-about-404.jsx"></script>
 <script type="text/babel" src="page-extras.jsx"></script>
+<script type="text/babel" src="page-manage.jsx"></script>
 <script type="text/babel" src="page-stats.jsx"></script>
 <script type="text/babel" src="page-settings.jsx"></script>
 
@@ -192,6 +196,8 @@ function App() {
     if (s === '/404') return { type: '404' };
     if (s === '/studio') return { type: 'studio' };
     if (s === '/admin') return { type: 'admin' };
+    if (s === '/drafts') return { type: 'manage', preset: 'draft' };
+    if (s === '/manage') return { type: 'manage', preset: 'all' };
     if (s === '/admin/stats') return { type: 'stats' };
     if (s === '/login') return { type: 'login' };
     if (s === '/settings') return { type: 'settings' };
@@ -216,6 +222,8 @@ function App() {
     else if (target === '404') hash = '#/404';
     else if (target === 'studio') hash = '#/studio';
     else if (target === 'admin') hash = '#/admin';
+    else if (target === 'drafts') hash = '#/drafts';
+    else if (target === 'manage') hash = '#/manage';
     else if (target === 'stats') hash = '#/admin/stats';
     else if (target === 'login') hash = '#/login';
     else if (target === 'settings') hash = '#/settings';
@@ -237,11 +245,11 @@ function App() {
   else if (route.type === 'bookmarks') active = 'bookmarks';
   else if (route.type === 'admin') active = 'admin';
   else if (route.type === 'studio') active = 'studio';
-  else if (route.type === 'stats') active = 'stats';
+  else if (route.type === 'manage') active = 'manage';
   else if (route.type === 'category') active = `category:${route.value}`;
 
   // 로그인이 필요한 화면은 방문자에게 로그인 폼으로 대체된다 — 서버가 막는 걸 시안에서도 그대로.
-  const ADMIN_ONLY = ['studio', 'admin', 'stats', 'settings'];
+  const ADMIN_ONLY = ['studio', 'admin', 'stats', 'settings', 'manage'];
   const gated = !t.isAdmin && ADMIN_ONLY.includes(route.type);
   const view = gated ? { type: 'login' } : route;
 
@@ -265,6 +273,7 @@ function App() {
       {view.type === '404' && <window.NotFoundPage c={c} t={t} onNav={onNav} />}
       {view.type === 'studio' && <window.StudioPage c={c} t={t} onNav={onNav} />}
       {view.type === 'admin' && <window.AdminPage c={c} t={t} onNav={onNav} />}
+      {view.type === 'manage' && <window.ManagePage c={c} t={t} onNav={onNav} preset={view.preset} />}
       {view.type === 'stats' && <window.StatsPage c={c} t={t} onNav={onNav} />}
       {view.type === 'login' && <window.LoginPage c={c} t={t} onNav={onNav} setTweak={setTweak} next={gated ? route.type : 'studio'} />}
       {view.type === 'settings' && <window.SettingsPage c={c} t={t} onNav={onNav} />}
@@ -307,6 +316,7 @@ function App() {
             ['About', 'about'], ['404', '404'],
             ['Studio', 'studio'], ['Admin', 'admin'], ['Stats', 'stats'], ['Settings', 'settings'],
             ['Series', 'series'], ['Search', 'search'], ['Linkroll', 'bookmarks'], ['Login', 'login'],
+            ['Manage', 'manage'], ['Drafts', 'drafts'],
           ].map(([label, t]) => (
             <button key={t} onClick={() => onNav(t)} style={{
               padding: '4px 8px', borderRadius: 6, border: '0.5px solid rgba(0,0,0,0.1)',

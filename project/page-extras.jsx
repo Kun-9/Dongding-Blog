@@ -5,9 +5,20 @@ const { useState: useStateX, useMemo: useMemoX, useEffect: useEffectX, useRef: u
 // Sample drafts and bookmarks data
 window.DD_EXTRA = {
   drafts: [
-    { slug: 'kafka-exactly-once', title: 'Kafka exactly-once는 정말 정확한가', updated: '2026-04-25', words: 2840, status: 'draft' },
-    { slug: 'graphql-n-plus-1', title: 'GraphQL DataLoader, REST의 N+1보다 잘 푸는가', updated: '2026-04-23', words: 1620, status: 'review' },
-    { slug: 'redis-cluster', title: 'Redis Cluster 슬롯 마이그레이션 일지', updated: '2026-04-18', words: 980, status: 'draft' },
+    { slug: 'kafka-exactly-once', title: 'Kafka exactly-once는 정말 정확한가', updated: '2026-04-25', words: 2840, status: 'draft', category: 'system',
+      excerpt: 'idempotent producer와 트랜잭션 API가 보장하는 범위는 생각보다 좁다. 컨슈머 쪽까지 따라가 본다.' },
+    { slug: 'graphql-n-plus-1', title: 'GraphQL DataLoader, REST의 N+1보다 잘 푸는가', updated: '2026-04-23', words: 1620, status: 'review', category: 'db',
+      excerpt: '배치 로더는 N+1을 없애는 게 아니라 미루는 쪽에 가깝다. JPA BatchSize와 나란히 놓고 비교.' },
+    { slug: 'redis-cluster', title: 'Redis Cluster 슬롯 마이그레이션 일지', updated: '2026-04-18', words: 980, status: 'draft', category: 'system',
+      excerpt: '슬롯 이동 중 MOVED와 ASK가 섞여 나오던 새벽. 클라이언트 재시도 로직이 문제였다.' },
+    { slug: 'jvm-gc-log', title: 'G1 GC 로그를 처음부터 끝까지 읽어보기', updated: '2026-04-09', words: 3260, status: 'review', category: 'java',
+      excerpt: 'Humongous allocation 한 줄에서 시작해 힙 튜닝까지 갔던 기록. 로그가 이미 답을 말하고 있었다.' },
+    { slug: 'oracle-hint-vs-plan', title: 'Oracle 힌트를 믿을 것인가, 옵티마이저를 믿을 것인가', updated: '2026-03-31', words: 1240, status: 'draft', category: 'db',
+      excerpt: '통계가 최신이면 힌트는 대체로 방해가 된다 — 라고 쓰다가 반례를 만나 멈춰 있는 글.' },
+    { slug: 'interview-cache', title: '면접 정리 — 캐시 무효화 질문에 답하는 법', updated: '2026-03-12', words: 620, status: 'draft', category: 'interview',
+      excerpt: '개요만 잡아둔 상태. write-through / write-behind / TTL 조합별로 예시가 필요하다.' },
+    { slug: 'spring-aop-proxy', title: 'self-invocation은 왜 AOP를 통과하지 못하는가', updated: '2026-02-16', words: 2100, status: 'draft', category: 'spring',
+      excerpt: '프록시 객체 바깥에서 들어와야 어드바이스가 걸린다. 그림 두 장이면 끝날 이야기인데 계속 미뤘다.' },
   ],
   series: window.DD_DATA.series,
   bookmarks: [
@@ -641,7 +652,7 @@ function AdminPage({ c, t, onNav }) {
       <section style={{ marginBottom: 32 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingBottom: 10, borderBottom: `1px solid ${c.border}`, marginBottom: 14, gap: 12 }}>
           <div style={{ fontFamily: window.DD_FONTS.sans, fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: c.inkMuted, whiteSpace: 'nowrap' }}>초안 ({D.drafts.length})</div>
-          <button onClick={() => onNav('studio')} style={{ background: 'none', border: 'none', color: c.inkMuted, cursor: 'pointer', fontSize: 12.5, fontFamily: 'inherit', whiteSpace: 'nowrap' }}>새 초안 +</button>
+          <button onClick={() => onNav('drafts')} style={{ background: 'none', border: 'none', color: c.inkMuted, cursor: 'pointer', fontSize: 12.5, fontFamily: 'inherit', whiteSpace: 'nowrap' }}>초안 전체 →</button>
         </div>
         <div className="dd-scroll-x">
         <table style={{ width: '100%', minWidth: 560, borderCollapse: 'collapse', fontSize: 13 }}>
@@ -654,7 +665,7 @@ function AdminPage({ c, t, onNav }) {
             </tr>
           </thead>
           <tbody>
-            {D.drafts.map(d => (
+            {D.drafts.slice(0, 4).map(d => (
               <tr key={d.slug} onClick={() => onNav('studio')} style={{ cursor: 'pointer', borderTop: `1px solid ${c.border}` }}
                 onMouseEnter={(e) => e.currentTarget.style.background = c.hover}
                 onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}

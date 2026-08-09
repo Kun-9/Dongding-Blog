@@ -228,6 +228,7 @@ function Header({ active, c, t, onNav, setTweak }) {
 // 링크가 보인다고 권한이 생기는 건 아니고, 실제 차단은 서버가 한다.
 const ADMIN_ITEMS = [
   { key: 'studio', label: '새 글' },
+  { key: 'manage', label: '글 관리' },
   { key: 'admin', label: '대시보드' },
   { key: 'stats', label: '통계' },
   { key: 'settings', label: '설정' },
