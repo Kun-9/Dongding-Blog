@@ -5,11 +5,16 @@
  * 써야 하므로 여기 한 벌만 둔다. next·supabase 의존이 없는 순수 모듈이다.
  */
 
-/** 카드로 펼쳐질 줄. 앞뒤 공백은 호출자가 trim 한 상태로 넘긴다. */
+/**
+ * 카드로 펼쳐질 줄. 앞뒤 공백은 호출자가 trim 한 상태로 넘긴다.
+ *
+ * 끝 슬래시를 받아주는 건 `trailingSlash: true` 때문이다 — 사이트가 내보내는
+ * 주소가 `/posts/slug/` 라, 주소창에서 복사해 붙이면 그 꼴로 들어온다.
+ */
 export const CARD_LINE_RE =
-  /^(https?:\/\/[^\s<>]+|\/posts\/[A-Za-z0-9_-]+)$/;
+  /^(https?:\/\/[^\s<>]+|\/posts\/[A-Za-z0-9_-]+\/?)$/;
 
-const POST_REF_RE = /^\/posts\/([A-Za-z0-9_-]+)$/;
+const POST_REF_RE = /^\/posts\/([A-Za-z0-9_-]+)\/?$/;
 
 export interface LinkCardMeta {
   title?: string;
