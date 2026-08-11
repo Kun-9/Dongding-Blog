@@ -16,9 +16,17 @@ export interface OgMeta {
   description: string;
   image: string;
   source: string;
+  /** 파비콘 절대 주소. 못 찾으면 빈 문자열. */
+  icon: string;
 }
 
-const EMPTY: OgMeta = { title: "", description: "", image: "", source: "" };
+const EMPTY: OgMeta = {
+  title: "",
+  description: "",
+  image: "",
+  source: "",
+  icon: "",
+};
 
 /** SSRF 가드 — 루프백·사설망은 요청 자체를 보내지 않는다. */
 export function isPrivateHost(host: string): boolean {
@@ -80,6 +88,31 @@ function findMeta(html: string, property: string): string {
   return content ? decodeEntities(content).trim() : "";
 }
 
+/**
+ * `<link rel="icon">` 에서 파비콘을 찾는다. rel 은 공백 구분 토큰이라 정확히
+ * 비교한다 — 부분 일치로 하면 mask-icon(단색 실루엣)·fluid-icon(대형 이미지)
+ * 같은 것이 먼저 걸린다. icon 이 없으면 apple-touch-icon 으로 떨어진다.
+ */
+function findIcon(html: string, base?: URL): string {
+  let fallback = "";
+  for (const tag of html.match(/<link\b[^>]*>/gi) ?? []) {
+    const rel =
+      tag.match(/rel\s*=\s*["']([^"']*)["']/i)?.[1]?.toLowerCase() ?? "";
+    const tokens = rel.split(/\s+/);
+    const href = tag.match(/href\s*=\s*["']([^"']*)["']/i)?.[1];
+    if (!href) continue;
+    let abs: string;
+    try {
+      abs = new URL(decodeEntities(href), base).toString();
+    } catch {
+      continue;
+    }
+    if (tokens.includes("icon")) return abs;
+    if (!fallback && tokens.includes("apple-touch-icon")) fallback = abs;
+  }
+  return fallback;
+}
+
 function findTitleTag(html: string): string {
   const m = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
   return m ? decodeEntities(m[1]).trim() : "";
@@ -108,7 +141,33 @@ export function parseOg(html: string, base?: URL): OgMeta {
     }
   }
 
-  return { title, description, image, source };
+  return { title, description, image, source, icon: findIcon(html, base) };
+}
+
+/**
+ * link 태그가 없는 사이트의 관례 경로. HTML 404 페이지가 200 으로 돌아오는
+ * 서버가 있어 content-type 까지 본다.
+ */
+async function probeFavicon(origin: string): Promise<string> {
+  const url = `${origin}/favicon.ico`;
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), 3000);
+  try {
+    const res = await fetch(url, {
+      redirect: "follow",
+      signal: ac.signal,
+      headers: { "User-Agent": USER_AGENT },
+    });
+    const ct = res.headers.get("content-type") ?? "";
+    try {
+      await res.body?.cancel();
+    } catch {}
+    if (res.ok && (ct.startsWith("image/") || ct.includes("icon"))) return url;
+  } catch {
+  } finally {
+    clearTimeout(timer);
+  }
+  return "";
 }
 
 /** 앞부분만 읽고 끊는다 — OG 태그는 <head> 에 있고 본문은 필요 없다. */
@@ -157,7 +216,9 @@ export async function fetchOg(rawUrl: string): Promise<OgMeta> {
     if (!res.ok) return EMPTY;
     const ct = res.headers.get("content-type") ?? "";
     if (!ct.includes("text/html") && !ct.includes("xml")) return EMPTY;
-    return parseOg(await readCappedText(res), parsed);
+    const og = parseOg(await readCappedText(res), parsed);
+    if (!og.icon) og.icon = await probeFavicon(parsed.origin);
+    return og;
   } catch {
     return EMPTY;
   } finally {

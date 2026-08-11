@@ -46,8 +46,8 @@ function hue(s: string): number {
 export function LinkCard({ url, meta }: Props) {
   const h = host(url);
   const title = meta?.title;
-  // ponytail: 파비콘은 구글 s2 서비스로 받는다. 자체 수집이 필요해지면
-  // og.ts 에서 <link rel="icon"> 을 파싱해 link_meta 에 쌓는 쪽으로.
+  // 파비콘은 OG 수집 때 함께 캐싱된다(lib/og#findIcon). 구글 s2 서비스는
+  // 크롤링 안 된 개인 서브도메인에서 기본 지구본만 줘서 쓰지 않는다.
   const [iconFailed, setIconFailed] = useState(false);
 
   return (
@@ -69,17 +69,17 @@ export function LinkCard({ url, meta }: Props) {
               color: `hsl(${hue(h)} 32% var(--link-tile-ink-l))`,
             }}
           >
-            {iconFailed ? (
-              h.charAt(0)
-            ) : (
+            {meta?.icon && !iconFailed ? (
               // eslint-disable-next-line @next/next/no-img-element -- 외부 파비콘이라 next/image 대상이 아니다
               <img
-                src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(h)}&sz=64`}
+                src={meta.icon}
                 alt=""
                 loading="lazy"
                 className="h-5 w-5"
                 onError={() => setIconFailed(true)}
               />
+            ) : (
+              h.charAt(0)
             )}
           </span>
           <span className="whitespace-nowrap font-mono text-[11.5px] text-ink-muted">

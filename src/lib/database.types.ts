@@ -80,6 +80,7 @@ export type Database = {
         Row: {
           description: string | null
           fetched_at: string
+          icon: string | null
           image: string | null
           title: string | null
           url: string
@@ -87,6 +88,7 @@ export type Database = {
         Insert: {
           description?: string | null
           fetched_at?: string
+          icon?: string | null
           image?: string | null
           title?: string | null
           url: string
@@ -94,6 +96,7 @@ export type Database = {
         Update: {
           description?: string | null
           fetched_at?: string
+          icon?: string | null
           image?: string | null
           title?: string | null
           url?: string

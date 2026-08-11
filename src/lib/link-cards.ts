@@ -20,6 +20,7 @@ export interface LinkCardMeta {
   title?: string;
   description?: string;
   image?: string;
+  icon?: string;
 }
 
 export interface PostRefMeta {

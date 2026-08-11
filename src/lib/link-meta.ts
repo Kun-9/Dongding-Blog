@@ -32,7 +32,7 @@ export async function getLinkMeta(
 
   const { data, error } = await db()
     .from("link_meta")
-    .select("url, title, description, image")
+    .select("url, title, description, image, icon")
     .in("url", keys);
   // 카드는 메타가 없어도 도메인 한 줄로 성립한다 — 조회 실패로 글을 못 열게 하지 않는다.
   if (error) return {};
@@ -44,6 +44,7 @@ export async function getLinkMeta(
       title: row.title,
       description: row.description ?? undefined,
       image: row.image ?? undefined,
+      icon: row.icon || undefined,
     };
   }
   return out;
@@ -66,12 +67,14 @@ export async function syncLinkMetaUrls(urls: string[]): Promise<void> {
 
   const { data } = await dbAdmin()
     .from("link_meta")
-    .select("url, fetched_at")
+    .select("url, fetched_at, icon")
     .in("url", [...byKey.keys()]);
 
   const cutoff = Date.now() - STALE_MS;
   for (const row of data ?? []) {
-    if (Date.parse(row.fetched_at) > cutoff) byKey.delete(row.url);
+    // icon 이 null 이면 파비콘 도입 전에 수집된 행 — 신선해도 다시 읽는다.
+    if (Date.parse(row.fetched_at) > cutoff && row.icon !== null)
+      byKey.delete(row.url);
   }
   if (byKey.size === 0) return;
 
@@ -86,6 +89,8 @@ export async function syncLinkMetaUrls(urls: string[]): Promise<void> {
         title: clip(og.title, MAX_TITLE),
         description: clip(og.description, MAX_DESC),
         image: og.image || null,
+        // '' = 찾아봤지만 없음. null 은 "아직 안 찾아봄"으로 예약돼 있다.
+        icon: og.icon,
         fetched_at: now,
       };
     }),
