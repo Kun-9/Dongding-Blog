@@ -8,7 +8,8 @@
  * Image: 줄 단독 → 캡션(alt) 달린 그림. `{sm}` 380px · 기본 본문 폭 ·
  *        `{wide}` 880px, 열 수는 `{2}`~`{4}`. 문장 안 이미지는 인라인 그대로.
  * `>` is RESERVED for callouts. Plain blockquote is not supported.
- * 문단 안의 줄바꿈은 `<br>` 로 살아난다 (엔터 한 번 = 줄바꿈, 빈 줄 = 문단 분리).
+ * 문단 안의 줄바꿈은 `<br>` 로 살아난다 (엔터 한 번 = 줄바꿈, 빈 줄 = 문단 분리,
+ * 빈 줄 여러 개 = 개수만큼 여백).
  */
 import { Fragment, type ReactNode } from "react";
 import BananaSlug from "github-slugger";
@@ -286,8 +287,19 @@ export function renderMarkdown(
   while (i < lines.length) {
     const ln = lines[i];
 
+    // 빈 줄 — 하나는 문단 분리, 둘부터는 개수만큼 여백을 더 준다.
+    // 글 앞뒤에 남은 빈 줄은 여백이 되지 않는다.
     if (ln.trim() === "") {
-      i++;
+      let run = 0;
+      while (i < lines.length && lines[i].trim() === "") {
+        run++;
+        i++;
+      }
+      if (run >= 2 && out.length > 0 && i < lines.length) {
+        out.push(
+          <div key={k()} aria-hidden style={{ height: (run - 1) * 28 }} />,
+        );
+      }
       continue;
     }
 
