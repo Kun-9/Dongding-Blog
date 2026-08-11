@@ -28,6 +28,9 @@ export const SiteSchema = z.object({
   handle: z.string().min(1),
   bio: z.string(),
   intro: z.string(),
+  // 나중에 붙은 필드라 기존 행에는 없다. required 로 두면 파싱이 통째로 실패해
+  // 저장해둔 설정이 전부 기본값으로 떨어진다.
+  about: z.string().default(defaults.about),
   og: z.object({
     headline: z.array(z.string().min(1)).min(1).max(3),
     tagline: z.string(),

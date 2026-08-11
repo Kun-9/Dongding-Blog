@@ -92,7 +92,10 @@ export interface SiteMeta {
   author: string;
   handle: string;
   bio: string;
+  /** 홈 히어로 소개 문단. 백틱 조각은 인라인 코드로 렌더된다. */
   intro: string;
+  /** About 페이지 소개 문단. 빈 줄이 문단 구분. */
+  about: string;
 
   og: {
     headline: readonly string[];

@@ -74,6 +74,7 @@ function parsePrefs(raw: string): EditorPrefs {
 
 const SECTIONS: ReadonlyArray<readonly [string, string]> = [
   ["profile", "프로필"],
+  ["intro", "소개글"],
   ["social", "소셜 링크"],
   ["categories", "카테고리"],
   ["comments", "댓글"],
@@ -247,10 +248,28 @@ function SettingsView() {
           <Row label="짧은 소개">
             <TextInput value={form.bio} onChange={(v) => set("bio", v)} />
           </Row>
-          <Row label="introduction">
-            <TextInput
+        </Card>
+
+        {/* 소개글 — 홈 히어로 + About 본문 */}
+        <Card
+          id="settings-intro"
+          title="소개글"
+          source="supabase · site_settings"
+        >
+          <Row label="홈 소개글">
+            <Textarea
               value={form.intro}
               onChange={(v) => set("intro", v)}
+              rows={3}
+              hint="백틱으로 감싸면 인라인 코드 — `Spring`"
+            />
+          </Row>
+          <Row label="About 소개">
+            <Textarea
+              value={form.about}
+              onChange={(v) => set("about", v)}
+              rows={8}
+              hint="빈 줄로 문단을 나눕니다"
             />
           </Row>
         </Card>

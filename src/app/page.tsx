@@ -21,6 +21,15 @@ export const metadata = {
   alternates: { canonical: "/" },
 };
 
+/** 소개 문단의 백틱 조각만 인라인 코드로. 문단 하나라 파서까지는 필요 없다. */
+function withInlineCode(text: string) {
+  return text
+    .split(/`([^`]+)`/)
+    .map((part, i) =>
+      i % 2 ? <InlineCode key={i}>{part}</InlineCode> : part,
+    );
+}
+
 export default async function Page() {
   const [all, featuredPost, categories, site, seriesList] = await Promise.all([
     getAllPosts(),
@@ -62,9 +71,7 @@ export default async function Page() {
             {site.author}입니다.
           </h1>
           <p className="mb-7 mt-4 max-w-[580px] font-sans text-[18px] leading-[1.7] tracking-[-0.005em] text-ink-soft">
-            <InlineCode>Spring</InlineCode>, <InlineCode>Oracle</InlineCode>,
-            분산 서비스 공통 계층 설계, 그리고 AI를 실무에 녹이는 고민까지 —
-            끝까지 파고든 기록을 천천히 읽히도록 씁니다.
+            {withInlineCode(site.intro)}
           </p>
           <div className="flex gap-2.5">
             <CTA href="/posts">최근 글 →</CTA>

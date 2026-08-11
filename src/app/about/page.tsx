@@ -41,17 +41,18 @@ export default async function Page() {
       </header>
 
       <section className="mb-10">
-        <p className="mb-5 font-sans text-[17px] leading-[1.85] tracking-[-0.005em] text-ink-soft">
-          2년차 백엔드 개발자입니다. Java, Spring, Oracle로 일하고, 분산
-          서비스가 공유하는 공통 계층을 만들고 운영하면서 시스템이 어떻게
-          맞물려 돌아가는지 익히고 있어요.
-        </p>
-        <p className="mb-5 font-sans text-[17px] leading-[1.85] tracking-[-0.005em] text-ink-soft">
-          요즘은 AI를 학습하고 실제 업무에 어떻게 녹여낼지 실험하는 게
-          가장 즐겁습니다. 이 블로그에는 그 과정에서 마주친 문제를 끝까지
-          풀어본 기록을 남겨요. 답이 있는 글보다, 같이 고민하다가 함께
-          답에 도달하는 글을 쓰고 싶습니다.
-        </p>
+        {site.about
+          .split(/\n\s*\n/)
+          .map((para) => para.trim())
+          .filter(Boolean)
+          .map((para) => (
+            <p
+              key={para}
+              className="mb-5 whitespace-pre-line font-sans text-[17px] leading-[1.85] tracking-[-0.005em] text-ink-soft"
+            >
+              {para}
+            </p>
+          ))}
       </section>
 
       <section className="mb-10">
