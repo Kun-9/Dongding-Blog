@@ -2,8 +2,8 @@
 
 /**
  * CodeBlock — file/lang header + copy + line numbers + diff/highlight rows.
- * Port of prose.jsx#CodeBlock. Includes a tiny Java/SQL-leaning syntax
- * tokenizer (good enough for the design demo).
+ * Port of prose.jsx#CodeBlock. Includes a tiny per-language syntax tokenizer
+ * (comment char + keyword set picked by `lang`; approximate by design).
  */
 import { useState, type ReactNode } from "react";
 
@@ -18,36 +18,114 @@ interface Props {
   style?: Style;
 }
 
-// Captures: 1=line comment, 2=block comment, 3=string, 4=keyword,
-// 5=annotation, 6=Type (CapitalizedIdent), 7=number
-const TOKEN_REGEX =
-  /(\/\/.*$)|(\/\*[\s\S]*?\*\/)|("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')|(\b(?:public|private|protected|class|interface|extends|implements|static|final|void|new|return|if|else|for|while|do|switch|case|break|continue|throw|throws|try|catch|finally|import|package|null|true|false|this|super|abstract|synchronized|volatile|transient|enum|record|var|select|from|where|order|by|inner|join|fetch|left|right|distinct|count|group|having|insert|update|delete|into|values|on|and|or|not|in|exists|set|create|table|primary|key|foreign|references)\b)|(@\w+)|(\b[A-Z][A-Za-z0-9_]*\b)|(\b[0-9]+(?:\.[0-9]+)?[Ll]?\b)/gm;
+const C_KEYWORDS =
+  "public|private|protected|class|interface|extends|implements|static|final|void|new|return|if|else|for|while|do|switch|case|break|continue|throw|throws|try|catch|finally|import|export|package|from|as|default|null|true|false|this|super|abstract|synchronized|volatile|transient|enum|record|var|let|const|function|async|await|type|struct|func|fn|def";
+const SQL_KEYWORDS =
+  "select|from|where|order|by|inner|join|fetch|left|right|distinct|count|group|having|insert|update|delete|into|values|on|and|or|not|in|exists|set|create|table|primary|key|foreign|references|null|as|limit|offset|union|all|case|when|then|end";
+const PY_KEYWORDS =
+  "def|class|import|from|as|if|elif|else|for|while|return|try|except|finally|with|lambda|pass|yield|raise|in|is|not|and|or|None|True|False|async|await|global|del|assert|break|continue|self";
+const SH_KEYWORDS =
+  "if|then|else|elif|fi|for|while|until|do|done|case|esac|in|function|return|export|local|source|set|echo|cd";
+const DATA_KEYWORDS = "true|false|null|yes|no|on|off";
 
-function highlightLine(line: string): ReactNode[] {
+// A family = how comments are written + which words are keywords + what the
+// "type" slot means (a Capitalized identifier, a `key:`, a $VAR).
+const FAMILIES = {
+  c: {
+    comment: "\\/\\/.*$|\\/\\*[\\s\\S]*?\\*\\/",
+    keywords: C_KEYWORDS,
+    type: "\\b[A-Z][A-Za-z0-9_]*\\b",
+  },
+  hash: {
+    comment: "#.*$",
+    keywords: DATA_KEYWORDS,
+    type: "^\\s*-?\\s*[\\w.-]+(?=\\s*:)",
+  },
+  py: { comment: "#.*$", keywords: PY_KEYWORDS, type: "\\b[A-Z][A-Za-z0-9_]*\\b" },
+  sh: { comment: "#.*$", keywords: SH_KEYWORDS, type: "\\$\\{?\\w+\\}?" },
+  sql: {
+    comment: "--.*$|\\/\\*[\\s\\S]*?\\*\\/",
+    keywords: SQL_KEYWORDS,
+    type: "\\b[A-Z][A-Za-z0-9_]*\\b",
+  },
+} as const;
+
+const LANG_FAMILY: Record<string, keyof typeof FAMILIES> = {
+  yaml: "hash",
+  yml: "hash",
+  toml: "hash",
+  ini: "hash",
+  conf: "hash",
+  dockerfile: "hash",
+  makefile: "hash",
+  env: "hash",
+  properties: "hash",
+  python: "py",
+  py: "py",
+  ruby: "py",
+  rb: "py",
+  sh: "sh",
+  bash: "sh",
+  zsh: "sh",
+  shell: "sh",
+  console: "sh",
+  sql: "sql",
+};
+
+const COLORS: Record<string, string> = {
+  comment: "var(--code-comment)",
+  string: "var(--code-string)",
+  keyword: "var(--code-keyword)",
+  anno: "var(--code-type)",
+  type: "var(--code-type)",
+  number: "var(--code-number)",
+};
+
+const regexCache = new Map<string, RegExp>();
+
+function regexFor(lang?: string): RegExp {
+  const family = LANG_FAMILY[(lang ?? "").toLowerCase()] ?? "c";
+  const cached = regexCache.get(family);
+  if (cached) return cached;
+  const f = FAMILIES[family];
+  const re = new RegExp(
+    `(?<comment>${f.comment})` +
+      `|(?<string>"(?:[^"\\\\]|\\\\.)*"|'(?:[^'\\\\]|\\\\.)*')` +
+      `|(?<keyword>\\b(?:${f.keywords})\\b)` +
+      `|(?<anno>@\\w+)` +
+      `|(?<type>${f.type})` +
+      `|(?<number>\\b[0-9]+(?:\\.[0-9]+)?[Ll]?\\b)`,
+    "gm",
+  );
+  regexCache.set(family, re);
+  return re;
+}
+
+function highlightLine(line: string, lang?: string): ReactNode[] {
   const parts: ReactNode[] = [];
+  const re = regexFor(lang);
   let lastIdx = 0;
   let m: RegExpExecArray | null;
-  TOKEN_REGEX.lastIndex = 0;
+  re.lastIndex = 0;
 
-  while ((m = TOKEN_REGEX.exec(line))) {
+  while ((m = re.exec(line))) {
+    if (m[0] === "") {
+      re.lastIndex++; // ponytail: guard against a zero-width match looping forever
+      continue;
+    }
     if (m.index > lastIdx) {
       parts.push(<span key={`p-${lastIdx}`}>{line.slice(lastIdx, m.index)}</span>);
     }
-    let color: string | undefined;
-    let italic = false;
-    if (m[1] || m[2]) {
-      color = "var(--code-comment)";
-      italic = true;
-    } else if (m[3]) color = "var(--code-string)";
-    else if (m[4]) color = "var(--code-keyword)";
-    else if (m[5]) color = "var(--code-type)";
-    else if (m[6]) color = "var(--code-type)";
-    else if (m[7]) color = "var(--code-number)";
+    const groups = m.groups ?? {};
+    const kind = Object.keys(groups).find((k) => groups[k] !== undefined);
 
     parts.push(
       <span
         key={`t-${m.index}`}
-        style={{ color, fontStyle: italic ? "italic" : "normal" }}
+        style={{
+          color: kind ? COLORS[kind] : undefined,
+          fontStyle: kind === "comment" ? "italic" : "normal",
+        }}
       >
         {m[0]}
       </span>,
@@ -73,6 +151,7 @@ export function CodeBlock({
   const isMinimal = style === "minimal";
   const isInline = style === "inline";
   const gutterCh = String(lines.length).length;
+  const hasDiff = Object.keys(diff).length > 0;
 
   const onCopy = () => {
     navigator.clipboard?.writeText(code);
@@ -165,14 +244,16 @@ export function CodeBlock({
                 >
                   {n}
                 </span>
-                <span
-                  className="inline-block w-3.5 select-none"
-                  style={{ color: "var(--code-muted)" }}
-                >
-                  {dt === "+" ? "+" : dt === "-" ? "−" : ""}
-                </span>
+                {hasDiff && (
+                  <span
+                    className="inline-block w-3.5 shrink-0 select-none"
+                    style={{ color: "var(--code-muted)" }}
+                  >
+                    {dt === "+" ? "+" : dt === "-" ? "−" : ""}
+                  </span>
+                )}
                 <span className="flex-1 whitespace-pre">
-                  {highlightLine(line)}
+                  {highlightLine(line, lang)}
                 </span>
               </div>
             );
