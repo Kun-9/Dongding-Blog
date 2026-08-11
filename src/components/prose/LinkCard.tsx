@@ -6,6 +6,9 @@
  * (`lib/link-meta`). 브라우저에서 남의 사이트를 긁을 수 없기 때문이다.
  * 캐시에 없으면 도메인 + 경로 한 줄로 떨어진다 — 빈 카드보다 낫다.
  */
+"use client";
+
+import { useState } from "react";
 import type { LinkCardMeta } from "@/lib/link-cards";
 
 interface Props {
@@ -43,6 +46,9 @@ function hue(s: string): number {
 export function LinkCard({ url, meta }: Props) {
   const h = host(url);
   const title = meta?.title;
+  // ponytail: 파비콘은 구글 s2 서비스로 받는다. 자체 수집이 필요해지면
+  // og.ts 에서 <link rel="icon"> 을 파싱해 link_meta 에 쌓는 쪽으로.
+  const [iconFailed, setIconFailed] = useState(false);
 
   return (
     <a
@@ -57,13 +63,24 @@ export function LinkCard({ url, meta }: Props) {
         <div className="flex min-w-0 items-center gap-2">
           <span
             aria-hidden
-            className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-[5px] font-mono text-[10.5px] font-bold uppercase"
+            className="inline-flex h-5 w-5 shrink-0 items-center justify-center overflow-hidden rounded-[5px] font-mono text-[10.5px] font-bold uppercase"
             style={{
               background: `hsl(${hue(h)} 34% var(--link-tile-l))`,
               color: `hsl(${hue(h)} 32% var(--link-tile-ink-l))`,
             }}
           >
-            {h.charAt(0)}
+            {iconFailed ? (
+              h.charAt(0)
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element -- 외부 파비콘이라 next/image 대상이 아니다
+              <img
+                src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(h)}&sz=64`}
+                alt=""
+                loading="lazy"
+                className="h-5 w-5"
+                onError={() => setIconFailed(true)}
+              />
+            )}
           </span>
           <span className="whitespace-nowrap font-mono text-[11.5px] text-ink-muted">
             {h}
