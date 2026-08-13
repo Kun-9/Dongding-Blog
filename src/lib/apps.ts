@@ -1,20 +1,21 @@
 /**
- * 프로필 README 에 전시하는 앱들 — `/card/app/{slug}` 가 이 배열을 읽어 카드를 그린다.
+ * 프로필 README 에 전시하는 앱들의 **기본값**. 정본은 Supabase `site_settings`
+ * 의 `cards` 이고 설정 화면(`/settings/cards`)에서 고친다 — 여기 값은 DB 행이
+ * 없을 때의 폴백이다.
  *
  * 아이콘은 각 앱이 실제로 쓰는 파일을 data URI 로 박아 두었다. 매번 남의 사이트에서
  * 받아오면 그쪽이 죽었을 때 카드도 같이 깨지고, `public/` 에 두면 서버리스 함수 번들에
  * 딸려 간다는 보장이 없다. 셋 합쳐 3KB 라 소스에 들고 있는 편이 싸다.
  *
- * 새 앱을 전시하려면 여기에 한 줄, README 에 한 줄을 더하면 된다.
+ * `scripts/build-card-font.mjs` 가 node 로 이 파일을 직접 읽는다 — 경로 별칭
+ * (`@/`) 이나 값 import 를 들이면 그쪽이 깨진다.
  */
 
+/** 아이콘을 뺀 앱 카드 — `types.ts` 의 `AppCard` 와 같은 모양이어야 한다. */
 export type ShowcaseApp = {
-  /** URL 에 그대로 쓰인다 — `/card/app/{slug}` */
   slug: string;
   name: string;
-  /** 카드에 한 줄로 들어간다. 두 줄이 되면 카드가 무너진다. */
   desc: string;
-  /** 카드 오른쪽에 찍히는 표시용 주소 */
   host: string;
 };
 
@@ -38,10 +39,6 @@ export const APPS: ShowcaseApp[] = [
     host: "solve.dongding.dev",
   },
 ];
-
-export function findApp(slug: string): ShowcaseApp | undefined {
-  return APPS.find((a) => a.slug === slug);
-}
 
 /** slug → 앱 아이콘. seulseul·solve-card 는 원본 SVG, Plate 는 앱이 쓰는 64px PNG 그대로. */
 export const APP_ICONS: Record<string, string> = {

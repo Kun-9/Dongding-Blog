@@ -7,13 +7,11 @@
  * path 로 바꾸느라 폰트 파일을 요구한다. Noto Sans KR 전체는 6MB 라 저장소에
  * 둘 수 없어서, 카드에 실제로 쓰이는 글자만 골라 25KB 짜리로 줄여 둔다.
  *
- * 그래서 **카드 문구에 새 글자가 들어오면 이 스크립트를 다시 돌려야 한다.**
- * 서브셋에 없는 글자는 카드에서 그 자리가 빈다. 문구를 바꾸는 곳은 두 군데다 —
- * 설정 화면(site_settings)과 `src/lib/apps.ts`.
- *
- * site_settings 는 DB 에 있어 여기서 읽지 않는다. 대신 번들 기본값인
- * `site.json` 을 쓰므로, 설정 화면에서 문구를 바꿨다면 그 값을 `EXTRA` 에
- * 넣고 돌리거나 site.json 도 같이 맞춰 두는 편이 안전하다.
+ * 문구는 이제 설정 화면(`/settings/cards`)에서 바뀌므로 어떤 글자가 올지 빌드
+ * 때 알 수 없다. 그래서 카드는 그릴 때마다 필요한 글자를 Google Fonts 에서
+ * 직접 받는다(`lib/card-font.ts` 의 `cardFontsFor`). **여기서 만드는 파일은 그
+ * 요청이 실패했을 때의 폴백**이라, 기본값(site.json·apps.ts)이 바뀐 게 아니면
+ * 다시 돌릴 일이 없다.
  */
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";

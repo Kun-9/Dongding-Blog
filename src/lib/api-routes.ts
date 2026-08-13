@@ -23,6 +23,10 @@ export const API = {
   bookmarkPreview: (url: string) => `/api/bookmarks/preview?url=${enc(url)}`,
 
   settings: "/api/settings",
+  /** 저장 전 카드 미리보기 (POST) — 실제 카드 렌더러가 그린 SVG 를 돌려준다. */
+  cardPreview: "/api/settings/card-preview",
+  /** 앱 주소에서 파비콘을 data URI 로 (POST {url}). */
+  cardIcon: "/api/settings/card-icon",
 
   /** 미리보기의 링크 카드 재료 (POST {urls, slugs}). */
   linkMeta: "/api/link-meta/",

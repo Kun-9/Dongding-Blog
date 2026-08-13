@@ -107,6 +107,27 @@ export interface SiteMeta {
     github: string;
     email: string;
   };
+
+  cards: CardSettings;
+}
+
+/** 프로필 README 에 거는 앱 카드 한 장 (`/card/app/{slug}`). */
+export interface AppCard {
+  /** URL 에 그대로 쓰인다 — `/card/app/{slug}` */
+  slug: string;
+  name: string;
+  /** 카드에 한 줄로 들어간다. 두 줄이 되면 카드가 무너진다. */
+  desc: string;
+  /** 카드 오른쪽에 찍히는 표시용 주소 */
+  host: string;
+  /** data URI 로 박아 둔 아이콘. 비면 이름 첫 글자 타일로 그린다. */
+  icon: string;
+}
+
+export interface CardSettings {
+  /** 블로그 띠(`/card`) 오른쪽에 찍히는 주소 표기 */
+  host: string;
+  apps: AppCard[];
 }
 
 declare global {

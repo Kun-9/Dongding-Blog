@@ -20,6 +20,8 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/card": ["./assets/**"],
     "/card/app/[slug]": ["./assets/**"],
+    // 설정 화면 미리보기도 같은 렌더러를 부른다.
+    "/api/settings/card-preview": ["./assets/**"],
   },
 
   /**

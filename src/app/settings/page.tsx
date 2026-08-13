@@ -7,18 +7,26 @@
  * 접근은 proxy 의 로그인 검사로 막는다.
  */
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { useRouter } from "next/navigation";
-import type { ChangeEvent, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { site } from "@/lib/site";
-import siteJson from "@/lib/site.json";
 import { fmtDate } from "@/lib/tokens";
 import { seoClip, seoUnits } from "@/lib/seo-text";
 import { safeWriteJSON } from "@/lib/storage";
 import { API } from "@/lib/api-routes";
+import type { SiteMeta } from "@/lib/types";
 import {
   CategoryManager,
   type CatNode,
 } from "@/components/settings/CategoryManager";
+import {
+  Card,
+  Row,
+  SaveBar,
+  Segmented,
+  TextInput,
+  Textarea,
+} from "@/components/settings/Fields";
+import { useSiteSettings } from "@/components/settings/useSiteSettings";
 
 const giscus = {
   repo: process.env.NEXT_PUBLIC_GISCUS_REPO,
@@ -82,8 +90,7 @@ const SECTIONS: ReadonlyArray<readonly [string, string]> = [
   ["editor", "에디터"],
 ];
 
-type SiteData = typeof siteJson;
-type SaveStatus = "idle" | "saving" | "saved" | { error: string };
+type SiteData = SiteMeta;
 
 // 접근 차단은 proxy(로그인 리다이렉트)와 편집 API(401)가 맡는다.
 export default function Page() {
@@ -91,12 +98,7 @@ export default function Page() {
 }
 
 function SettingsView() {
-  const router = useRouter();
-  // 정본은 DB 지만 초기값은 번들에 박힌 기본값으로 채운다 — 로딩 중 빈 폼이
-  // 깜빡이지 않게. 아래 effect 가 저장값을 받아 폼과 기준선을 함께 교체한다.
-  const [form, setForm] = useState<SiteData>(siteJson);
-  const [baseline, setBaseline] = useState(() => JSON.stringify(siteJson));
-  const [status, setStatus] = useState<SaveStatus>("idle");
+  const { form, setForm, dirty, status, save, reset } = useSiteSettings();
   // 카테고리 정본이 DB 라 API 로 받아온다. null 은 "아직 안 옴".
   const [categories, setCategories] = useState<CatNode[] | null>(null);
 
@@ -115,26 +117,6 @@ function SettingsView() {
     };
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-    fetch(API.settings)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: unknown) => {
-        // 실패하면 기본값을 그대로 둔다 — 저장할 때 검증에서 다시 걸린다.
-        if (cancelled || !data) return;
-        setForm(data as SiteData);
-        setBaseline(JSON.stringify(data));
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const dirty = JSON.stringify(form) !== baseline;
-  const displayStatus: SaveStatus =
-    status === "saved" && dirty ? "idle" : status;
-
   const set = <K extends keyof SiteData>(key: K, value: SiteData[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
   const setSocial = <K extends keyof SiteData["social"]>(
@@ -145,38 +127,6 @@ function SettingsView() {
       ...prev,
       social: { ...prev.social, [key]: value },
     }));
-  const setOg = <K extends keyof SiteData["og"]>(
-    key: K,
-    value: SiteData["og"][K],
-  ) => setForm((prev) => ({ ...prev, og: { ...prev.og, [key]: value } }));
-
-  const save = async () => {
-    setStatus("saving");
-    try {
-      const res = await fetch(API.settings, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      if (!res.ok) {
-        const data = (await res.json().catch(() => ({}))) as {
-          error?: string;
-        };
-        throw new Error(data.error ?? `HTTP ${res.status}`);
-      }
-      setBaseline(JSON.stringify(form));
-      setStatus("saved");
-      // 헤더·푸터·메타가 서버에서 렌더되므로 새로 받아야 반영이 보인다.
-      router.refresh();
-    } catch (e) {
-      setStatus({ error: e instanceof Error ? e.message : String(e) });
-    }
-  };
-
-  const reset = () => {
-    setForm(JSON.parse(baseline) as SiteData);
-    setStatus("idle");
-  };
 
   return (
     <main className="mx-auto grid max-w-[1080px] grid-cols-[200px_1fr] gap-8 px-[var(--gut)] pb-16 pt-10 max-[1000px]:grid-cols-1 max-[1000px]:gap-[18px]">
@@ -203,7 +153,13 @@ function SettingsView() {
             </li>
           ))}
         </ul>
-        <div className="mt-6 border-t border-border-token pt-4">
+        <div className="mt-6 flex flex-col gap-2 border-t border-border-token pt-4">
+          <a
+            href="/settings/cards"
+            className="whitespace-nowrap text-[12.5px] text-ink-soft no-underline"
+          >
+            README 카드 →
+          </a>
           <a
             href="/admin"
             className="whitespace-nowrap text-[12.5px] text-ink-muted no-underline"
@@ -411,67 +367,23 @@ function SettingsView() {
               mono
             />
           </Row>
-          <Row label="OG 헤드라인">
-            <Textarea
-              value={form.og.headline.join("\n")}
-              onChange={(v) =>
-                setOg(
-                  "headline",
-                  v.split("\n").map((l) => l.trim()).filter(Boolean),
-                )
-              }
-              hint="줄바꿈으로 구분 (1~3줄)"
-              rows={3}
-            />
-          </Row>
-          <Row label="OG 태그라인">
-            <TextInput
-              value={form.og.tagline}
-              onChange={(v) => setOg("tagline", v)}
-            />
-          </Row>
-          <Row label="OG 라벨">
-            <TextInput
-              value={form.og.label}
-              onChange={(v) => setOg("label", v)}
-              mono
-            />
+          <Row label="OG 문구">
+            {/* 같은 문구를 README 카드도 쓴다. 두 곳에서 고치게 두면 어느 쪽이
+                정본인지 알 수 없어져서 편집은 카드 화면 한 곳에 모았다. */}
+            <p className="text-[12.5px] leading-[1.55] text-ink-muted">
+              헤드라인·태그라인·라벨은{" "}
+              <a href="/settings/cards" className="text-ink underline">
+                README 카드 설정
+              </a>
+              에서 고칩니다 — 같은 값을 카드가 함께 씁니다.
+            </p>
           </Row>
         </Card>
 
         {/* EDITOR — localStorage-backed */}
         <EditorCard />
 
-        {/* SAVE BAR */}
-        <div
-          className="sticky bottom-3 z-30 mt-6 flex items-center justify-between gap-3 rounded-xl border border-border-token bg-surface px-4 py-3 shadow-lg max-[680px]:flex-col max-[680px]:items-stretch"
-          style={{ backdropFilter: "saturate(160%) blur(8px)" }}
-        >
-          <StatusLine status={displayStatus} dirty={dirty} />
-          <div className="flex gap-2 max-[680px]:[&>button]:flex-1">
-            <button
-              type="button"
-              onClick={reset}
-              disabled={!dirty || status === "saving"}
-              className="cursor-pointer rounded-md border border-border-token bg-transparent px-3 py-1.5 font-sans text-[12.5px] font-medium text-ink disabled:cursor-not-allowed disabled:opacity-40 max-[680px]:min-h-[40px]"
-            >
-              되돌리기
-            </button>
-            <button
-              type="button"
-              onClick={save}
-              disabled={!dirty || status === "saving"}
-              className="rounded-md border border-transparent px-3.5 py-1.5 font-sans text-[12.5px] font-semibold disabled:opacity-50 max-[680px]:min-h-[40px]"
-              style={{
-                background: "var(--ink)",
-                color: "var(--bg)",
-                cursor: !dirty || status === "saving" ? "not-allowed" : "pointer",
-              }}
-            >
-              {status === "saving" ? "저장 중…" : "변경사항 저장"}
-            </button>
-          </div>
-        </div>
+        <SaveBar status={status} dirty={dirty} onReset={reset} onSave={save} />
       </div>
     </main>
   );
@@ -522,39 +434,6 @@ function EditorCard() {
         />
       </Row>
     </Card>
-  );
-}
-
-function StatusLine({
-  status,
-  dirty,
-}: {
-  status: SaveStatus;
-  dirty: boolean;
-}) {
-  if (typeof status === "object") {
-    return (
-      <span className="font-mono text-[12px] text-[#c95642]">
-        ✗ {status.error}
-      </span>
-    );
-  }
-  if (status === "saving") {
-    return (
-      <span className="font-mono text-[12px] text-ink-muted">저장 중…</span>
-    );
-  }
-  if (status === "saved") {
-    return (
-      <span className="font-mono text-[12px] text-[#5d8a66]">
-        ✓ 저장됨 — 페이지가 곧 새로고침됩니다
-      </span>
-    );
-  }
-  return (
-    <span className="font-mono text-[12px] text-ink-muted">
-      {dirty ? "● 변경됨 — 저장하지 않은 내용이 있습니다" : "변경사항 없음"}
-    </span>
   );
 }
 
@@ -885,140 +764,6 @@ function SeoMeter({
         {n}/{max}
         {over ? " 잘림" : ""}
       </code>
-    </div>
-  );
-}
-
-function Segmented<T extends string>({
-  value,
-  onChange,
-  options,
-}: {
-  value: T;
-  onChange: (v: T) => void;
-  options: [T, string][];
-}) {
-  return (
-    <div className="inline-flex gap-0.5 rounded-md border border-border-token bg-surface-alt p-0.5">
-      {options.map(([v, label]) => (
-        <button
-          key={v}
-          type="button"
-          onClick={() => onChange(v)}
-          className={`cursor-pointer rounded-[5px] border-none px-2.5 py-1 font-sans text-[12px] font-medium transition-colors ${
-            v === value
-              ? "bg-surface text-ink shadow-sm"
-              : "bg-transparent text-ink-muted hover:text-ink"
-          }`}
-        >
-          {label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function Card({
-  id,
-  title,
-  source,
-  children,
-}: {
-  id: string;
-  title: string;
-  source: string;
-  children: ReactNode;
-}) {
-  return (
-    <section
-      id={id}
-      className="mb-4 rounded-xl border border-border-token bg-surface px-[22px] py-5"
-      style={{ scrollMarginTop: 80 }}
-    >
-      <div className="mb-3.5 border-b border-border-token pb-3.5">
-        <h2 className="m-0 font-sans text-[17px] font-semibold tracking-[-0.02em] text-ink">
-          {title}
-        </h2>
-        <p className="mt-1 font-mono text-[12px] leading-[1.55] text-ink-muted">
-          {source}
-        </p>
-      </div>
-      <div className="flex flex-col gap-3.5">{children}</div>
-    </section>
-  );
-}
-
-function Row({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="grid grid-cols-[140px_1fr] items-center gap-3.5 max-[680px]:grid-cols-1 max-[680px]:items-start max-[680px]:gap-1.5">
-      <label className="whitespace-nowrap font-sans text-[13px] font-medium tracking-[-0.01em] text-ink-soft">
-        {label}
-      </label>
-      <div>{children}</div>
-    </div>
-  );
-}
-
-interface TextInputProps {
-  value: string;
-  onChange: (v: string) => void;
-  prefix?: string;
-  mono?: boolean;
-}
-function TextInput({ value, onChange, prefix, mono }: TextInputProps) {
-  return (
-    <div
-      className="flex items-stretch overflow-hidden rounded-md border border-border-token"
-      style={{ background: "var(--bg)" }}
-    >
-      {prefix && (
-        <span className="whitespace-nowrap border-r border-border-token bg-surface-alt px-2.5 py-[7px] font-mono text-[12.5px] text-ink-muted">
-          {prefix}
-        </span>
-      )}
-      <input
-        type="text"
-        value={value}
-        onChange={(e: ChangeEvent<HTMLInputElement>) =>
-          onChange(e.target.value)
-        }
-        className="flex-1 border-none bg-transparent px-2.5 py-[7px] tracking-[-0.005em] text-ink outline-none"
-        style={{
-          fontFamily: mono ? "var(--font-mono)" : "var(--font-sans)",
-          fontSize: mono ? 13 : 13.5,
-        }}
-      />
-    </div>
-  );
-}
-
-function Textarea({
-  value,
-  onChange,
-  hint,
-  rows = 2,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  hint?: string;
-  rows?: number;
-}) {
-  return (
-    <div>
-      <textarea
-        value={value}
-        rows={rows}
-        onChange={(e: ChangeEvent<HTMLTextAreaElement>) =>
-          onChange(e.target.value)
-        }
-        className="w-full rounded-md border border-border-token px-2.5 py-2 font-sans text-[13.5px] leading-[1.55] tracking-[-0.005em] text-ink outline-none"
-        style={{ resize: "vertical", background: "var(--bg)" }}
-      />
-      {hint && (
-        <div className="mt-1 text-right font-mono text-[11px] text-ink-muted">
-          {hint}
-        </div>
-      )}
     </div>
   );
 }
