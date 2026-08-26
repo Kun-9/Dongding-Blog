@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import {
   isImageLine,
   asImageSize,
+  widthOf,
   colsFor,
   ratioFor,
 } from "../src/lib/image-blocks.ts";
@@ -22,11 +23,23 @@ assert.ok(
 );
 
 // ── 폭 옵션 ──────────────────────────────────────────────────────────────
+assert.equal(asImageSize("xs"), "xs");
 assert.equal(asImageSize("sm"), "sm");
 assert.equal(asImageSize("wide"), "wide");
 assert.equal(asImageSize(""), "", "옵션 없으면 기본 폭");
 assert.equal(asImageSize("3"), "", "열 수는 폭이 아니다");
 assert.equal(asImageSize("huge"), "", "모르는 옵션은 기본 폭");
+assert.equal(asImageSize("240"), 240, "정수는 px 폭");
+assert.equal(asImageSize("1200"), 1200, "상한은 폭으로 받는다");
+assert.equal(asImageSize("1201"), "", "상한 밖은 기본 폭");
+assert.equal(asImageSize("64.5"), "", "소수는 폭이 아니다");
+
+// ── 폭 → max-width ───────────────────────────────────────────────────────
+assert.equal(widthOf("xs"), 120);
+assert.equal(widthOf("sm"), 380);
+assert.equal(widthOf(240), 240, "px 은 그대로");
+assert.equal(widthOf(""), undefined, "기본 폭은 max-width 를 안 건다");
+assert.equal(widthOf("wide"), undefined, "{wide} 는 클래스로 처리한다");
 
 // ── 묶음 열 수 ───────────────────────────────────────────────────────────
 assert.equal(colsFor(2, ""), 2, "2장 → 2열");

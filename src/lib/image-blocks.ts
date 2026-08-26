@@ -4,10 +4,19 @@
  * 이 파일만 돌려 본다.
  *
  * 문법: 줄에 이미지 하나만 → 그림, 연속 줄 → 묶음.
- *       `{sm}` 380px · 기본 본문 폭 · `{wide}` 880px, 열 수는 `{1}`~`{4}`.
+ *       `{xs}` 120px · `{sm}` 380px · 기본 본문 폭 · `{wide}` 880px,
+ *       `{240}` 처럼 px 을 직접 적어도 된다. 묶음의 열 수는 `{1}`~`{4}`.
  */
 
-export type ImageSize = "sm" | "wide" | "";
+/** 이름 폭 셋 + 임의 px. 열 수(`{2}`)와 겹치지 않게 px 은 하한을 둔다. */
+export type ImageSize = "xs" | "sm" | "wide" | "" | number;
+
+/** 이름 폭의 실제 px. `wide` 는 본문 밖으로 나가므로 여기 없다. */
+export const NAMED_WIDTH = { xs: 120, sm: 380 } as const;
+
+/** 직접 적을 수 있는 px 범위. 하한 5는 열 수 `{1}`~`{4}` 와 겹치지 않게. */
+export const MIN_PX = 5;
+export const MAX_PX = 1200;
 
 export interface ImageItem {
   src: string;
@@ -22,9 +31,20 @@ export function isImageLine(line: string): boolean {
   return IMG_LINE_RE.test(line.trim());
 }
 
-/** 폭 옵션만 골라낸다. 열 수(`{2}`)나 오타는 폭이 아니므로 기본값이다. */
+/**
+ * 폭 옵션만 골라낸다. 열 수(`{2}`)나 오타는 폭이 아니므로 기본값이다.
+ * `{240}` 같은 정수는 px 폭으로 본다 — 열 수와 겹치는 `{1}`~`{4}` 는 제외.
+ */
 export function asImageSize(opt: string): ImageSize {
-  return opt === "sm" || opt === "wide" ? opt : "";
+  if (opt === "xs" || opt === "sm" || opt === "wide") return opt;
+  const px = Number(opt);
+  return Number.isInteger(px) && px >= MIN_PX && px <= MAX_PX ? px : "";
+}
+
+/** 그림 블록의 max-width. 기본 폭과 `{wide}` 는 px 로 안 잡는다. */
+export function widthOf(size: ImageSize): number | undefined {
+  if (typeof size === "number") return size;
+  return size === "xs" || size === "sm" ? NAMED_WIDTH[size] : undefined;
 }
 
 /**

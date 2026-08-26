@@ -5,8 +5,9 @@
  *        URL 또는 /posts/slug 만 있는 줄 → 링크 카드.
  *        줄에 이미지만 있으면 그림 블록, 연속 줄이면 묶음.
  * Inline: **bold**, *italic*, `code`, [text](url), ![alt](url), 맨 URL.
- * Image: 줄 단독 → 캡션(alt) 달린 그림. `{sm}` 380px · 기본 본문 폭 ·
- *        `{wide}` 880px, 열 수는 `{2}`~`{4}`. 문장 안 이미지는 인라인 그대로.
+ * Image: 줄 단독 → 캡션(alt) 달린 그림. `{xs}` 120px · `{sm}` 380px · 기본
+ *        본문 폭 · `{wide}` 880px · `{240}` 처럼 px 직접. 열 수는 `{2}`~`{4}`.
+ *        문장 안 이미지는 인라인 그대로.
  * `>` is RESERVED for callouts. Plain blockquote is not supported.
  * 문단 안의 줄바꿈은 `<br>` 로 살아난다 (엔터 한 번 = 줄바꿈, 빈 줄 = 문단 분리,
  * 빈 줄 여러 개 = 개수만큼 여백).

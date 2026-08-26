@@ -1,10 +1,11 @@
 "use client";
 
 /**
- * Studio 전용 그림 블록. 그림을 누르면 폭 3단(`{sm}` / 기본 / `{wide}`)이 열리고,
- * 고른 값을 콜백으로 올려 본문의 `![…](…){…}` 토큰을 고쳐 쓴다.
+ * Studio 전용 그림 블록. 그림을 누르면 폭 4단(`{xs}` / `{sm}` / 기본 / `{wide}`)이
+ * 열리고, 고른 값을 콜백으로 올려 본문의 `![…](…){…}` 토큰을 고쳐 쓴다.
  *
- * 임의 px 슬라이더는 걷어냈다 — 새 문법에 자리가 없다 (시안 DEC-27).
+ * 본문에 `{240}` 처럼 px 을 직접 적은 그림은 어느 버튼도 켜지지 않고 현재 px 을
+ * 함께 보여 준다 — 버튼을 누르면 그 px 은 이름 폭으로 덮인다.
  * 묶음(연속 줄)의 열 수는 여기서 못 바꾼다. 본문에서 `{2}`~`{4}` 로 적는다.
  */
 import { useEffect, useRef, useState } from "react";
@@ -18,6 +19,7 @@ interface Props {
 }
 
 const SIZES: { v: ImageSize; label: string; hint: string }[] = [
+  { v: "xs", label: "뱃지", hint: "120px" },
   { v: "sm", label: "좁게", hint: "380px" },
   { v: "", label: "기본", hint: "본문 폭" },
   { v: "wide", label: "넓게", hint: "880px" },
@@ -84,6 +86,11 @@ export function EditableImage({ src, alt = "", size = "", onResize }: Props) {
               {s.label}
             </button>
           ))}
+          {typeof size === "number" && (
+            <span className="font-mono text-[11.5px] tabular-nums text-ink-muted">
+              {size}px
+            </span>
+          )}
           <button
             type="button"
             onClick={() => setOpen(false)}

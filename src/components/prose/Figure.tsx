@@ -2,8 +2,8 @@
 
 /**
  * 본문 이미지 — 줄에 혼자 있으면 `Figure`(캡션 + 확대), 연속 줄이면
- * `ImageGroup`(그리드). 폭은 `{sm}` 380px · 기본 본문 폭 · `{wide}` 880px 셋뿐이고
- * 열 수는 `{2}`~`{4}` 로 고정한다. 임의 px 은 자리가 없다 (시안 DEC-27).
+ * `ImageGroup`(그리드). 폭은 `{xs}` 120px · `{sm}` 380px · 기본 본문 폭 ·
+ * `{wide}` 880px, 또는 `{240}` 처럼 px 직접. 열 수는 `{2}`~`{4}`.
  *
  * 못 불러온 이미지는 깨진 아이콘 대신 점선 자리 + 파일명으로 떨어진다 —
  * 경로 오타를 발행 전에 잡으라고.
@@ -11,7 +11,13 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useMounted } from "@/lib/hooks";
-import { colsFor, ratioFor, type ImageItem, type ImageSize } from "@/lib/image-blocks";
+import {
+  colsFor,
+  ratioFor,
+  widthOf,
+  type ImageItem,
+  type ImageSize,
+} from "@/lib/image-blocks";
 
 export type { ImageItem, ImageSize };
 
@@ -78,10 +84,11 @@ export function Figure({
   size?: ImageSize;
 }) {
   const [zoom, setZoom] = useState(false);
+  const width = widthOf(size);
   return (
     <figure
       className={["my-[26px]", size === "wide" ? WIDE_CLASS : ""].join(" ")}
-      style={size === "sm" ? { maxWidth: 380 } : undefined}
+      style={width ? { maxWidth: width } : undefined}
     >
       <button
         type="button"

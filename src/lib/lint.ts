@@ -15,6 +15,7 @@ import readingTime from "reading-time";
 // `node scripts/check-lint-rules.mjs` 가 이 파일을 직접 로드한다 — 번들러를 안
 // 거치므로 `@/` alias 가 풀리지 않는다. 이 모듈만 상대 경로 + 확장자로 쓴다.
 import { CARD_LINE_RE, cardSlug } from "./link-cards.ts";
+import { MAX_PX } from "./image-blocks.ts";
 
 export type Severity = "error" | "warning" | "info";
 
@@ -80,8 +81,15 @@ const STATIC_ROUTES = new Set([
 
 const IMAGE_RE = /!\[([^\]]*)\]\(([^)\s]+)[^)]*\)(?:\{([A-Za-z0-9]+)\})?/g;
 const LINK_RE = /(!?)\[([^\]]*)\]\(([^)\s]+)[^)]*\)/g;
-/** 그림 블록에 붙일 수 있는 옵션 — 폭 2종과 열 수 1~4. */
-const IMAGE_OPTIONS = new Set(["sm", "wide", "1", "2", "3", "4"]);
+/**
+ * 그림 블록에 붙일 수 있는 옵션 — 이름 폭 3종, 임의 px, 묶음 열 수 1~4.
+ * 1~4 는 열 수라 px 으로 읽히지 않지만 표기 자체는 유효하다.
+ */
+function isImageOption(opt: string): boolean {
+  if (opt === "xs" || opt === "sm" || opt === "wide") return true;
+  const n = Number(opt);
+  return Number.isInteger(n) && n >= 1 && n <= MAX_PX;
+}
 
 interface ScannedLine {
   /** 1-based */
@@ -372,12 +380,12 @@ function lintReferences(s: Scan, ctx: LintContext, out: Issue[]): void {
       const src = m[2];
 
       const opt = m[3];
-      if (opt !== undefined && !IMAGE_OPTIONS.has(opt.toLowerCase())) {
+      if (opt !== undefined && !isImageOption(opt.toLowerCase())) {
         out.push({
           rule: "image-option",
           severity: "warning",
           line: n,
-          message: `알 수 없는 이미지 옵션이라 무시됩니다: {${opt}}. 폭은 \`{sm}\` · \`{wide}\`, 열 수는 \`{2}\`~\`{4}\` 입니다.`,
+          message: `알 수 없는 이미지 옵션이라 무시됩니다: {${opt}}. 폭은 \`{xs}\` · \`{sm}\` · \`{wide}\` 또는 \`{240}\` 같은 px, 열 수는 \`{2}\`~\`{4}\` 입니다.`,
         });
       }
 
@@ -387,7 +395,7 @@ function lintReferences(s: Scan, ctx: LintContext, out: Issue[]): void {
           rule: "image-width-legacy",
           severity: "warning",
           line: n,
-          message: `옛 너비 표기입니다. \`|${rawAlt.split("|").pop()}\` 가 캡션에 그대로 찍힙니다 — \`![alt](url){sm}\` / \`{wide}\` 로 바꾸세요.`,
+          message: `옛 너비 표기입니다. \`|${rawAlt.split("|").pop()}\` 가 캡션에 그대로 찍힙니다 — \`![alt](url){sm}\` / \`{240}\` 로 바꾸세요.`,
         });
       }
 
