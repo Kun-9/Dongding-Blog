@@ -31,10 +31,13 @@ export const API = {
   /** 미리보기의 링크 카드 재료 (POST {urls, slugs}). */
   linkMeta: "/api/link-meta/",
 
-  /** 릴리스 글감 — 상태 변경(PATCH), 추적 레포(PUT), 지금 수집(POST). */
-  releases: "/api/releases",
-  releaseSources: "/api/releases/sources",
-  releaseCollect: "/api/releases/collect",
+  /**
+   * 릴리스 글감 — 상태 변경(PATCH), 추적 레포(PUT), 지금 수집(POST).
+   * `trailingSlash: true` 라 슬래시를 빼면 308 을 한 번 타고 간다.
+   */
+  releases: "/api/releases/",
+  releaseSources: "/api/releases/sources/",
+  releaseCollect: "/api/releases/collect/",
 
   stats: {
     summary: "/api/stats/summary",
