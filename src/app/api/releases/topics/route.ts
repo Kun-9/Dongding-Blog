@@ -124,7 +124,7 @@ export async function PATCH(req: Request) {
   try {
     const topic =
       input.action === "advance"
-        ? await advanceTopic(input.id, input)
+        ? await advanceTopic(input.id, input, { allowPublish: true })
         : input.action === "revert"
           ? await revertTopic(input.id)
           : input.action === "drop"

@@ -637,7 +637,7 @@ const handler = createMcpHandler(
           "구체적으로 남긴다 — 2차 소스면 읽은 문서·PR 링크와 직접 실행해 본 결과, 자료면 만든 표·그림 목록. " +
           "단계를 실제로 마친 뒤에만 부를 것. 초안 단계는 postSlug 가 있어야 한다. " +
           "점검(review) 단계는 서버가 초안 본문을 check_release_voice 와 같은 기준으로 검사해 경고가 남으면 거절한다. " +
-          "발행 단계로 넘기면 묶인 글감이 written 으로 닫힌다.",
+          "발행(published)은 이 도구로 할 수 없다 — 글 공개는 사람이 어드민의 발행 버튼으로 한다.",
         inputSchema: z.object({
           id: z.number().int(),
           note: z.string().min(1).max(2000),
