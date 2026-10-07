@@ -8,7 +8,7 @@
  * 못 불러온 이미지는 깨진 아이콘 대신 점선 자리 + 파일명으로 떨어진다 —
  * 경로 오타를 발행 전에 잡으라고.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useMounted } from "@/lib/hooks";
 import {
@@ -18,6 +18,7 @@ import {
   type ImageItem,
   type ImageSize,
 } from "@/lib/image-blocks";
+import { prepareSvg, scopeIds } from "@/lib/svg-theme";
 
 export type { ImageItem, ImageSize };
 
@@ -44,6 +45,28 @@ function ImgSlot({
   cover?: boolean;
 }) {
   const [failed, setFailed] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
+  // 하이드레이션 전에 로드가 실패하면 onError 를 놓친다. 붙은 뒤 한 번 더 본다.
+  useEffect(() => {
+    const img = imgRef.current;
+    if (img && img.complete && img.naturalWidth === 0) setFailed(true);
+  }, []);
+
+  if (failed && /\/todo-[^/]*$/.test(src)) {
+    // 아직 채우지 않은 캡처 자리. 발행 점검이 이게 남아 있으면 막는다.
+    return (
+      <span
+        className="flex w-full flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border-strong bg-surface-alt"
+        style={{ aspectRatio: ratio ?? "16 / 9" }}
+      >
+        <span aria-hidden className="text-[20px] leading-none text-ink-subtle">⌗</span>
+        <span className="font-sans text-[12.5px] font-semibold text-ink-muted">캡처 필요</span>
+        <span className="break-all px-2.5 text-center font-mono text-[11px] leading-[1.3] text-ink-subtle">
+          {fileNameOf(src)}
+        </span>
+      </span>
+    );
+  }
 
   if (failed) {
     return (
@@ -64,6 +87,7 @@ function ImgSlot({
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
+      ref={imgRef}
       src={src}
       alt={alt}
       loading="lazy"
@@ -96,7 +120,7 @@ export function Figure({
         aria-label={alt ? `${alt} — 확대` : "이미지 확대"}
         className="block w-full cursor-zoom-in border-0 bg-transparent p-0"
       >
-        <ImgSlot src={src} alt={alt} />
+        {/\.svg(\?|$)/i.test(src) ? <InlineSvg src={src} alt={alt} /> : <ImgSlot src={src} alt={alt} />}
       </button>
       {alt ? (
         <figcaption className="mt-[9px] font-sans text-[12.5px] leading-[1.5] tracking-[-0.005em] text-ink-muted">
@@ -107,6 +131,39 @@ export function Figure({
         <Lightbox items={[{ src, alt }]} index={0} onClose={() => setZoom(false)} />
       )}
     </figure>
+  );
+}
+
+/**
+ * SVG 는 본문에 직접 그린다 — 그래야 그림이 블로그 테마 색 변수를 쓴다.
+ * 받아오기 전이나 처리에 실패하면 <img> 로 보여 준다.
+ */
+function InlineSvg({ src, alt }: { src: string; alt: string }) {
+  const [markup, setMarkup] = useState<string | null>(null);
+  const prefix = `f${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
+
+  useEffect(() => {
+    let alive = true;
+    fetch(src)
+      .then((res) => (res.ok ? res.text() : Promise.reject(res.status)))
+      .then((text) => {
+        const ready = prepareSvg(text);
+        if (alive && ready) setMarkup(scopeIds(ready, prefix));
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [src, prefix]);
+
+  if (!markup) return <ImgSlot src={src} alt={alt} />;
+  return (
+    <span
+      role="img"
+      aria-label={alt}
+      className="block w-full [&>svg]:block [&>svg]:h-auto [&>svg]:w-full"
+      dangerouslySetInnerHTML={{ __html: markup }}
+    />
   );
 }
 

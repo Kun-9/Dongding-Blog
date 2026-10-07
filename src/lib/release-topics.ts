@@ -289,7 +289,10 @@ export async function advanceTopic(
     const post = postSlug ? await loadPost(postSlug) : null;
     if (!post) throw new TopicError(`'${postSlug}' 글이 없다. 초안 slug 를 확인할 것`);
     const report = checkVoice(post);
-    const blocking = report.issues.filter((i) => i.severity !== "info");
+    // 캡처 자리(todo-)는 점검 단계에선 참고지만, 발행 직전에는 막는다.
+    const blocking = report.issues.filter(
+      (i) => i.severity !== "info" || (next.key === "published" && i.rule === "capture-pending"),
+    );
     if (blocking.length > 0) {
       const list = blocking
         .slice(0, 6)

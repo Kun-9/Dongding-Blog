@@ -109,6 +109,8 @@ const Action = z.discriminatedUnion("action", [
     summary: z.string().min(1).max(300).optional(),
     tags: z.array(z.string()).max(10).optional(),
     replacements: z.array(z.object({ old: z.string().min(1), new: z.string() })).max(50).optional(),
+    /** 본문 통째 교체 — 초안을 다시 쓸 때. replacements 와 같이 쓰지 않는다. */
+    body: z.string().min(1).max(200_000).optional(),
   }),
   z.object({
     action: z.literal("check"),
@@ -209,9 +211,12 @@ export async function POST(req: Request) {
       case "post_update": {
         const post = await assertWorkerPost(input.slug);
         if (!post) return bad("없는 글", 404);
-        const body = input.replacements?.length
-          ? applyReplacements(post.body, input.replacements)
-          : post.body;
+        if (input.body && input.replacements?.length) return bad("body 와 replacements 는 같이 쓰지 않는다");
+        const body = input.body
+          ? input.body
+          : input.replacements?.length
+            ? applyReplacements(post.body, input.replacements)
+            : post.body;
         const patch = {
           body: body.endsWith("\n") ? body : `${body}\n`,
           ...(input.title ? { title: input.title } : {}),
@@ -240,8 +245,8 @@ export async function POST(req: Request) {
         if (!input.svg && !input.base64) return bad("svg 나 base64 중 하나는 있어야 한다");
         const ext = input.name.split(".").pop()!;
         if (ext === "svg" && !input.svg) return bad(".svg 는 svg 에 원문을 넣는다");
-        if (input.svg && /<script|\son\w+\s*=/i.test(input.svg)) {
-          return bad("SVG 에 script·이벤트 속성은 넣을 수 없다");
+        if (input.svg && /<script|\son\w+\s*=|<foreignObject|(?:xlink:)?href\s*=\s*["']\s*(?:https?:|\/\/)/i.test(input.svg)) {
+          return bad("SVG 에 script·이벤트 속성·foreignObject·외부 링크는 넣을 수 없다");
         }
         const type =
           ext === "svg" ? "image/svg+xml" : ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "image/jpeg";
