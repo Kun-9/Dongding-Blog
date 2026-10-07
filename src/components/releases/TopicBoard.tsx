@@ -4,9 +4,10 @@ import { useState, type ReactNode } from "react";
 import { API } from "@/lib/api-routes";
 import { Collapse } from "@/components/releases/Collapse";
 import { useMounted } from "@/lib/hooks";
+import { renderMarkdown } from "@/lib/markdown";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import type { QueueRow } from "@/lib/release-queue";
-import type { TopicRow } from "@/lib/release-topics";
+import type { AiUntil, TopicRow } from "@/lib/release-topics";
 import {
   STAGES,
   nextStage,
@@ -646,7 +647,8 @@ function TopicCard({
 
       {/* 6 다음 할 일 — 카드에서 가장 눈에 띄어야 하는 자리. 이웃 카드가 폼을
           펼쳐 줄이 길어져도 늘어나지 않게 위에 붙인다. */}
-      <div className="mt-4 self-start rounded-lg bg-surface-alt p-3.5">
+      <div className="mt-4 self-start">
+      <div className="rounded-lg bg-surface-alt p-3.5">
         {paused ? (
           <>
             <div className="font-sans text-[10.5px] font-bold uppercase tracking-[0.08em] text-ink-muted">
@@ -765,9 +767,12 @@ function TopicCard({
           </>
         )}
       </div>
+      <AiPanel topic={topic} onChange={onChange} />
+      </div>
 
-      {/* 7 근거 타임라인과 오류 */}
+      {/* 7 작업 노트, 근거 타임라인, 오류 */}
       <div>
+      {topic.notes && <Notes markdown={topic.notes} />}
       {history.length > 0 && (
         <ol className="m-0 ml-[3px] mt-4 list-none space-y-3 border-l border-border-token p-0 pl-4">
           {history.map((s) => {
@@ -839,6 +844,152 @@ function TopicCard({
         />
       </div>
     </li>
+  );
+}
+
+/* ── AI 작업 ─────────────────────────────────────────────────────────── */
+
+/** AI 가 어디까지 갈지. 발행은 고를 수 없다 — 공개는 사람이 정한다. */
+const UNTIL_OPTIONS: { key: AiUntil; label: string }[] = [
+  { key: "sources", label: "2차 소스까지" },
+  { key: "assets", label: "자료까지" },
+  { key: "draft", label: "초안까지" },
+  { key: "review", label: "점검까지" },
+];
+
+function untilLabel(key: AiUntil | null) {
+  return UNTIL_OPTIONS.find((o) => o.key === key)?.label ?? "";
+}
+
+function ago(iso: string | null): string {
+  if (!iso) return "";
+  const m = Math.round((Date.now() - Date.parse(iso)) / 60000);
+  if (m < 1) return "방금";
+  if (m < 60) return `${m}분 전`;
+  const h = Math.round(m / 60);
+  return h < 24 ? `${h}시간 전` : `${Math.round(h / 24)}일 전`;
+}
+
+/**
+ * "AI에게 맡기기". 누르면 요청만 쌓이고, 실행기(루틴·크론)가 다음 실행 때
+ * 집어서 실제로 조사·자료·초안·점검을 하고 단계를 넘긴다.
+ */
+function AiPanel({ topic, onChange }: { topic: TopicRow; onChange: (t: TopicRow) => void }) {
+  const left = UNTIL_OPTIONS.filter((o) => stageIndex(o.key) > stageIndex(topic.stage));
+  const [until, setUntil] = useState<AiUntil>("review");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { status, message, updatedAt } = topic.ai;
+
+  if (topic.droppedReason !== null || (left.length === 0 && !status)) return null;
+
+  async function send(body: Record<string, unknown>) {
+    setBusy(true);
+    setError(null);
+    const res = await call("PATCH", { id: topic.id, ...body });
+    setBusy(false);
+    if ("error" in res) setError(res.error);
+    else if ("topic" in res) onChange(res.topic);
+  }
+
+  const pick = left.some((o) => o.key === until) ? until : left[left.length - 1]?.key;
+
+  return (
+    <div className="mt-2 rounded-lg border border-dashed border-border-token px-3 py-2.5">
+      {status === "queued" || status === "running" ? (
+        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+          <span
+            aria-hidden
+            className={`size-2 shrink-0 rounded-full ${status === "running" ? "topic-pulse" : ""}`}
+            style={{ background: status === "running" ? "var(--callout-tip-glyph)" : "var(--ink-subtle)" }}
+          />
+          <span className="min-w-0 flex-1 text-[12.5px] leading-[1.5] text-ink-soft">
+            {status === "running" ? (
+              <>
+                <b className="font-semibold text-ink">AI 작업 중</b> · {message ?? "진행 중"}
+              </>
+            ) : (
+              <>
+                <b className="font-semibold text-ink">AI 대기 중</b> · {untilLabel(topic.ai.until)}, 다음 실행 때 시작
+              </>
+            )}
+            <span className="ml-1.5 font-mono text-[11px] text-ink-subtle">{ago(updatedAt)}</span>
+          </span>
+          <Quiet disabled={busy} onClick={() => send({ action: "ai_cancel" })}>
+            취소
+          </Quiet>
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-center gap-2">
+          {status === "failed" ? (
+            <span className="w-full whitespace-pre-line text-[12.5px] leading-[1.5] text-danger">
+              <b className="font-semibold">AI 멈춤</b> · {message}
+            </span>
+          ) : (
+            message && (
+              <span className="w-full text-[12px] leading-[1.5] text-ink-muted">
+                <b className="font-semibold text-ink-soft">AI</b> · {message}
+                <span className="ml-1.5 font-mono text-[11px] text-ink-subtle">{ago(updatedAt)}</span>
+              </span>
+            )
+          )}
+          {left.length > 0 && pick && (
+            <>
+              <select
+                value={pick}
+                onChange={(e) => setUntil(e.target.value as AiUntil)}
+                aria-label="AI 가 진행할 단계"
+                className="rounded-full border border-border-token bg-surface px-2.5 py-1 font-sans text-[12px] text-ink-soft outline-none focus:border-border-strong"
+              >
+                {left.map((o) => (
+                  <option key={o.key} value={o.key}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => send({ action: "ai", until: pick })}
+                className="inline-flex items-center gap-1.5 rounded-full border border-border-strong px-3 py-1 font-sans text-[12px] font-medium text-ink transition-[background-color,transform] hover:bg-hover active:scale-[0.97] disabled:opacity-40"
+              >
+                <span aria-hidden>✦</span>
+                {status === "failed" ? "다시 맡기기" : "AI에게 맡기기"}
+              </button>
+            </>
+          )}
+        </div>
+      )}
+      {error && <p className="m-0 mt-1.5 text-[12px] text-danger">{error}</p>}
+    </div>
+  );
+}
+
+/** 작업 노트 — AI 가 조사한 내용·자료가 쌓이는 곳. 블로그 본문과 같은 렌더러. */
+function Notes({ markdown }: { markdown: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mt-4">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="flex items-center gap-1.5 font-sans text-[12.5px] font-semibold text-ink-soft transition-colors hover:text-ink"
+      >
+        <span aria-hidden className={`text-[9px] transition-transform duration-200 ${open ? "rotate-90" : ""}`}>
+          ▶
+        </span>
+        작업 노트
+        <span className="font-mono text-[11px] font-normal text-ink-subtle">
+          {markdown.length.toLocaleString()}자
+        </span>
+      </button>
+      <Collapse open={open}>
+        <div className="mt-2 max-h-[420px] overflow-y-auto rounded-lg border border-border-token bg-bg px-4 py-3 text-[13.5px] [&_h2]:mt-4 [&_h2]:text-[15px] [&_h3]:text-[14px]">
+          {open && renderMarkdown(markdown)}
+        </div>
+      </Collapse>
+    </div>
   );
 }
 

@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { API } from "@/lib/api-routes";
 import type { QueueRow } from "@/lib/release-queue";
 import type { TopicRow } from "@/lib/release-topics";
 import { ReleaseQueue } from "@/components/releases/ReleaseQueue";
@@ -19,6 +20,20 @@ export function ReleaseDesk({
 }) {
   const [rows, setRows] = useState(initialQueue);
   const [topics, setTopics] = useState(initialTopics);
+
+  // AI 작업이 걸려 있는 동안만 30초마다 다시 읽는다. 실행기가 단계를 넘기고
+  // 노트를 쌓는 것이 새로고침 없이 보인다.
+  const watching = topics.some((t) => t.ai.status === "queued" || t.ai.status === "running");
+  useEffect(() => {
+    if (!watching) return;
+    const timer = setInterval(async () => {
+      const res = await fetch(API.releaseTopics).catch(() => null);
+      if (!res?.ok) return;
+      const body = (await res.json()) as { topics: TopicRow[] };
+      setTopics(body.topics);
+    }, 30_000);
+    return () => clearInterval(timer);
+  }, [watching]);
 
   const topicsOf = useMemo(() => {
     const m = new Map<string, string[]>();

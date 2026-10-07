@@ -427,6 +427,11 @@ export type Database = {
           stage: string
           title: string
           updated_at: string
+          ai_message: string | null
+          ai_status: string | null
+          ai_until: string | null
+          ai_updated_at: string | null
+          notes: string
         }
         Insert: {
           angle?: string | null
@@ -438,6 +443,11 @@ export type Database = {
           stage?: string
           title: string
           updated_at?: string
+          ai_message?: string | null
+          ai_status?: string | null
+          ai_until?: string | null
+          ai_updated_at?: string | null
+          notes?: string
         }
         Update: {
           angle?: string | null
@@ -449,6 +459,11 @@ export type Database = {
           stage?: string
           title?: string
           updated_at?: string
+          ai_message?: string | null
+          ai_status?: string | null
+          ai_until?: string | null
+          ai_updated_at?: string | null
+          notes?: string
         }
         Relationships: []
       }
