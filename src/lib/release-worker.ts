@@ -17,12 +17,13 @@ export const WORKER_PROMPT = `# 릴리스 글 실행기 지시서
 
 모든 호출은 POST \`$APP/api/releases/worker/\` 에 JSON 본문 \`{"action": "...", ...}\`. 헤더는 \`Authorization: Bearer $TOKEN\`, \`content-type: application/json\`. 끝의 슬래시를 빼지 않는다.
 
+Bash 호출끼리는 셸 변수·함수가 이어지지 않는다. 그래도 토큰을 스크립트·env 파일에 저장하지 않는다(권한 분류기가 막는다). 매 호출 curl 에 주소와 헤더를 값 그대로 쓴다:
+
 \`\`\`bash
-api() { curl -sS -X POST "$APP/api/releases/worker/" -H "Authorization: Bearer $TOKEN" -H "content-type: application/json" --data-binary "$1"; }
-api '{"action":"claim"}'
+curl -sS -X POST "$APP/api/releases/worker/" -H "Authorization: Bearer $TOKEN" -H "content-type: application/json" --data-binary '{"action":"claim"}'
 \`\`\`
 
-본문이 길거나 한국어·따옴표·줄바꿈이 섞이면 셸 따옴표가 깨진다. python3 로 JSON 파일을 만들어 \`--data-binary @file.json\` 으로 보낸다:
+본문이 길거나 한국어·따옴표·줄바꿈이 섞이면 셸 따옴표가 깨진다. python3 로 JSON 파일을 만들어 \`--data-binary @file.json\` 으로 보낸다. 요청 파일에는 토큰을 넣지 않는다:
 
 \`\`\`bash
 python3 - <<'PY' > /tmp/req.json
@@ -58,7 +59,8 @@ curl -sS -X POST "$APP/api/releases/worker/" -H "Authorization: Bearer $TOKEN" -
    - 시작할 때 \`report\`. 이게 에러를 내면 어드민에서 취소한 것이다. 즉시 멈추고 finish 도 부르지 않는다.
    - 단계 안에서도 작은 일마다 \`report\` 한다(사람이 어드민 화면에서 실시간 로그로 본다). 예: "공식 문서 읽는 중 — code.claude.com/docs/…", "PR #1234 확인", "버전별 비교 표 만드는 중", "흐름 그림 SVG 그리는 중", "초안 3/5 섹션 쓰는 중", "점검 경고 4건 고치는 중". 한 줄, 구체적으로. 1~2분에 한 번꼴.
    - 끝나면 \`advance\` 로 근거(note)를 남기고, 돌려받은 주제로 다음 단계를 정한다.
-4. 마지막에 반드시 \`finish\`. 성공이면 ok=true 와 한두 줄 요약, 막혔으면 ok=false 와 막힌 이유·남은 할 일. 추측으로 채우지 않는다.
+4. 도구 호출이 권한 분류기에 거부되면 같은 결과를 다른 방법으로 우회하지 않는다. 주제를 집은 뒤라면 \`finish\` ok=false 로 거부된 호출과 이유를 남기고 끝낸다(그것도 막히면 그대로 끝낸다). 집은 채 두면 어드민에 2시간 동안 "작업 중"으로 남는다.
+5. 마지막에 반드시 \`finish\`. 성공이면 ok=true 와 한두 줄 요약, 막혔으면 ok=false 와 막힌 이유·남은 할 일. 추측으로 채우지 않는다.
 
 ## 단계별 할 일
 
