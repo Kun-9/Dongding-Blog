@@ -550,7 +550,7 @@ const handler = createMcpHandler(
         title: "글 이미지 올리기",
         description:
           "글에 넣을 그림을 Storage(post-images/<slug>/<name>)에 올리고 본문에 쓸 경로(/posts/<slug>/<name>)를 돌려준다. " +
-          "SVG 는 svg 에 원문을, PNG·JPEG 는 base64 에 넣는다. 순서·전후 비교·버전 흐름은 올리지 말고 본문에 그림 블록(```flow·compare·timeline)으로 쓴다 — 그 밖의 모양만 SVG 로. " +
+          "SVG 는 svg 에 원문을, PNG·JPEG 는 base64 에 넣는다. 올리기 전에 그림 블록(```flow 등 10종)이나 ```figure(디자인 키트 HTML)로 되는지 먼저 본다 — 둘 다 안 되는 모양만 SVG 로. " +
           "본문에 인라인으로 그려지므로 색은 블로그 변수로 쓴다(var(--ink, #1c1c1c) 처럼 대체값과 함께) — 양식은 get_release_writing_guide 의 'SVG 그림 양식'. " +
           "같은 이름이 있으면 덮어쓴다.",
         inputSchema: z.object({

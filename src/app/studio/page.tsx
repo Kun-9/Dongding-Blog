@@ -2318,6 +2318,14 @@ function MarkdownCheatsheet() {
                 label="코드 블록 (lang : filename)"
               />
               <CheatsheetRow
+                syntax={"```flow\ncaption: 캡션\n단계 | 설명\n강조할 단계 *\n```"}
+                label="그림 블록 — flow·cycle·compare·matrix·timeline·sequence·layers·tree·stats·bars"
+              />
+              <CheatsheetRow
+                syntax={'```figure\n<div class="fig-flow">…</div>\n```'}
+                label="figure — fig-* 디자인 키트 HTML(그림 블록으로 안 될 때)"
+              />
+              <CheatsheetRow
                 syntax={"> [!INFO] 제목\n> 본문 줄들\n> 계속"}
                 label="Callout — INFO / WARNING / TIP / NOTE"
               />
