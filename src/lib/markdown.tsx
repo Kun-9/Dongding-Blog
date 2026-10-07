@@ -1,6 +1,6 @@
 /**
  * Shared markdown parser — used by Studio preview AND post detail page.
- * Block: # ## ### ####, ```lang:filename, > [!KIND] title (multi-line),
+ * Block: # ## ### ####, ```lang:filename (```flow·compare·timeline 은 그림), > [!KIND] title (multi-line),
  *        - / 1. lists, ---, blank lines.
  *        URL 또는 /posts/slug 만 있는 줄 → 링크 카드.
  *        줄에 이미지만 있으면 그림 블록, 연속 줄이면 묶음.
@@ -24,6 +24,8 @@ import {
 } from "@/lib/link-cards";
 import { Callout, type CalloutKind } from "@/components/prose/Callout";
 import { CodeBlock } from "@/components/prose/CodeBlock";
+import { Diagram } from "@/components/prose/Diagram";
+import { isDiagramLang, parseDiagram } from "@/lib/diagram";
 import { EditableImage } from "@/components/prose/EditableImage";
 import { Figure, ImageGroup } from "@/components/prose/Figure";
 import {
@@ -423,6 +425,14 @@ export function renderMarkdown(
         i++;
       }
       i++; // skip closing fence
+      // ```flow · ```compare · ```timeline → 그림. 문법이 틀리면 코드로 보인다.
+      if (isDiagramLang(lang) && !filename) {
+        const { diagram } = parseDiagram(lang, code.join("\n"));
+        if (diagram) {
+          out.push(<Diagram key={k()} diagram={diagram} />);
+          continue;
+        }
+      }
       out.push(
         <CodeBlock
           key={k()}

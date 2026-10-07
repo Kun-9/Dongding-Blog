@@ -15,7 +15,7 @@ import {
   stageLabel,
   type StageKey,
 } from "@/lib/release-stages";
-import { AVOID, OUTLINE, REQUIRED_PARTS, VOICE_RULES } from "@/lib/voice";
+import { AVOID, CLARITY_RULES, OUTLINE, REQUIRED_PARTS, VOICE_RULES } from "@/lib/voice";
 
 /** 단계마다 근거 칸에 무엇을 적을지. */
 const NOTE_HINT: Partial<Record<StageKey, string>> = {
@@ -368,9 +368,9 @@ function GuideCard() {
 
       <Collapse open={open}>
         <div className="grid gap-5 border-t border-border-token px-4 py-4 sm:px-5 md:grid-cols-3">
-          <GuideColumn title="문체">
+          <GuideColumn title="문체·설명">
             <ul className="m-0 list-none space-y-1.5 p-0">
-              {VOICE_RULES.map((v) => (
+              {[...CLARITY_RULES.slice(0, 4), ...VOICE_RULES].map((v) => (
                 <li key={v} className="flex gap-2 text-[13px] leading-[1.55] text-ink-soft">
                   <span aria-hidden className="mt-[7px] size-1 shrink-0 rounded-full bg-ink-subtle" />
                   {v}

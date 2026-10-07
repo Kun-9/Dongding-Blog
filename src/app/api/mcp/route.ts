@@ -550,8 +550,8 @@ const handler = createMcpHandler(
         title: "글 이미지 올리기",
         description:
           "글에 넣을 그림을 Storage(post-images/<slug>/<name>)에 올리고 본문에 쓸 경로(/posts/<slug>/<name>)를 돌려준다. " +
-          "SVG 는 svg 에 원문을, PNG·JPEG 는 base64 에 넣는다. 흐름 그림·구조 그림은 SVG 로 직접 그릴 것: " +
-          "배경 투명, 글꼴 sans-serif, 글자 색 #5f5f5d·선 #1c1c1c 처럼 라이트·다크 모두에서 읽히는 중간 톤, 가로 720px 안팎. " +
+          "SVG 는 svg 에 원문을, PNG·JPEG 는 base64 에 넣는다. 순서·전후 비교·버전 흐름은 올리지 말고 본문에 그림 블록(```flow·compare·timeline)으로 쓴다 — 그 밖의 모양만 SVG 로. " +
+          "본문에 인라인으로 그려지므로 색은 블로그 변수로 쓴다(var(--ink, #1c1c1c) 처럼 대체값과 함께) — 양식은 get_release_writing_guide 의 'SVG 그림 양식'. " +
           "같은 이름이 있으면 덮어쓴다.",
         inputSchema: z.object({
           slug: z.string().regex(SLUG_PATTERN),
@@ -566,7 +566,9 @@ const handler = createMcpHandler(
         const type =
           ext === "svg" ? "image/svg+xml" : ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "image/jpeg";
         if (ext === "svg" && !svg) return fail(".svg 는 svg 에 원문을 넣으세요.");
-        if (ext === "svg" && /<script|on\w+\s*=/i.test(svg!)) return fail("SVG 에 script·이벤트 속성은 넣을 수 없습니다.");
+        if (ext === "svg" && /<script|\son\w+\s*=|<foreignObject|(?:xlink:)?href\s*=\s*["']\s*(?:https?:|\/\/)/i.test(svg!)) {
+          return fail("SVG 에 script·이벤트 속성·foreignObject·외부 링크는 넣을 수 없습니다.");
+        }
         const bytes = svg ? new TextEncoder().encode(svg) : Buffer.from(base64!, "base64");
         const { error } = await dbAdmin()
           .storage.from(IMAGE_BUCKET)
