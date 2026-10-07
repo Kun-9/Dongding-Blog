@@ -11,7 +11,8 @@
  * next 에 의존하지 않는 순수 모듈이다 — 스크립트에서도 그대로 돌린다.
  */
 import type { Issue } from "./lint";
-import { findDiagrams } from "./diagram";
+import { findDiagrams, findFences } from "./diagram";
+import { parseFigureHtml } from "./html-figure";
 
 /* ── 기준 ─────────────────────────────────────────────────────────────── */
 
@@ -37,8 +38,8 @@ export const AVOID: { pattern: RegExp; label: string; hint: string }[] = [
 /** 글 한 편에 꼭 있어야 하는 구성 요소. 차별점이 여기서 나온다. */
 export const REQUIRED_PARTS = [
   { key: "summary-box", label: "도입 요약 박스", how: "첫머리 `> [!INFO]` 에 무엇이·언제부터·누구에게 바뀌는지를 두세 문장 산문으로. 굵은 라벨 불릿 금지" },
-  { key: "table", label: "비교 표", how: "꼭 필요한 비교 하나(전/후, 버전별). markdown 표나 ```compare 블록. 글 전체 두 개까지" },
-  { key: "visual", label: "본문 속 그림", how: "설명하는 문단 바로 아래에 그림 블록(```flow·```compare·```timeline) 또는 단독 줄 `![캡션](경로)`. 캡처 자리(todo-)만으로는 안 되고 직접 만든 그림이 하나 이상" },
+  { key: "table", label: "비교 표", how: "꼭 필요한 비교 하나(전/후, 버전별). markdown 표나 ```compare·```matrix 블록. 글 전체 두 개까지" },
+  { key: "visual", label: "본문 속 그림", how: "설명하는 문단 바로 아래에 그림 블록(```flow 등 10종)·```figure 또는 단독 줄 `![캡션](경로)`. 캡처 자리(todo-)만으로는 안 되고 직접 만든 그림이 하나 이상" },
   { key: "source", label: "출처 링크", how: "본문 문장 안 링크로. 끝에 목록으로 몰지 않는다" },
 ] as const;
 
@@ -78,11 +79,12 @@ export const FORMAT_RULES = [
 /** 그림 규칙 — 점검기가 캡션·캡처 자리를 잡는다. */
 export const VISUAL_RULES = [
   "그림은 그 내용을 설명하는 문단 바로 다음에 둔다(앞뒤 빈 줄). 그림 모음 섹션은 만들지 않는다",
-  "순서·단계는 ```flow, 전/후·버전 차이는 ```compare, 버전·시점 흐름은 ```timeline 그림 블록으로 쓴다. 블로그가 테마 색·반응형·애니메이션까지 그린다(아래 그림 블록 문법)",
-  "그림 블록의 캡션은 첫 줄 `caption: …` 에 40자 안팎 명사구로",
-  "캡션은 alt 자리에 쓴다. 그림 아래에 붙는다. 그림이 보여 주는 것을 40자 안팎 명사구로",
+  "그림을 고르는 순서: ① 그림 블록(아래 10종) → ② 그림 블록으로 안 되는 구성만 ```figure(디자인 키트 HTML) → ③ 그래도 안 되는 모양만 SVG. 앞 단계로 되면 뒤로 가지 않는다",
+  "그림 블록은 내용에 맞는 종류로: 단계는 flow, 반복은 cycle, 전/후는 compare, 기능×대상은 matrix, 버전 흐름은 timeline, 주고받는 순서는 sequence, 포함·우선순위는 layers, 파일·계층은 tree, 핵심 숫자는 stats, 수치 비교는 bars",
+  "그림 하나에 생각 하나. 칸의 글자는 짧게(제목 몇 단어 + 짧은 설명). 문장은 본문이 한다",
+  "강조(`*`)는 그림마다 지금 이야기하는 한두 곳만. 다 강조하면 아무것도 안 보인다",
+  "그림 블록·figure 의 캡션은 첫 줄 `caption: …`, 이미지는 alt 자리에. 그림이 보여 주는 것을 40자 안팎 명사구로",
   "캡처가 필요한 자리는 그 자리에 `![캡션](/posts/<slug>/todo-<이름>.png)` 를 넣는다. 본문에 '캡처 필요' 자리로 보이고, 남아 있으면 발행이 막힌다. 같은 경로로 실제 캡처를 올리면 채워진다",
-  "그림 블록으로 안 되는 모양(겹친 계층, 화면 구조 등)만 SVG 로 직접 그린다. 블로그 색 변수를 쓰면 라이트·다크 테마를 그대로 따라간다(아래 SVG 그림 양식)",
 ] as const;
 
 /**
@@ -118,35 +120,77 @@ export const SVG_STYLE = `- 캔버스: \`viewBox="0 0 720 H"\` (H 는 내용만�
 \`\`\``;
 
 /** 그림 블록 문법(lib/diagram.ts). 사람과 실행기가 같이 본다. */
-export const DIAGRAM_SYNTAX = `코드 펜스 언어를 flow·compare·timeline 으로 쓰면 그림이 된다. 줄 끝 \`*\` 는 강조(지금 이야기하는 것), \`~\` 는 흐리게(예정·선택). 칸은 \`|\` 로 가른다. 문법이 틀리면 코드로 보이고 점검에서 경고가 난다.
+export const DIAGRAM_SYNTAX = String.raw`코드 펜스 언어를 아래 종류로 쓰면 그림이 된다. 머리 줄 ${"`caption: …`"} 은 그림 아래 캡션. 줄 끝 ${"`*`"} 는 강조, ${"`~`"} 는 흐리게(예정·선택). 칸은 ${"`|`"} 로 가른다. 문법이 틀리면 코드로 보이고 점검에서 경고가 난다.
 
-- flow: 한 줄에 한 단계, \`제목 | 짧은 설명\`. 2~8단계, 제목 24자까지. 네 단계까지는 가로, 그 이상은 세로로 그려진다
-- compare: 머리 줄 \`| 이전 | 이후\`(열 이름은 바꿔도 된다), 그 아래 \`항목 | 이전 | 이후\`. 10줄까지. 같은 값은 "그대로"로 보인다
-- timeline: \`시점 | 일어난 일\`. 2~10줄
+- flow — 한 방향 단계. ${"`제목 | 설명`"}. 2~8단계, 제목 24자
+- cycle — 되풀이되는 고리. ${"`제목 | 설명`"}, 머리 ${"`center: 가운데 글`"}. 3~6단계, 제목 14자
+- compare — 전/후. 머리 ${"`| 이전 | 이후`"}, ${"`항목 | 이전 | 이후`"}. 10줄
+- matrix — 기능 × 대상. 머리 ${"`| A | B | C`"}, ${"`항목 | o | x | △`"}(글자도 됨). 5열, 12줄
+- timeline — 시점별 사건. ${"`시점 | 일어난 일`"}. 2~10줄
+- sequence — 주고받는 순서. 머리 ${"`actors: A, B, C`"}, ${"`A -> B | 내용`"}(응답은 ${"`-->`"}, 혼자 하는 일은 ${"`A -> A`"}). 참여자 2~5, 12줄
+- layers — 포함(바깥→안) / 우선순위. ${"`제목 | 설명`"}, 머리 ${"`layout: stack`"} 이면 위가 먼저인 층. 5겹 / 8층
+- tree — 파일·계층. 들여쓰기 두 칸이 한 단계, ${"`이름 | 설명`"}. ${"`폴더/`"}·${"`파일.ts`"} 는 아이콘이 붙는다. 40칸, 6단계
+- stats — 핵심 숫자. ${"`값 | 설명 | 출처(선택)`"}, 값에 ${"`14회 → 2회`"} 처럼 변화. 6개
+- bars — 수치 비교. ${"`이름 | 숫자 | 표시(선택)`"}, 머리 ${"`unit: 회`"}. 2~10줄
 
-\`\`\`\`
-\`\`\`flow
+${"````"}
+${"```"}flow
 caption: tool.call 이벤트가 mod 체인을 지나는 순서
 tool.call | 도구 호출 이벤트
 sec-default | 내장 가드
 사용자 mod | 직접 설치 *
 기본 동작 | 설정 훅 → 권한 → 실행 ~
-\`\`\`
+${"```"}
 
-\`\`\`compare
-caption: 2.1.283 전후의 기본 권한 동작
-| 이전 | 이후
-기본 모드 | default | auto *
-셸 명령 | 매번 확인 | 위험할 때만 확인
-관리형 설정 | 우선 | 우선
-\`\`\`
+${"```"}sequence
+caption: 권한이 필요한 도구 호출이 처리되는 순서
+actors: 사용자, Claude, 분류기
+사용자 -> Claude | 테스트 고쳐 줘
+Claude -> 분류기 | 이 명령 실행해도 되나? *
+분류기 --> Claude | 안전함
+Claude --> 사용자 | 테스트 통과
+${"```"}
 
-\`\`\`timeline
-caption: auto mode가 기본값이 되기까지
-v2.1.200 | 실험 기능으로 추가
-v2.1.283 | 기본값으로 전환 *
-\`\`\`
-\`\`\`\``;
+${"```"}layers
+caption: 같은 설정이 겹칠 때 이기는 순서
+layout: stack
+관리형 설정 | 회사 정책 *
+프로젝트 | .claude/settings.json
+사용자 | ~/.claude/settings.json
+${"```"}
+
+${"```"}stats
+caption: auto mode 전환 뒤 달라진 숫자
+14회 → 2회 | 세션당 권한 확인 *
+2.1.283 | 기본값이 된 버전
+${"```"}
+${"````"}`;
+
+/** ```figure 디자인 키트. 허용 목록은 lib/html-figure.ts. */
+export const FIGURE_KIT = String.raw`그림 블록으로 안 되는 구성(두 갈래로 나뉘는 흐름, 숫자 카드와 흐름을 한 그림에, 화면 배치 설명 등)만 ${"```figure"} 로 쓴다. 조합은 자유, 생김새는 키트가 정한다.
+
+- 태그: div span p ul ol li strong em code kbd mark small br hr table thead tbody tr th td details summary. 링크·이미지·스크립트·SVG 는 지워진다
+- class: ${"`fig-`"} 로 시작하는 것만 남는다. style: 배치(display, grid-template-columns, gap, flex, width, text-align, margin-top 등)만 남고 색·글꼴·위치는 지워진다. 지워진 게 있으면 점검에서 경고
+- 배치: ${"`fig-flow`"}(가로 흐름, 좁으면 세로) ${"`fig-row`"} ${"`fig-col`"} ${"`fig-grid-2|3|4`"} ${"`fig-center`"}
+- 상자: ${"`fig-box`"} + ${"`fig-accent`"}(강조) ${"`fig-muted`"}(점선) ${"`fig-info`"} ${"`fig-warn`"}
+- 글자: ${"`fig-label`"}(작은 머리말) ${"`fig-title`"} ${"`fig-sub`"} ${"`fig-big`"}(큰 숫자) ${"`fig-mono`"}
+- 조각: ${"`fig-arrow`"}(→, ${"`fig-down`"} 이면 ↓) ${"`fig-num`"}(번호) ${"`fig-chip`"} ${"`fig-dot`"} ${"`fig-ok`"} ${"`fig-no`"} ${"`fig-part`"} ${"`fig-bar`"}(style ${"`--v: 70%`"})
+
+${"````"}
+${"```"}figure
+caption: 분류기가 명령을 두 갈래로 나누는 방식
+<div class="fig-flow">
+  <div class="fig-box"><span class="fig-label">입력</span><span class="fig-title">셸 명령</span></div>
+  <span class="fig-arrow"></span>
+  <div class="fig-box fig-accent"><span class="fig-label">판단</span><span class="fig-title">분류기</span><span class="fig-sub">위험한 것만 묻기</span></div>
+  <span class="fig-arrow"></span>
+  <div class="fig-col" style="flex: 1">
+    <div class="fig-box"><span class="fig-ok">바로 실행</span></div>
+    <div class="fig-box fig-muted"><span class="fig-part">사용자에게 확인</span></div>
+  </div>
+</div>
+${"```"}
+${"````"}`;
 
 /** 권장 흐름. 이름은 흐름일 뿐 소제목으로 쓰지 않는다. */
 export const OUTLINE = [
@@ -196,6 +240,9 @@ ${VISUAL_RULES.map((v) => `- ${v}`).join("\n")}
 
 ### 그림 블록 문법
 ${DIAGRAM_SYNTAX}
+
+### figure 블록(디자인 키트 HTML)
+${FIGURE_KIT}
 
 ### SVG 그림 양식
 ${SVG_STYLE}
@@ -391,6 +438,22 @@ export function checkVoice(post: VoiceInput): VoiceReport {
   }
   const drawn = diagrams.filter((d) => d.result.diagram);
 
+  // figure 블록 — 거른 것, 캡션.
+  const htmlFigures = findFences(post.body).filter((f) => f.lang === "figure" && !f.file);
+  for (const f of htmlFigures) {
+    const fig = parseFigureHtml(f.source);
+    if (fig.dropped.length) {
+      issues.push({ rule: "figure-dropped", severity: "warning", line: f.line, message: `figure 블록에서 지워진 것: ${fig.dropped.slice(0, 8).join(", ")}. fig-* 클래스와 배치 style 만 씁니다` });
+    }
+    if (!fig.html.trim()) {
+      issues.push({ rule: "figure-empty", severity: "warning", line: f.line, message: "figure 블록이 비었습니다" });
+    } else if (!fig.caption) {
+      issues.push({ rule: "figure-no-caption", severity: "warning", line: f.line, message: "figure 블록에 캡션이 없습니다. 첫 줄에 `caption: …` 을 40자 안팎으로" });
+    } else if (fig.caption.length > 60) {
+      issues.push({ rule: "figure-long-caption", severity: "warning", line: f.line, message: `캡션이 깁니다(${fig.caption.length}자). 40자 안팎으로: "${excerpt(fig.caption)}"` });
+    }
+  }
+
   const captures = figures.filter((f) => /\/todo-[^/]*$/.test(f[2]));
   if (captures.length) {
     issues.push({
@@ -415,9 +478,9 @@ export function checkVoice(post: VoiceInput): VoiceReport {
   const head = post.body.split("\n").slice(0, 15).join("\n");
   const parts = {
     "summary-box": /^>\s?\[!(INFO|NOTE|TIP)\]/im.test(head),
-    table: /^\s*\|.*\|\s*\n\s*\|\s*:?-{3,}/m.test(post.body) || drawn.some((d) => d.kind === "compare"),
+    table: /^\s*\|.*\|\s*\n\s*\|\s*:?-{3,}/m.test(post.body) || drawn.some((d) => d.kind === "compare" || d.kind === "matrix"),
     // 캡처 자리(todo-)는 그림으로 치지 않는다.
-    visual: drawn.length > 0 || figures.some((f) => !/\/todo-[^/]*$/.test(f[2])),
+    visual: drawn.length > 0 || htmlFigures.length > 0 || figures.some((f) => !/\/todo-[^/]*$/.test(f[2])),
     source: /https?:\/\/(github\.com|docs\.|code\.claude\.com|[^\s)]*anthropic\.com)/.test(post.body),
   };
   for (const p of REQUIRED_PARTS) {
