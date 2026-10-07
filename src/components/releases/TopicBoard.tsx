@@ -553,7 +553,7 @@ function TopicCard({
 
   if (mode === "edit") {
     return (
-      <li className="topic-rise rounded-xl border border-border-strong bg-surface p-5">
+      <li className="topic-rise row-span-8 rounded-xl border border-border-strong bg-surface p-5">
         <div className="mb-3 font-sans text-[13px] font-semibold text-ink">주제 편집</div>
         <TopicEditor
           initial={topic}
@@ -576,13 +576,19 @@ function TopicCard({
   return (
     <li
       style={rise}
-      className={`topic-rise flex flex-col rounded-xl border bg-surface p-5 transition-[transform,box-shadow,border-color] duration-300 ease-out ${
+      className={`topic-rise row-span-8 grid grid-rows-subgrid gap-0 rounded-xl border bg-surface p-5 transition-[transform,box-shadow,border-color] duration-300 ease-out ${
         paused
           ? "border-dashed border-border-token"
           : "border-border-token hover:-translate-y-0.5 hover:border-border-strong hover:shadow-[0_14px_32px_-18px_rgba(0,0,0,0.28)]"
       }`}
     >
-      {/* 머리 — 지금 단계 배지와 진척 */}
+      {/*
+        카드는 여덟 구역(머리·제목·설명·진행바·글감·다음 할 일·기록·동작)으로
+        고정하고 subgrid 로 이웃 카드와 줄을 맞춘다. 설명이 한 줄인 카드와
+        두 줄인 카드가 나란해도 진행바와 NEXT 박스가 같은 높이에서 시작한다.
+        그래서 비어 있는 구역도 자리는 남긴다.
+      */}
+      {/* 1 머리 — 지금 단계 배지와 진척 */}
       <div className="flex items-center justify-between gap-3">
         <span
           className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-sans text-[11.5px] font-semibold transition-colors duration-500"
@@ -611,34 +617,36 @@ function TopicCard({
       >
         {topic.title}
       </h3>
-      {topic.angle && (
-        <p className="m-0 mt-1.5 text-[13.5px] leading-[1.6] text-ink-muted">{topic.angle}</p>
-      )}
+      <p className="m-0 mt-1.5 text-[13.5px] leading-[1.6] text-ink-muted">{topic.angle}</p>
 
       <div className="mt-4">
         <Progress topic={topic} />
       </div>
 
-      {topic.candidates.length > 0 && (
-        <div className="mt-4 flex flex-wrap gap-1.5">
-          {topic.candidates.map((x) => (
-            <a
-              key={x.id}
-              href={urls.get(x.id) ?? `https://github.com/${x.repo}/releases/tag/${x.tag}`}
-              target="_blank"
-              rel="noreferrer"
-              title={x.id}
-              className="inline-flex items-center gap-1 rounded-full border border-border-token px-2 py-[3px] font-mono text-[11px] text-ink-soft no-underline transition-colors hover:border-border-strong hover:text-ink"
-            >
-              <span className="text-ink-subtle">{x.repo.split("/")[1]}</span>
-              {x.tag}
-            </a>
-          ))}
-        </div>
-      )}
+      {/* 5 글감 — 레포 이름은 한 번만. 태그가 셋이어도 한 줄에 든다. */}
+      <div className="mt-3.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+        {groupByRepo(topic.candidates).map(([repo, items]) => (
+          <span key={repo} className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+            <span className="font-sans text-[11.5px] text-ink-subtle">{repo.split("/")[1]}</span>
+            {items.map((x) => (
+              <a
+                key={x.id}
+                href={urls.get(x.id) ?? `https://github.com/${x.repo}/releases/tag/${x.tag}`}
+                target="_blank"
+                rel="noreferrer"
+                title={x.id}
+                className="rounded-md bg-surface-alt px-1.5 py-[2px] font-mono text-[11px] text-ink-soft no-underline transition-colors hover:text-ink"
+              >
+                {x.tag}
+              </a>
+            ))}
+          </span>
+        ))}
+      </div>
 
-      {/* 다음 할 일 — 카드에서 가장 눈에 띄어야 하는 자리 */}
-      <div className="mt-4 rounded-lg bg-surface-alt p-3.5">
+      {/* 6 다음 할 일 — 카드에서 가장 눈에 띄어야 하는 자리. 이웃 카드가 폼을
+          펼쳐 줄이 길어져도 늘어나지 않게 위에 붙인다. */}
+      <div className="mt-4 self-start rounded-lg bg-surface-alt p-3.5">
         {paused ? (
           <>
             <div className="font-sans text-[10.5px] font-bold uppercase tracking-[0.08em] text-ink-muted">
@@ -758,7 +766,8 @@ function TopicCard({
         )}
       </div>
 
-      {/* 근거 타임라인 — 단계를 넘길 때 남긴 기록 */}
+      {/* 7 근거 타임라인과 오류 */}
+      <div>
       {history.length > 0 && (
         <ol className="m-0 ml-[3px] mt-4 list-none space-y-3 border-l border-border-token p-0 pl-4">
           {history.map((s) => {
@@ -793,8 +802,10 @@ function TopicCard({
         </p>
       )}
 
-      {/* 보조 동작 — 조용하게 */}
-      <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 pt-4">
+      </div>
+
+      {/* 8 보조 동작 — 조용하게 */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 self-end pt-4">
         {topic.postSlug && next && (
           <a
             href={`/posts/${topic.postSlug}`}
@@ -817,19 +828,25 @@ function TopicCard({
             삭제
           </Quiet>
         </div>
+        <ConfirmDialog
+          open={confirmDelete}
+          tone="danger"
+          title={`'${topic.title}' 주제를 지울까요?`}
+          body="진행 기록이 함께 사라집니다. 글감은 남습니다. 멈추려는 것이라면 접기로 두세요."
+          confirmLabel="지우기"
+          onConfirm={remove}
+          onCancel={() => setConfirmDelete(false)}
+        />
       </div>
-
-      <ConfirmDialog
-        open={confirmDelete}
-        tone="danger"
-        title={`'${topic.title}' 주제를 지울까요?`}
-        body="진행 기록이 함께 사라집니다. 글감은 남습니다. 멈추려는 것이라면 접기로 두세요."
-        confirmLabel="지우기"
-        onConfirm={remove}
-        onCancel={() => setConfirmDelete(false)}
-      />
     </li>
   );
+}
+
+/** 글감을 레포별로 묶는다. 순서는 처음 나온 레포 순. */
+function groupByRepo(items: TopicRow["candidates"]): [string, TopicRow["candidates"]][] {
+  const m = new Map<string, TopicRow["candidates"]>();
+  for (const x of items) m.set(x.repo, [...(m.get(x.repo) ?? []), x]);
+  return [...m];
 }
 
 function Btn({
