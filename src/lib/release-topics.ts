@@ -11,6 +11,7 @@ import { dbAdmin } from "@/lib/supabase";
 import { syncLinkMeta } from "@/lib/link-meta";
 import { loadPost } from "@/lib/mcp-blog";
 import { checkVoice } from "@/lib/voice";
+import { fireReleaseRoutine } from "@/lib/routine-fire";
 import type { Json } from "@/lib/database.types";
 import {
   STAGES,
@@ -382,6 +383,21 @@ export async function queueAi(id: number, until: AiUntil): Promise<TopicRow> {
     throw new TopicError(`이미 ${until} 단계를 지났다`);
   }
   await saveAi(id, { ai_status: "queued", ai_until: until, ai_message: null });
+
+  // 루틴을 바로 깨운다. 실패해도 요청은 queued 로 남아 정기 실행이 집어 간다.
+  const fire = await fireReleaseRoutine(
+    `어드민에서 주제 #${id} '${topic.title}' 을(를) ${until} 단계까지 맡겼다. claim_release_work 로 집어서 처리할 것.`,
+  );
+  // 실행기가 벌써 집어 갔으면(running) 그쪽 메시지를 덮지 않는다.
+  await dbAdmin()
+    .from("release_topics")
+    .update({
+      ai_message: fire.fired
+        ? `실행기를 깨웠음${fire.sessionUrl ? ` · ${fire.sessionUrl}` : ""}`
+        : `${fire.reason} — 다음 정기 실행 때 시작`,
+    })
+    .eq("id", id)
+    .eq("ai_status", "queued");
   return getTopic(id);
 }
 

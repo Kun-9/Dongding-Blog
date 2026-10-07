@@ -913,11 +913,13 @@ function AiPanel({ topic, onChange }: { topic: TopicRow; onChange: (t: TopicRow)
           <span className="min-w-0 flex-1 text-[12.5px] leading-[1.5] text-ink-soft">
             {status === "running" ? (
               <>
-                <b className="font-semibold text-ink">AI 작업 중</b> · {message ?? "진행 중"}
+                <b className="font-semibold text-ink">AI 작업 중</b> · <AiMessage text={message ?? "진행 중"} />
               </>
             ) : (
               <>
-                <b className="font-semibold text-ink">AI 대기 중</b> · {untilLabel(topic.ai.until)}, 다음 실행 때 시작
+                <b className="font-semibold text-ink">AI 대기 중</b> · {untilLabel(topic.ai.until)}
+                {" · "}
+                <AiMessage text={message ?? "다음 실행 때 시작"} />
               </>
             )}
             <span className="ml-1.5 font-mono text-[11px] text-ink-subtle">{ago(updatedAt)}</span>
@@ -969,6 +971,20 @@ function AiPanel({ topic, onChange }: { topic: TopicRow; onChange: (t: TopicRow)
       )}
       {error && <p className="m-0 mt-1.5 text-[12px] text-danger">{error}</p>}
     </div>
+  );
+}
+
+/** 메시지 끝의 세션 주소는 "세션 보기" 링크로 바꾼다. */
+function AiMessage({ text }: { text: string }) {
+  const m = text.match(/^(.*?)\s*·\s*(https:\/\/claude\.ai\/\S+)$/);
+  if (!m) return <>{text}</>;
+  return (
+    <>
+      {m[1]}{" "}
+      <a href={m[2]} target="_blank" rel="noreferrer" className="text-ink underline underline-offset-2">
+        세션 보기 ↗
+      </a>
+    </>
   );
 }
 
