@@ -43,12 +43,25 @@ export interface TopicRow {
     until: AiUntil | null;
     message: string | null;
     updatedAt: string | null;
+    /** 실행기가 집은 시각. 경과 시간을 센다. */
+    startedAt: string | null;
+    /** 이번 작업의 진행 로그. 오래된 것부터. */
+    log: AiLogEntry[];
   };
   /** 작업 노트(markdown) — 조사 요약, 링크, 비교 표, 그림 목록. */
   notes: string;
 }
 
 export type AiStatus = "queued" | "running" | "failed";
+
+export interface AiLogEntry {
+  at: string;
+  message: string;
+  kind: "start" | "report" | "stage" | "done" | "fail";
+}
+
+/** 로그는 이 줄 수까지만 남긴다. 화면은 최근 것부터 본다. */
+const LOG_LIMIT = 80;
 /** AI 가 진행할 수 있는 마지막 단계. 발행은 사람이 한다. */
 export type AiUntil = "sources" | "assets" | "draft" | "review";
 export const AI_UNTIL: AiUntil[] = ["sources", "assets", "draft", "review"];
@@ -86,22 +99,27 @@ type DbTopic = {
   ai_message?: string | null;
   ai_updated_at?: string | null;
   notes?: string;
+  ai_log?: Json;
+  ai_started_at?: string | null;
 };
 
 const BASE_COLUMNS =
   "id, title, angle, stage, checks, post_slug, dropped_reason, updated_at";
-const TOPIC_COLUMNS = `${BASE_COLUMNS}, ai_status, ai_until, ai_message, ai_updated_at, notes`;
+const AI_COLUMNS = `${BASE_COLUMNS}, ai_status, ai_until, ai_message, ai_updated_at, notes`;
+const TOPIC_COLUMNS = `${AI_COLUMNS}, ai_log, ai_started_at`;
 
 /**
- * AI 컬럼 마이그레이션보다 배포가 먼저 나가도 화면은 살아 있어야 한다.
- * 없는 컬럼(42703)이면 기본 컬럼만으로 다시 읽는다.
+ * 마이그레이션보다 배포가 먼저 나가도 화면은 살아 있어야 한다. 없는
+ * 컬럼(42703)이면 한 단계씩 덜 읽는다: 로그 → AI 상태 → 기본 컬럼.
  */
 async function selectTopics(
   build: (columns: string) => PromiseLike<{ data: unknown; error: { code?: string; message: string } | null }>,
 ) {
-  const first = await build(TOPIC_COLUMNS);
-  if (first.error?.code === "42703") return build(BASE_COLUMNS);
-  return first;
+  for (const cols of [TOPIC_COLUMNS, AI_COLUMNS]) {
+    const res = await build(cols);
+    if (res.error?.code !== "42703") return res;
+  }
+  return build(BASE_COLUMNS);
 }
 
 function toRow(t: DbTopic, candidateIds: string[]): TopicRow {
@@ -120,6 +138,8 @@ function toRow(t: DbTopic, candidateIds: string[]): TopicRow {
       until: (t.ai_until ?? null) as AiUntil | null,
       message: t.ai_message ?? null,
       updatedAt: t.ai_updated_at ?? null,
+      startedAt: t.ai_started_at ?? null,
+      log: Array.isArray(t.ai_log) ? (t.ai_log as unknown as AiLogEntry[]) : [],
     },
     notes: t.notes ?? "",
   };
@@ -299,6 +319,9 @@ export async function advanceTopic(
     [next.key]: { at: new Date().toISOString(), note },
   };
   await save(id, { stage: next.key, checks, post_slug: postSlug });
+  if (topic.ai.status === "running") {
+    await saveAi(id, { ai_message: `${next.label} 완료` }, { topic, kind: "stage", message: `${next.label} 단계 완료` });
+  }
 
   // 발행하면 묶인 글감도 썼음으로 닫는다. 메모(어느 글에 쓸지)는 남긴다.
   if (next.key === "published" && topic.candidates.length) {
@@ -363,11 +386,23 @@ export async function deleteTopic(id: number): Promise<void> {
 async function saveAi(
   id: number,
   patch: { ai_status?: AiStatus | null; ai_until?: AiUntil | null; ai_message?: string | null },
+  /** 로그에 한 줄 덧붙인다. reset 이면 로그를 비우고 이 줄로 시작한다. */
+  log?: { topic: TopicRow; kind: AiLogEntry["kind"]; message: string; reset?: boolean },
 ) {
-  const { error } = await dbAdmin()
-    .from("release_topics")
-    .update({ ...patch, ai_updated_at: new Date().toISOString() })
-    .eq("id", id);
+  const now = new Date().toISOString();
+  const base = { ...patch, ai_updated_at: now };
+  let extra: Record<string, unknown> = {};
+  if (log) {
+    const entry: AiLogEntry = { at: now, kind: log.kind, message: log.message };
+    const next = log.reset ? [entry] : [...log.topic.ai.log, entry].slice(-LOG_LIMIT);
+    extra = { ai_log: next, ...(log.reset ? { ai_started_at: now } : {}) };
+  }
+  const db = dbAdmin().from("release_topics");
+  let { error } = await db.update({ ...base, ...extra } as never).eq("id", id);
+  // 로그 컬럼 마이그레이션 전이면(PGRST204·42703) 로그 없이 상태만 쓴다.
+  if (error && log && (error.code === "PGRST204" || error.code === "42703")) {
+    ({ error } = await dbAdmin().from("release_topics").update(base).eq("id", id));
+  }
   if (error) throw new Error(error.message);
 }
 
@@ -403,8 +438,12 @@ export async function queueAi(id: number, until: AiUntil): Promise<TopicRow> {
 
 /** 맡긴 일을 거둔다. 작업 중인 것도 다음 보고 때 멈추도록 상태를 지운다. */
 export async function cancelAi(id: number): Promise<TopicRow> {
-  await getTopic(id);
-  await saveAi(id, { ai_status: null, ai_until: null, ai_message: "사람이 취소함" });
+  const topic = await getTopic(id);
+  await saveAi(
+    id,
+    { ai_status: null, ai_until: null, ai_message: "작업을 취소함" },
+    { topic, kind: "fail", message: "작업을 취소함" },
+  );
   return getTopic(id);
 }
 
@@ -438,7 +477,12 @@ export async function claimAiWork(): Promise<TopicRow | null> {
       .eq("ai_updated_at", c.ai_updated_at as string)
       .select("id")
       .maybeSingle();
-    if (won) return getTopic(c.id);
+    if (won) {
+      const topic = await getTopic(c.id);
+      // 로그를 새로 시작하고 시작 시각을 찍는다.
+      await saveAi(c.id, {}, { topic, kind: "start", message: "실행기가 작업을 집었음", reset: true });
+      return getTopic(c.id);
+    }
   }
   return null;
 }
@@ -447,18 +491,19 @@ export async function claimAiWork(): Promise<TopicRow | null> {
 export async function reportAi(id: number, message: string): Promise<TopicRow> {
   const topic = await getTopic(id);
   if (topic.ai.status !== "running") throw new TopicError("작업 중인 주제가 아니다 (취소됐을 수 있다)");
-  await saveAi(id, { ai_message: message });
+  await saveAi(id, { ai_message: message }, { topic, kind: "report", message });
   return getTopic(id);
 }
 
 /** 작업을 끝낸다. ok 면 상태를 비우고, 아니면 failed 로 이유를 남긴다. */
 export async function finishAi(id: number, ok: boolean, message: string): Promise<TopicRow> {
-  await getTopic(id);
+  const topic = await getTopic(id);
   await saveAi(
     id,
     ok
       ? { ai_status: null, ai_until: null, ai_message: message }
       : { ai_status: "failed", ai_message: message },
+    { topic, kind: ok ? "done" : "fail", message },
   );
   return getTopic(id);
 }

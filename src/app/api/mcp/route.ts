@@ -504,8 +504,9 @@ const handler = createMcpHandler(
       {
         title: "릴리스 AI 작업 진행 보고",
         description:
-          "작업 중인 주제의 한 줄 상황을 남긴다(어드민 카드에 '작업 중 — …'으로 보인다). 단계를 시작할 때마다 부를 것. " +
-          "사람이 취소했으면 에러가 나니 그때는 바로 멈출 것.",
+          "작업 중인 주제의 한 줄 상황을 남긴다(어드민 카드에 실시간 진행 로그로 쌓인다). 단계를 시작할 때뿐 아니라 " +
+          "작은 일마다(문서 읽기, 표 만들기, 초안 섹션 등) 1~2분에 한 번꼴로 구체적으로 부를 것. " +
+          "어드민에서 취소했으면 에러가 나니 그때는 바로 멈출 것.",
         inputSchema: z.object({ id: z.number().int(), message: z.string().min(1).max(200) }),
       },
       async ({ id, message }) => topicCall(() => reportAi(id, message)),
@@ -517,7 +518,7 @@ const handler = createMcpHandler(
         title: "릴리스 AI 작업 끝내기",
         description:
           "작업을 끝낸다. ok=true 면 상태를 비우고 message 를 남긴다(무엇을 했는지 한두 줄). " +
-          "ok=false 면 failed 로 멈추고 message 에 막힌 이유와 사람이 할 일을 쓴다. 성공이든 실패든 반드시 마지막에 부를 것.",
+          "ok=false 면 failed 로 멈추고 message 에 막힌 이유와 남은 할 일을 쓴다. 성공이든 실패든 반드시 마지막에 부를 것.",
         inputSchema: z.object({
           id: z.number().int(),
           ok: z.boolean(),
