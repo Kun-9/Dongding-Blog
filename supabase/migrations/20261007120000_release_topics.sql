@@ -71,5 +71,7 @@ insert into release_topic_candidates (topic_id, candidate_id)
 select t.id, c.id
 from topics t
 join seed s on s.title = t.title
-cross join unnest(s.tags) as tag
-join release_candidates c on c.id = 'anthropics/claude-code@' || tag;
+-- unnest 결과는 u.tag 로 못박는다. 그냥 tag 라고 쓰면 release_candidates.tag
+-- 와 겹쳐 "ambiguous" 로 멈춘다.
+cross join unnest(s.tags) as u(tag)
+join release_candidates c on c.id = 'anthropics/claude-code@' || u.tag;
