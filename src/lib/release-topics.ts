@@ -6,7 +6,9 @@
  */
 import "server-only";
 
+import { revalidatePath } from "next/cache";
 import { dbAdmin } from "@/lib/supabase";
+import { syncLinkMeta } from "@/lib/link-meta";
 import { loadPost } from "@/lib/mcp-blog";
 import { checkVoice } from "@/lib/voice";
 import type { Json } from "@/lib/database.types";
@@ -237,6 +239,11 @@ export async function editTopic(
 export async function advanceTopic(
   id: number,
   input: { note: string; postSlug?: string | null },
+  /**
+   * 발행까지 넘길 수 있는가. 발행은 글을 실제로 공개하므로 어드민 버튼만
+   * true 로 부른다. MCP(실행기 포함)는 false — AI 가 공개하는 길을 막는다.
+   */
+  opts: { allowPublish?: boolean } = {},
 ): Promise<TopicRow> {
   const topic = await getTopic(id);
   if (topic.droppedReason !== null) {
@@ -250,8 +257,14 @@ export async function advanceTopic(
     throw new TopicError("초안 단계는 글 slug 가 있어야 넘긴다");
   }
 
+  if (next.key === "published" && !opts.allowPublish) {
+    throw new TopicError("발행은 어드민의 발행 버튼으로만 한다");
+  }
+
   let note = input.note;
-  if (next.key === "review") {
+  // 점검과 발행 모두 본문을 검사한다. 점검 뒤에 본문을 고쳤을 수 있어서
+  // 발행 직전에 한 번 더 본다.
+  if (next.key === "review" || next.key === "published") {
     const post = postSlug ? await loadPost(postSlug) : null;
     if (!post) throw new TopicError(`'${postSlug}' 글이 없다. 초안 slug 를 확인할 것`);
     const report = checkVoice(post);
@@ -266,6 +279,18 @@ export async function advanceTopic(
     }
     const infos = report.issues.length;
     note = `${note}\n[자동 점검] 통과 · 참고 ${infos}건`;
+
+    if (next.key === "published") {
+      // 글을 실제로 공개한다. 편집 API 의 공개 전환과 같은 뒤처리(링크 카드
+      // 메타 동기화, 캐시 무효화)를 한다.
+      const { error } = await dbAdmin()
+        .from("posts")
+        .update({ visibility: "published" })
+        .eq("slug", post.slug);
+      if (error) throw new Error(`발행 실패: ${error.message}`);
+      await syncLinkMeta(post.body).catch(() => {});
+      revalidatePath("/", "layout");
+    }
   }
 
   const checks = {
@@ -287,11 +312,28 @@ export async function advanceTopic(
   return getTopic(id);
 }
 
-/** 마지막 단계를 취소한다. 그 단계의 근거도 지운다. */
+/**
+ * 마지막 단계를 취소한다. 그 단계의 근거도 지운다. 발행을 취소하면 글도
+ * draft 로 내린다 — 단계는 점검인데 글은 공개된 채로 남으면 안 된다.
+ */
 export async function revertTopic(id: number): Promise<TopicRow> {
   const topic = await getTopic(id);
   const i = stageIndex(topic.stage);
   if (i === 0) throw new TopicError("더 되돌릴 단계가 없다");
+
+  if (topic.stage === "published" && topic.postSlug) {
+    const { error } = await dbAdmin()
+      .from("posts")
+      .update({ visibility: "draft" })
+      .eq("slug", topic.postSlug);
+    if (error) throw new Error(`발행 취소 실패: ${error.message}`);
+    revalidatePath("/", "layout");
+    await dbAdmin()
+      .from("release_candidates")
+      .update({ status: "queued" })
+      .in("id", topic.candidates.map((c) => c.id))
+      .eq("status", "written");
+  }
 
   const checks = { ...topic.checks };
   delete checks[topic.stage];

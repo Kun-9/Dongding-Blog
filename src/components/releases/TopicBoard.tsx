@@ -526,6 +526,7 @@ function TopicCard({
   const urls = new Map(candidates.map((x) => [x.id, x.url]));
   const history = STAGES.filter((s) => topic.checks[s.key]);
   const step = stageIndex(topic.stage) + 1;
+  const publishing = next?.key === "published";
   // 처음 그릴 때 한 장씩 차례로 떠오른다. 너무 길어지지 않게 8장에서 끊는다.
   const rise = { animationDelay: `${Math.min(index, 8) * 55}ms` };
 
@@ -678,11 +679,17 @@ function TopicCard({
 
             <Collapse open={mode === "advance"}>
               <div className="space-y-2 pt-3">
+                {publishing && (
+                  <p className="m-0 rounded-lg border border-border-token bg-surface px-3 py-2.5 text-[12.5px] leading-[1.6] text-ink-soft">
+                    <b className="font-semibold text-ink">/posts/{topic.postSlug}</b> 를 공개합니다.
+                    문체·구성 점검을 한 번 더 돌리고, 통과하면 바로 블로그에 올라갑니다.
+                  </p>
+                )}
                 <textarea
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
-                  rows={3}
-                  placeholder={NOTE_HINT[next.key]}
+                  rows={publishing ? 2 : 3}
+                  placeholder={publishing ? "발행 메모 (선택)" : NOTE_HINT[next.key]}
                   className={field}
                 />
                 {next.key === "draft" && (
@@ -696,16 +703,16 @@ function TopicCard({
                 <div className="flex gap-1.5">
                   <Btn
                     primary
-                    disabled={busy || !note.trim()}
+                    disabled={busy || (!publishing && !note.trim())}
                     onClick={() =>
                       patch({
                         action: "advance",
-                        note,
+                        note: note.trim() || "발행",
                         postSlug: slug.trim() || null,
                       }).then((ok) => ok && setNote(""))
                     }
                   >
-                    {next.label} 완료
+                    {publishing ? (busy ? "공개하는 중…" : "공개하기") : `${next.label} 완료`}
                   </Btn>
                   <Btn onClick={() => setMode("view")}>취소</Btn>
                 </div>
@@ -740,7 +747,7 @@ function TopicCard({
                   onClick={() => setMode("advance")}
                   className="group inline-flex items-center gap-1.5 rounded-full bg-ink px-3.5 py-1.5 font-sans text-[12.5px] font-medium text-bg transition-[opacity,transform] hover:opacity-90 active:scale-[0.97]"
                 >
-                  {next.label} 기록하기
+                  {publishing ? "발행하기" : `${next.label} 기록하기`}
                   <span
                     aria-hidden
                     className="transition-transform duration-200 group-hover:translate-x-0.5"
@@ -822,7 +829,7 @@ function TopicCard({
         <div className="ml-auto flex items-center gap-3">
           {!paused && stageIndex(topic.stage) > 0 && (
             <Quiet disabled={busy} onClick={() => patch({ action: "revert" })}>
-              ↶ {stageLabel(topic.stage)} 취소
+              ↶ {topic.stage === "published" ? "발행 취소(draft로)" : `${stageLabel(topic.stage)} 취소`}
             </Quiet>
           )}
           <Quiet onClick={() => setMode("edit")}>편집</Quiet>
