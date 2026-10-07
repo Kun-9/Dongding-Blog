@@ -730,3 +730,28 @@ pre {
 }
 .fig-bar.fig-accent { border: 0; box-shadow: none; background: color-mix(in oklab, var(--ink) 7%, transparent); }
 .fig-bar.fig-accent::after { background: var(--callout-tip-glyph); }
+
+/* ============================================================
+   모달(ui/Modal)·셀렉트(ui/Select) — 떠오르는 판
+   ============================================================ */
+.modal-backdrop {
+  background: rgba(28, 28, 28, 0.42);
+  backdrop-filter: blur(6px) saturate(120%);
+  -webkit-backdrop-filter: blur(6px) saturate(120%);
+}
+[data-theme="dark"] .modal-backdrop { background: rgba(8, 7, 6, 0.72); }
+@keyframes modal-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes modal-pop {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes pop-in {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+.modal-fade { animation: modal-fade 0.18s ease-out; }
+.modal-pop { animation: modal-pop 0.24s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.pop-in { animation: pop-in 0.16s cubic-bezier(0.2, 0.8, 0.2, 1); transform-origin: top; }
+@media (prefers-reduced-motion: reduce) {
+  .modal-fade, .modal-pop, .pop-in { animation: none; }
+}

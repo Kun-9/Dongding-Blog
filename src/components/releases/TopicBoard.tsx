@@ -6,6 +6,8 @@ import { Collapse } from "@/components/releases/Collapse";
 import { useMounted } from "@/lib/hooks";
 import { renderMarkdown } from "@/lib/markdown";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { Field, Modal } from "@/components/ui/Modal";
+import { Select } from "@/components/ui/Select";
 import type { QueueRow } from "@/lib/release-queue";
 import type { AiLogEntry, AiUntil, TopicRow } from "@/lib/release-topics";
 import {
@@ -530,7 +532,9 @@ function TopicCard({
   onChange: (t: TopicRow) => void;
   onDelete: () => void;
 }) {
-  const [mode, setMode] = useState<"view" | "advance" | "edit" | "drop">("view");
+  const [mode, setMode] = useState<"view" | "edit">("view");
+  /** 열린 모달. advance = 직접 완료, publish = 발행, drop = 접기. */
+  const [dialog, setDialog] = useState<null | "advance" | "publish" | "drop">(null);
   const [note, setNote] = useState("");
   const [slug, setSlug] = useState(topic.postSlug ?? "");
   const [reason, setReason] = useState("");
@@ -562,6 +566,7 @@ function TopicCard({
     }
     if ("topic" in res) onChange(res.topic);
     setMode("view");
+    setDialog(null);
     return true;
   }
 
@@ -715,91 +720,24 @@ function TopicCard({
             </div>
             <p className="m-0 mt-1 text-[13.5px] leading-[1.55] text-ink-soft">{next.todo}</p>
 
-            <Collapse open={mode === "advance"}>
-              <div className="space-y-2 pt-3">
-                {publishing && (
-                  <p className="m-0 rounded-lg border border-border-token bg-surface px-3 py-2.5 text-[12.5px] leading-[1.6] text-ink-soft">
-                    <b className="font-semibold text-ink">/posts/{topic.postSlug}</b> 를 공개합니다.
-                    문체·구성 점검을 한 번 더 돌리고, 통과하면 바로 블로그에 올라갑니다.
-                  </p>
-                )}
-                <textarea
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  rows={publishing ? 2 : 3}
-                  placeholder={publishing ? "발행 메모 (선택)" : NOTE_HINT[next.key]}
-                  className={field}
-                />
-                {next.key === "draft" && (
-                  <input
-                    value={slug}
-                    onChange={(e) => setSlug(e.target.value)}
-                    placeholder="글 slug"
-                    className={`${field} font-mono text-[13px]`}
-                  />
-                )}
-                <div className="flex gap-1.5">
-                  <Btn
-                    primary
-                    disabled={busy || (!publishing && !note.trim())}
-                    onClick={() =>
-                      patch({
-                        action: "advance",
-                        note: note.trim() || "발행",
-                        postSlug: slug.trim() || null,
-                      }).then((ok) => ok && setNote(""))
-                    }
-                  >
-                    {publishing ? (busy ? "공개하는 중…" : "공개하기") : `${next.label} 완료`}
-                  </Btn>
-                  <Btn onClick={() => setMode("view")}>취소</Btn>
-                </div>
-              </div>
-            </Collapse>
-            <Collapse open={mode === "drop"}>
-              <div className="space-y-2 pt-3">
-                <input
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  placeholder="접는 이유. 예: 이미 한국어 글이 충분하다"
-                  className={field}
-                />
-                <div className="flex gap-1.5">
-                  <Btn
-                    primary
-                    disabled={busy || !reason.trim()}
-                    onClick={() =>
-                      patch({ action: "drop", reason }).then((ok) => ok && setReason(""))
-                    }
-                  >
-                    접기
-                  </Btn>
-                  <Btn onClick={() => setMode("view")}>취소</Btn>
-                </div>
-              </div>
-            </Collapse>
-            {aiBusy && (
-              <p className="m-0 mt-2 text-[12px] text-ink-muted">
-                AI 가 이 주제를 맡고 있어서 수동 기록은 잠시 막아 둡니다. 멈추려면 아래에서 중지하세요.
-              </p>
-            )}
-            <Collapse open={mode === "view" && !aiBusy}>
+            {!publishing && <AiPanel topic={topic} onChange={onChange} inline />}
+            {publishing && !aiBusy && (
               <div className="pt-3">
                 <button
                   type="button"
-                  onClick={() => setMode("advance")}
+                  onClick={() => {
+                    setError(null);
+                    setDialog("publish");
+                  }}
                   className="group inline-flex items-center gap-1.5 rounded-full bg-ink px-3.5 py-1.5 font-sans text-[12.5px] font-medium text-bg transition-[opacity,transform] hover:opacity-90 active:scale-[0.97]"
                 >
-                  {publishing ? "발행하기" : `${next.label} 기록하기`}
-                  <span
-                    aria-hidden
-                    className="transition-transform duration-200 group-hover:translate-x-0.5"
-                  >
+                  발행하기
+                  <span aria-hidden className="transition-transform duration-200 group-hover:translate-x-0.5">
                     →
                   </span>
                 </button>
               </div>
-            </Collapse>
+            )}
           </>
         ) : (
           <>
@@ -851,7 +789,7 @@ function TopicCard({
         </ol>
       )}
 
-      {error && (
+      {error && !dialog && (
         <p className="topic-rise m-0 mt-3 whitespace-pre-line rounded-lg border border-danger/30 px-3 py-2.5 text-[12.5px] leading-[1.6] text-danger">
           {error}
         </p>
@@ -875,9 +813,27 @@ function TopicCard({
               ↶ {topic.stage === "published" ? "발행 취소(draft로)" : `${stageLabel(topic.stage)} 취소`}
             </Quiet>
           )}
+          {!paused && next && !publishing && !aiBusy && (
+            <Quiet
+              onClick={() => {
+                setError(null);
+                setDialog("advance");
+              }}
+              title="AI 없이 이 단계를 직접 했을 때, 근거를 남기고 다음 단계로 넘깁니다"
+            >
+              {next.label} 직접 완료
+            </Quiet>
+          )}
           <Quiet onClick={() => setMode("edit")}>편집</Quiet>
-          {!paused && next && mode === "view" && (
-            <Quiet onClick={() => setMode("drop")}>접기</Quiet>
+          {!paused && next && (
+            <Quiet
+              onClick={() => {
+                setError(null);
+                setDialog("drop");
+              }}
+            >
+              접기
+            </Quiet>
           )}
           <Quiet danger disabled={busy} onClick={() => setConfirmDelete(true)}>
             삭제
@@ -892,6 +848,95 @@ function TopicCard({
           onConfirm={remove}
           onCancel={() => setConfirmDelete(false)}
         />
+        {next && (
+          <Modal
+            open={dialog === "advance"}
+            eyebrow={`${step}/${STAGES.length} · ${next.label}`}
+            title={`${next.label} 단계를 직접 끝냈나요?`}
+            description={
+              <>
+                AI 없이 이 단계를 직접 했을 때 씁니다. 남긴 근거는 카드 기록에 쌓이고 다음 단계로 넘어갑니다.
+                <span className="mt-1 block text-[12.5px] text-ink-muted">할 일: {next.todo}</span>
+              </>
+            }
+            confirmLabel={`${next.label} 완료`}
+            confirmDisabled={!note.trim() || (next.key === "draft" && !slug.trim())}
+            busy={busy}
+            error={dialog === "advance" ? error : null}
+            onClose={() => setDialog(null)}
+            onConfirm={() =>
+              patch({ action: "advance", note: note.trim(), postSlug: slug.trim() || null }).then((ok) => ok && setNote(""))
+            }
+          >
+            <Field label="근거">
+              <textarea
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                rows={4}
+                placeholder={NOTE_HINT[next.key]}
+                className={field}
+              />
+            </Field>
+            {next.key === "draft" && (
+              <Field label="글 slug" hint="영어 소문자·하이픈">
+                <input
+                  value={slug}
+                  onChange={(e) => setSlug(e.target.value)}
+                  placeholder="claude-code-auto-mode"
+                  className={`${field} font-mono text-[13px]`}
+                />
+              </Field>
+            )}
+          </Modal>
+        )}
+        <Modal
+          open={dialog === "publish"}
+          tone="accent"
+          eyebrow="발행"
+          title={`'${topic.title}'을 공개할까요?`}
+          description={
+            <>
+              문체·구성 점검을 한 번 더 돌리고, 통과하면 바로 블로그에 올라갑니다. 캡처 자리(todo-)가 남아 있으면 막힙니다.
+            </>
+          }
+          confirmLabel={busy ? "공개하는 중…" : "공개하기"}
+          busy={busy}
+          error={dialog === "publish" ? error : null}
+          onClose={() => setDialog(null)}
+          onConfirm={() =>
+            patch({ action: "advance", note: note.trim() || "발행", postSlug: topic.postSlug }).then((ok) => ok && setNote(""))
+          }
+        >
+          {topic.postSlug && (
+            <div className="rounded-lg border border-border-token bg-surface-alt px-3 py-2.5 font-mono text-[12.5px] text-ink-soft">
+              /posts/{topic.postSlug}
+            </div>
+          )}
+          <Field label="발행 메모" hint="선택">
+            <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} className={field} />
+          </Field>
+        </Modal>
+        <Modal
+          open={dialog === "drop"}
+          eyebrow="접기"
+          title="이 주제를 접어 둘까요?"
+          description="지우지 않고 목록 아래로 내립니다. 언제든 다시 펼칠 수 있습니다."
+          confirmLabel="접기"
+          confirmDisabled={!reason.trim()}
+          busy={busy}
+          error={dialog === "drop" ? error : null}
+          onClose={() => setDialog(null)}
+          onConfirm={() => patch({ action: "drop", reason }).then((ok) => ok && setReason(""))}
+        >
+          <Field label="접는 이유">
+            <input
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="예: 이미 한국어 글이 충분하다"
+              className={field}
+            />
+          </Field>
+        </Modal>
       </div>
     </li>
   );
@@ -900,11 +945,11 @@ function TopicCard({
 /* ── AI 작업 ─────────────────────────────────────────────────────────── */
 
 /** AI 가 어디까지 갈지. 발행은 고를 수 없다 — 공개는 사람이 정한다. */
-const UNTIL_OPTIONS: { key: AiUntil; label: string }[] = [
-  { key: "sources", label: "2차 소스까지" },
-  { key: "assets", label: "자료까지" },
-  { key: "draft", label: "초안까지" },
-  { key: "review", label: "점검까지" },
+const UNTIL_OPTIONS: { key: AiUntil; label: string; hint: string }[] = [
+  { key: "sources", label: "2차 소스까지", hint: "공식 문서·PR·이슈를 읽고 맥락을 정리" },
+  { key: "assets", label: "자료까지", hint: "비교 표·그림 블록을 만들고 slug 를 정함" },
+  { key: "draft", label: "초안까지", hint: "합니다체 초안을 draft 로 씀" },
+  { key: "review", label: "점검까지", hint: "문체·구성 점검을 통과시킴. 발행만 남김" },
 ];
 
 function untilLabel(key: AiUntil | null) {
@@ -924,7 +969,16 @@ function ago(iso: string | null): string {
  * "AI에게 맡기기". 누르면 요청만 쌓이고, 실행기(루틴·크론)가 다음 실행 때
  * 집어서 실제로 조사·자료·초안·점검을 하고 단계를 넘긴다.
  */
-function AiPanel({ topic, onChange }: { topic: TopicRow; onChange: (t: TopicRow) => void }) {
+function AiPanel({
+  topic,
+  onChange,
+  inline = false,
+}: {
+  topic: TopicRow;
+  onChange: (t: TopicRow) => void;
+  /** 다음 할 일 상자 안 — 맡긴 적 없는 주제의 맡기기 버튼만 그린다. */
+  inline?: boolean;
+}) {
   const left = UNTIL_OPTIONS.filter((o) => stageIndex(o.key) > stageIndex(topic.stage));
   const [until, setUntil] = useState<AiUntil>("review");
   const [busy, setBusy] = useState(false);
@@ -933,7 +987,9 @@ function AiPanel({ topic, onChange }: { topic: TopicRow; onChange: (t: TopicRow)
   const { status, message, updatedAt, startedAt, log } = topic.ai;
   const running = status === "running";
 
-  if (topic.droppedReason !== null || (left.length === 0 && !status && log.length === 0)) return null;
+  // 맡긴 적이 없으면 버튼만 다음 할 일 상자 안에(inline), 그 밖엔 아래 판에.
+  const idle = !status && !message && log.length === 0;
+  if (topic.droppedReason !== null || (left.length === 0 && idle) || inline !== idle) return null;
 
   async function send(body: Record<string, unknown>) {
     setBusy(true);
@@ -946,6 +1002,23 @@ function AiPanel({ topic, onChange }: { topic: TopicRow; onChange: (t: TopicRow)
 
   const pick = left.some((o) => o.key === until) ? until : left[left.length - 1]?.key;
   const next = nextStage(topic.stage);
+
+  if (inline) {
+    return pick ? (
+      <div className="pt-3">
+        <AiLaunch
+          options={left}
+          from={stageIndex(topic.stage)}
+          value={pick}
+          onChange={setUntil}
+          retry={false}
+          busy={busy}
+          onLaunch={() => send({ action: "ai", until: pick })}
+        />
+        {error && <p className="m-0 mt-1.5 text-[12px] text-danger">{error}</p>}
+      </div>
+    ) : null;
+  }
 
   return (
     <div
@@ -1020,33 +1093,73 @@ function AiPanel({ topic, onChange }: { topic: TopicRow; onChange: (t: TopicRow)
             </div>
           )}
           {left.length > 0 && pick && (
-            <>
-              <select
-                value={pick}
-                onChange={(e) => setUntil(e.target.value as AiUntil)}
-                aria-label="AI 가 진행할 단계"
-                className="rounded-full border border-border-token bg-surface px-2.5 py-1 font-sans text-[12px] text-ink-soft outline-none focus:border-border-strong"
-              >
-                {left.map((o) => (
-                  <option key={o.key} value={o.key}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => send({ action: "ai", until: pick })}
-                className="inline-flex items-center gap-1.5 rounded-full border border-border-strong px-3 py-1 font-sans text-[12px] font-medium text-ink transition-[background-color,transform] hover:bg-hover active:scale-[0.97] disabled:opacity-40"
-              >
-                <span aria-hidden>✦</span>
-                {status === "failed" ? "다시 맡기기" : "AI에게 맡기기"}
-              </button>
-            </>
+            <AiLaunch
+              options={left}
+              from={stageIndex(topic.stage)}
+              value={pick}
+              onChange={setUntil}
+              retry={status === "failed"}
+              busy={busy}
+              onLaunch={() => send({ action: "ai", until: pick })}
+            />
           )}
         </div>
       )}
       {error && <p className="m-0 mt-1.5 text-[12px] text-danger">{error}</p>}
+    </div>
+  );
+}
+
+/**
+ * 맡기기 버튼 — 왼쪽은 실행, 오른쪽은 어디까지 갈지 고르는 목록.
+ * 한 덩어리로 붙어 있어 "무엇을 · 어디까지"가 한 번에 읽힌다.
+ */
+function AiLaunch({
+  options,
+  from,
+  value,
+  onChange,
+  retry,
+  busy,
+  onLaunch,
+}: {
+  options: typeof UNTIL_OPTIONS;
+  from: number;
+  value: AiUntil;
+  onChange: (v: AiUntil) => void;
+  retry: boolean;
+  busy: boolean;
+  onLaunch: () => void;
+}) {
+  const half =
+    "transition-colors hover:bg-[color-mix(in_oklab,var(--callout-tip-glyph)_14%,transparent)] disabled:opacity-40";
+  return (
+    <div className="ai-launch inline-flex items-stretch rounded-full border border-[color-mix(in_oklab,var(--callout-tip-glyph)_45%,var(--border))] bg-[color-mix(in_oklab,var(--callout-tip-bg)_70%,var(--surface))] text-[var(--callout-tip-ink)] shadow-[0_6px_16px_-10px_var(--callout-tip-glyph)]">
+      <button
+        type="button"
+        disabled={busy}
+        onClick={onLaunch}
+        className={`group inline-flex items-center gap-1.5 rounded-l-full py-1.5 pr-3 pl-3.5 font-sans text-[12.5px] font-semibold active:scale-[0.98] ${half}`}
+      >
+        <span aria-hidden className="text-[12px] text-[var(--callout-tip-glyph)] transition-transform duration-500 group-hover:rotate-[72deg]">
+          ✦
+        </span>
+        {busy ? "맡기는 중…" : retry ? "다시 맡기기" : "AI에게 맡기기"}
+      </button>
+      <span aria-hidden className="my-1.5 w-px bg-[color-mix(in_oklab,var(--callout-tip-glyph)_35%,transparent)]" />
+      <Select
+        label="어디까지 맡길까요"
+        value={value}
+        onChange={onChange}
+        disabled={busy}
+        options={options.map((o) => ({
+          value: o.key,
+          label: o.label,
+          hint: o.hint,
+          meta: `${stageIndex(o.key) - from}단계`,
+        }))}
+        className={`inline-flex items-center gap-1 rounded-r-full py-1.5 pr-3 pl-2.5 font-sans text-[12.5px] font-medium ${half}`}
+      />
     </div>
   );
 }
