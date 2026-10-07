@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type Dispatch, type SetStateAction } from "react";
 import { API } from "@/lib/api-routes";
 import type { CandidateStatus, QueueRow } from "@/lib/release-queue";
 
@@ -19,8 +19,14 @@ const MOVES: { key: CandidateStatus; label: string }[] = [
   { key: "new", label: "되돌리기" },
 ];
 
-export function ReleaseQueue({ initial }: { initial: QueueRow[] }) {
-  const [rows, setRows] = useState(initial);
+interface Props {
+  rows: QueueRow[];
+  setRows: Dispatch<SetStateAction<QueueRow[]>>;
+  /** 글감 id → 묶인 글 주제 제목. */
+  topicsOf: Map<string, string[]>;
+}
+
+export function ReleaseQueue({ rows, setRows, topicsOf }: Props) {
   const [tab, setTab] = useState<CandidateStatus>("new");
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -99,6 +105,23 @@ export function ReleaseQueue({ initial }: { initial: QueueRow[] }) {
               {r.name && r.name !== r.tag && (
                 <div className="mt-1 text-[13.5px] leading-[1.5] text-ink-soft">
                   {r.name}
+                </div>
+              )}
+              {r.note && (
+                <div className="mt-1 text-[13px] leading-[1.5] text-ink-muted">
+                  {r.note}
+                </div>
+              )}
+              {topicsOf.get(r.id) && (
+                <div className="mt-1.5 flex flex-wrap gap-1">
+                  {topicsOf.get(r.id)!.map((t) => (
+                    <span
+                      key={t}
+                      className="rounded-md bg-surface-alt px-1.5 py-0.5 font-sans text-[11.5px] text-ink-soft"
+                    >
+                      → {t}
+                    </span>
+                  ))}
                 </div>
               )}
               <div className="mt-2.5 flex flex-wrap items-center gap-1.5">

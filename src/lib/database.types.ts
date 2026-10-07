@@ -386,6 +386,72 @@ export type Database = {
         }
         Relationships: []
       }
+      release_topic_candidates: {
+        Row: {
+          candidate_id: string
+          topic_id: number
+        }
+        Insert: {
+          candidate_id: string
+          topic_id: number
+        }
+        Update: {
+          candidate_id?: string
+          topic_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "release_topic_candidates_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "release_candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "release_topic_candidates_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "release_topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      release_topics: {
+        Row: {
+          angle: string | null
+          checks: Json
+          created_at: string
+          dropped_reason: string | null
+          id: number
+          post_slug: string | null
+          stage: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          angle?: string | null
+          checks?: Json
+          created_at?: string
+          dropped_reason?: string | null
+          id?: never
+          post_slug?: string | null
+          stage?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          angle?: string | null
+          checks?: Json
+          created_at?: string
+          dropped_reason?: string | null
+          id?: never
+          post_slug?: string | null
+          stage?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       series: {
         Row: {
           color: string

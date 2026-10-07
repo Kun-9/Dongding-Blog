@@ -11,8 +11,11 @@ import { dbAdmin } from "@/lib/supabase";
 const PatchSchema = z.object({
   id: z.string().min(1),
   status: z.enum(["new", "queued", "skipped", "written"]),
-  /** queued/skipped 로 옮긴 이유, 또는 written 의 글 slug. */
-  note: z.string().max(200).nullable().default(null),
+  /**
+   * queued/skipped 로 옮긴 이유, 또는 written 의 글 slug. 빼면 기존 메모를
+   * 그대로 둔다 — 상태만 옮기다 메모가 지워지면 안 된다.
+   */
+  note: z.string().max(200).nullable().optional(),
 });
 
 export async function PATCH(req: Request) {
@@ -37,7 +40,7 @@ export async function PATCH(req: Request) {
   const { id, status, note } = parsed.data;
   const { data, error } = await dbAdmin()
     .from("release_candidates")
-    .update({ status, note })
+    .update(note === undefined ? { status } : { status, note })
     .eq("id", id)
     .select("id")
     .maybeSingle();

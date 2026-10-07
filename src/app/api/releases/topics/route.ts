@@ -1,0 +1,130 @@
+/**
+ * 글 주제 — 만들기(POST), 단계 이동·편집(PATCH), 삭제(DELETE).
+ *
+ * 규칙은 `lib/release-topics` 에 있다. 여기는 입력 검증과 상태 코드만 맡는다.
+ */
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { requireApiUser } from "@/lib/api-shared";
+import {
+  TopicError,
+  advanceTopic,
+  createTopic,
+  deleteTopic,
+  dropTopic,
+  editTopic,
+  revertTopic,
+} from "@/lib/release-topics";
+
+const Title = z.string().trim().min(1).max(120);
+const Angle = z.string().trim().max(300).nullable();
+const CandidateIds = z.array(z.string().min(1)).max(50);
+
+const CreateSchema = z.object({
+  title: Title,
+  angle: Angle.optional(),
+  candidateIds: CandidateIds.optional(),
+});
+
+const PatchSchema = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("advance"),
+    id: z.number().int(),
+    note: z.string().trim().min(1, "근거를 남겨주세요").max(2000),
+    postSlug: z.string().trim().min(1).max(120).nullable().optional(),
+  }),
+  z.object({ action: z.literal("revert"), id: z.number().int() }),
+  z.object({
+    action: z.literal("drop"),
+    id: z.number().int(),
+    reason: z.string().trim().min(1).max(300).nullable(),
+  }),
+  z.object({
+    action: z.literal("edit"),
+    id: z.number().int(),
+    title: Title.optional(),
+    angle: Angle.optional(),
+    candidateIds: CandidateIds.optional(),
+  }),
+]);
+
+const DeleteSchema = z.object({ id: z.number().int() });
+
+async function parse<T extends z.ZodType>(
+  req: Request,
+  schema: T,
+): Promise<z.infer<T> | NextResponse> {
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+  const parsed = schema.safeParse(body);
+  if (!parsed.success) {
+    const first = parsed.error.issues[0]?.message;
+    return NextResponse.json(
+      { error: first ?? "Validation failed", issues: parsed.error.flatten() },
+      { status: 400 },
+    );
+  }
+  return parsed.data;
+}
+
+function failed(e: unknown) {
+  if (e instanceof TopicError) {
+    return NextResponse.json({ error: e.message }, { status: e.status });
+  }
+  return NextResponse.json(
+    { error: e instanceof Error ? e.message : "실패" },
+    { status: 500 },
+  );
+}
+
+export async function POST(req: Request) {
+  const blocked = await requireApiUser();
+  if (blocked) return blocked;
+  const input = await parse(req, CreateSchema);
+  if (input instanceof NextResponse) return input;
+
+  try {
+    return NextResponse.json({ topic: await createTopic(input) });
+  } catch (e) {
+    return failed(e);
+  }
+}
+
+export async function PATCH(req: Request) {
+  const blocked = await requireApiUser();
+  if (blocked) return blocked;
+  const input = await parse(req, PatchSchema);
+  if (input instanceof NextResponse) return input;
+
+  try {
+    const topic =
+      input.action === "advance"
+        ? await advanceTopic(input.id, input)
+        : input.action === "revert"
+          ? await revertTopic(input.id)
+          : input.action === "drop"
+            ? await dropTopic(input.id, input.reason)
+            : await editTopic(input.id, input);
+    return NextResponse.json({ topic });
+  } catch (e) {
+    return failed(e);
+  }
+}
+
+export async function DELETE(req: Request) {
+  const blocked = await requireApiUser();
+  if (blocked) return blocked;
+  const input = await parse(req, DeleteSchema);
+  if (input instanceof NextResponse) return input;
+
+  try {
+    await deleteTopic(input.id);
+    return NextResponse.json({ ok: true });
+  } catch (e) {
+    return failed(e);
+  }
+}
