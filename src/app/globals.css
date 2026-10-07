@@ -418,3 +418,67 @@ pre {
 @media (prefers-reduced-motion: reduce) {
   .topic-rise, .topic-pulse, .topic-ring, .topic-sheen { animation: none; }
 }
+
+/* ── AI 작성 중 표시 (/admin/releases) ───────────────────────────────
+   작업 중인 카드는 테두리가 숨 쉬고, 배지 글자에 빛이 흐르고, 아이콘이
+   돈다. 로그 마지막 줄 뒤엔 점 세 개가 깜빡인다. */
+@keyframes ai-glow {
+  0%, 100% {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--callout-tip-glyph) 30%, transparent),
+      0 12px 32px -20px color-mix(in srgb, var(--callout-tip-glyph) 55%, transparent);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--callout-tip-glyph) 70%, transparent),
+      0 16px 44px -16px color-mix(in srgb, var(--callout-tip-glyph) 75%, transparent);
+  }
+}
+@keyframes ai-shimmer {
+  from { background-position: 200% 0; }
+  to   { background-position: -200% 0; }
+}
+@keyframes ai-spin { to { transform: rotate(360deg); } }
+@keyframes ai-dot {
+  0%, 80%, 100% { opacity: 0.2; }
+  40%           { opacity: 1; }
+}
+.ai-glow { animation: ai-glow 2.4s ease-in-out infinite; }
+.ai-shimmer {
+  background: linear-gradient(
+      90deg,
+      var(--callout-tip-ink) 0%,
+      var(--callout-tip-glyph) 35%,
+      var(--callout-tip-ink) 70%
+    ) 0 0 / 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: ai-shimmer 2.4s linear infinite;
+}
+.ai-spin { display: inline-block; animation: ai-spin 2.8s linear infinite; }
+.ai-dots > span { animation: ai-dot 1.2s ease-in-out infinite; }
+.ai-dots > span:nth-child(2) { animation-delay: 0.2s; }
+.ai-dots > span:nth-child(3) { animation-delay: 0.4s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-glow, .ai-shimmer, .ai-spin, .ai-dots > span { animation: none; }
+  .ai-shimmer { color: var(--callout-tip-ink); background: none; }
+}
+
+/* 그림 블록(Diagram) — 스크롤에 맞춰 한 칸씩 올라온다. 스크롤 타임라인이
+   없는 브라우저에서는 애니메이션 없이 그대로 보인다. */
+@keyframes dg-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+@supports (animation-timeline: view()) {
+  .dg-step {
+    animation: dg-in linear both;
+    animation-timeline: view();
+    animation-range: entry calc(4% + var(--i, 0) * 5%) cover calc(22% + var(--i, 0) * 5%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dg-step { animation: none; }
+}

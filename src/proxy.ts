@@ -63,8 +63,9 @@ export default async function proxy(req: NextRequest) {
 export const config = {
   // 정적 파일과 이미지는 건너뛴다 — 매 요청 세션 갱신을 돌릴 이유가 없다.
   // MCP 와 OAuth 메타데이터도 마찬가지다: 쿠키가 아니라 Bearer 토큰으로 인증하므로
-  // 도구 호출마다 Supabase 세션 갱신을 왕복시킬 이유가 없다.
+  // 도구 호출마다 Supabase 세션 갱신을 왕복시킬 이유가 없다. 릴리스 실행기 API 도
+  // Bearer 로만 인증한다.
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|api/mcp|\\.well-known|posts/.*\\.(?:png|jpg|jpeg|gif|webp|svg)).*)",
+    "/((?!_next/static|_next/image|favicon.ico|api/mcp|api/releases/worker|\\.well-known|posts/.*\\.(?:png|jpg|jpeg|gif|webp|svg)).*)",
   ],
 };

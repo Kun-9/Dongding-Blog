@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { API } from "@/lib/api-routes";
 import { Collapse } from "@/components/releases/Collapse";
 import { useMounted } from "@/lib/hooks";
 import { renderMarkdown } from "@/lib/markdown";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import type { QueueRow } from "@/lib/release-queue";
-import type { AiUntil, TopicRow } from "@/lib/release-topics";
+import type { AiLogEntry, AiUntil, TopicRow } from "@/lib/release-topics";
 import {
   STAGES,
   nextStage,
@@ -15,7 +15,7 @@ import {
   stageLabel,
   type StageKey,
 } from "@/lib/release-stages";
-import { AVOID, OUTLINE, REQUIRED_PARTS, VOICE_RULES } from "@/lib/voice";
+import { AVOID, CLARITY_RULES, OUTLINE, REQUIRED_PARTS, VOICE_RULES } from "@/lib/voice";
 
 /** 단계마다 근거 칸에 무엇을 적을지. */
 const NOTE_HINT: Partial<Record<StageKey, string>> = {
@@ -86,12 +86,16 @@ export function TopicBoard({ topics, onTopicsChange, candidates, onQueued }: Pro
   const [showDropped, setShowDropped] = useState(false);
 
   const active = topics.filter((t) => t.droppedReason === null);
+  const aiCount = topics.filter((t) => t.ai.status === "running").length;
   const dropped = topics.filter((t) => t.droppedReason !== null);
   const shown = lane ? active.filter((t) => laneOf(t) === lane) : active;
 
-  // 진행이 덜 된 주제가 위로. 같은 단계면 먼저 만든 순.
+  // AI 가 쓰고 있는 주제, 대기 중인 주제가 맨 위. 그다음 진행이 덜 된 순,
+  // 같은 단계면 먼저 만든 순.
+  const aiRank = (t: TopicRow) => (t.ai.status === "running" ? 0 : t.ai.status === "queued" ? 1 : 2);
   const sorted = [...shown].sort(
-    (a, b) => stageIndex(a.stage) - stageIndex(b.stage) || a.id - b.id,
+    (a, b) =>
+      aiRank(a) - aiRank(b) || stageIndex(a.stage) - stageIndex(b.stage) || a.id - b.id,
   );
 
   function replace(topic: TopicRow) {
@@ -112,8 +116,14 @@ export function TopicBoard({ topics, onTopicsChange, candidates, onQueued }: Pro
           <div className="mb-1 font-sans text-[11px] font-bold uppercase tracking-[0.1em] text-ink-muted">
             Pipeline
           </div>
-          <h2 className="m-0 font-sans text-[20px] font-semibold tracking-[-0.02em] text-ink">
+          <h2 className="m-0 flex items-center gap-2.5 font-sans text-[20px] font-semibold tracking-[-0.02em] text-ink">
             집필 진행
+            {aiCount > 0 && (
+              <span className="topic-rise inline-flex items-center gap-1.5 rounded-full bg-[color:var(--callout-tip-bg)] px-2.5 py-0.5 text-[12px] font-semibold tracking-normal">
+                <span aria-hidden className="ai-spin text-[11px] text-[color:var(--callout-tip-glyph)]">✦</span>
+                <span className="ai-shimmer">AI 작성 중 {aiCount}</span>
+              </span>
+            )}
           </h2>
         </div>
         <button
@@ -358,9 +368,9 @@ function GuideCard() {
 
       <Collapse open={open}>
         <div className="grid gap-5 border-t border-border-token px-4 py-4 sm:px-5 md:grid-cols-3">
-          <GuideColumn title="문체">
+          <GuideColumn title="문체·설명">
             <ul className="m-0 list-none space-y-1.5 p-0">
-              {VOICE_RULES.map((v) => (
+              {[...CLARITY_RULES.slice(0, 4), ...VOICE_RULES].map((v) => (
                 <li key={v} className="flex gap-2 text-[13px] leading-[1.55] text-ink-soft">
                   <span aria-hidden className="mt-[7px] size-1 shrink-0 rounded-full bg-ink-subtle" />
                   {v}
@@ -440,6 +450,8 @@ function Progress({ topic }: { topic: TopicRow }) {
   const paused = topic.droppedReason !== null;
   const next = nextStage(topic.stage);
   const mounted = useMounted();
+  // AI 가 지금 이 칸을 쓰고 있으면 빛결을 빠르게, 라벨을 "AI 작성 중"으로.
+  const writing = topic.ai.status === "running";
 
   return (
     <div>
@@ -466,7 +478,10 @@ function Progress({ topic }: { topic: TopicRow }) {
                     className="topic-pulse absolute inset-0 rounded-full"
                     style={{ background: tone(s.key).fg }}
                   />
-                  <span className="topic-sheen absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent" />
+                  <span
+                    className="topic-sheen absolute inset-0 bg-gradient-to-r from-transparent via-white/60 to-transparent"
+                    style={writing ? { animationDuration: "1.1s" } : undefined}
+                  />
                 </>
               )}
             </span>
@@ -488,7 +503,11 @@ function Progress({ topic }: { topic: TopicRow }) {
                   : "text-ink-subtle"
             }`}
           >
-            {s.label}
+            {writing && i === done + 1 ? (
+              <span className="ai-shimmer">AI 작성 중</span>
+            ) : (
+              s.label
+            )}
           </span>
         ))}
       </div>
@@ -527,6 +546,8 @@ function TopicCard({
   const history = STAGES.filter((s) => topic.checks[s.key]);
   const step = stageIndex(topic.stage) + 1;
   const publishing = next?.key === "published";
+  const writing = topic.ai.status === "running";
+  const aiBusy = writing || topic.ai.status === "queued";
   // 처음 그릴 때 한 장씩 차례로 떠오른다. 너무 길어지지 않게 8장에서 끊는다.
   const rise = { animationDelay: `${Math.min(index, 8) * 55}ms` };
 
@@ -581,7 +602,9 @@ function TopicCard({
       className={`topic-rise row-span-8 grid grid-rows-subgrid gap-0 rounded-xl border bg-surface p-5 transition-[transform,box-shadow,border-color] duration-300 ease-out ${
         paused
           ? "border-dashed border-border-token"
-          : "border-border-token hover:-translate-y-0.5 hover:border-border-strong hover:shadow-[0_14px_32px_-18px_rgba(0,0,0,0.28)]"
+          : writing
+            ? "ai-glow border-[color-mix(in_srgb,var(--callout-tip-glyph)_45%,var(--border))]"
+            : "border-border-token hover:-translate-y-0.5 hover:border-border-strong hover:shadow-[0_14px_32px_-18px_rgba(0,0,0,0.28)]"
       }`}
     >
       {/*
@@ -600,12 +623,27 @@ function TopicCard({
               : { background: c.bg, color: c.ink }
           }
         >
-          <span
-            aria-hidden
-            className={`size-1.5 rounded-full bg-current ${paused || !next ? "" : "topic-ring"}`}
-            style={{ color: paused ? "var(--ink-subtle)" : c.fg }}
-          />
-          {paused ? "접음" : next ? `${next.label} 차례` : "발행 완료"}
+          {!writing && (
+            <span
+              aria-hidden
+              className={`size-1.5 rounded-full bg-current ${paused || !next ? "" : "topic-ring"}`}
+              style={{ color: paused ? "var(--ink-subtle)" : c.fg }}
+            />
+          )}
+          {paused ? (
+            "접음"
+          ) : writing ? (
+            <>
+              <span aria-hidden className="ai-spin -ml-0.5 text-[11px]">✦</span>
+              <span className="ai-shimmer">AI 작성 중 · {next?.label}</span>
+            </>
+          ) : topic.ai.status === "queued" ? (
+            "AI 대기 중"
+          ) : next ? (
+            `${next.label} 차례`
+          ) : (
+            "발행 완료"
+          )}
         </span>
         <span className="font-mono text-[11.5px] tabular-nums text-ink-subtle">
           {step}/{STAGES.length}
@@ -740,7 +778,12 @@ function TopicCard({
                 </div>
               </div>
             </Collapse>
-            <Collapse open={mode === "view"}>
+            {aiBusy && (
+              <p className="m-0 mt-2 text-[12px] text-ink-muted">
+                AI 가 이 주제를 맡고 있어서 수동 기록은 잠시 막아 둡니다. 멈추려면 아래에서 중지하세요.
+              </p>
+            )}
+            <Collapse open={mode === "view" && !aiBusy}>
               <div className="pt-3">
                 <button
                   type="button"
@@ -886,9 +929,11 @@ function AiPanel({ topic, onChange }: { topic: TopicRow; onChange: (t: TopicRow)
   const [until, setUntil] = useState<AiUntil>("review");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { status, message, updatedAt } = topic.ai;
+  const [showLog, setShowLog] = useState(false);
+  const { status, message, updatedAt, startedAt, log } = topic.ai;
+  const running = status === "running";
 
-  if (topic.droppedReason !== null || (left.length === 0 && !status)) return null;
+  if (topic.droppedReason !== null || (left.length === 0 && !status && log.length === 0)) return null;
 
   async function send(body: Record<string, unknown>) {
     setBusy(true);
@@ -900,29 +945,41 @@ function AiPanel({ topic, onChange }: { topic: TopicRow; onChange: (t: TopicRow)
   }
 
   const pick = left.some((o) => o.key === until) ? until : left[left.length - 1]?.key;
+  const next = nextStage(topic.stage);
 
   return (
-    <div className="mt-2 rounded-lg border border-dashed border-border-token px-3 py-2.5">
-      {status === "queued" || status === "running" ? (
+    <div
+      className={`mt-2 rounded-lg border px-3 py-2.5 transition-colors duration-500 ${
+        running
+          ? "border-[color-mix(in_srgb,var(--callout-tip-glyph)_40%,var(--border))] bg-[color-mix(in_srgb,var(--callout-tip-bg)_55%,transparent)]"
+          : "border-dashed border-border-token"
+      }`}
+    >
+      {running ? (
+        <>
+          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+            <span aria-hidden className="ai-spin text-[13px] text-[color:var(--callout-tip-glyph)]">✦</span>
+            <span className="text-[12.5px] font-semibold">
+              <span className="ai-shimmer">AI 작성 중</span>
+              <span className="font-normal text-ink-muted"> · {next?.label} 단계 · {untilLabel(topic.ai.until)}</span>
+            </span>
+            <span className="ml-auto flex items-center gap-3">
+              {startedAt && <Elapsed since={startedAt} />}
+              <Quiet disabled={busy} onClick={() => send({ action: "ai_cancel" })}>
+                중지
+              </Quiet>
+            </span>
+          </div>
+          <AiLog entries={log} live fallback={message} />
+        </>
+      ) : status === "queued" ? (
         <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
-          <span
-            aria-hidden
-            className={`size-2 shrink-0 rounded-full ${status === "running" ? "topic-pulse" : ""}`}
-            style={{ background: status === "running" ? "var(--callout-tip-glyph)" : "var(--ink-subtle)" }}
-          />
+          <span aria-hidden className="topic-pulse size-2 shrink-0 rounded-full bg-ink-subtle" />
           <span className="min-w-0 flex-1 text-[12.5px] leading-[1.5] text-ink-soft">
-            {status === "running" ? (
-              <>
-                <b className="font-semibold text-ink">AI 작업 중</b> · <AiMessage text={message ?? "진행 중"} />
-              </>
-            ) : (
-              <>
-                <b className="font-semibold text-ink">AI 대기 중</b> · {untilLabel(topic.ai.until)}
-                {" · "}
-                <AiMessage text={message ?? "다음 실행 때 시작"} />
-              </>
-            )}
-            <span className="ml-1.5 font-mono text-[11px] text-ink-subtle">{ago(updatedAt)}</span>
+            <b className="font-semibold text-ink">AI 대기 중</b> · {untilLabel(topic.ai.until)}
+            {" · "}
+            <AiMessage text={message ?? "다음 실행 때 시작"} />
+            <span suppressHydrationWarning className="ml-1.5 font-mono text-[11px] text-ink-subtle">{ago(updatedAt)}</span>
           </span>
           <Quiet disabled={busy} onClick={() => send({ action: "ai_cancel" })}>
             취소
@@ -938,9 +995,29 @@ function AiPanel({ topic, onChange }: { topic: TopicRow; onChange: (t: TopicRow)
             message && (
               <span className="w-full text-[12px] leading-[1.5] text-ink-muted">
                 <b className="font-semibold text-ink-soft">AI</b> · {message}
-                <span className="ml-1.5 font-mono text-[11px] text-ink-subtle">{ago(updatedAt)}</span>
+                <span suppressHydrationWarning className="ml-1.5 font-mono text-[11px] text-ink-subtle">{ago(updatedAt)}</span>
               </span>
             )
+          )}
+          {log.length > 0 && (
+            <div className="w-full">
+              <button
+                type="button"
+                onClick={() => setShowLog((v) => !v)}
+                className="flex items-center gap-1.5 font-sans text-[11.5px] text-ink-muted transition-colors hover:text-ink"
+              >
+                <span aria-hidden className={`text-[8px] transition-transform ${showLog ? "rotate-90" : ""}`}>▶</span>
+                지난 작업 로그 {log.length}줄
+                {startedAt && log.length > 1 && (
+                  <span className="font-mono text-ink-subtle">
+                    · {duration(startedAt, log[log.length - 1].at)}
+                  </span>
+                )}
+              </button>
+              <Collapse open={showLog}>
+                <AiLog entries={log} />
+              </Collapse>
+            </div>
           )}
           {left.length > 0 && pick && (
             <>
@@ -972,6 +1049,122 @@ function AiPanel({ topic, onChange }: { topic: TopicRow; onChange: (t: TopicRow)
       {error && <p className="m-0 mt-1.5 text-[12px] text-danger">{error}</p>}
     </div>
   );
+}
+
+const LOG_MARK: Record<AiLogEntry["kind"], { glyph: string; color: string }> = {
+  start: { glyph: "▶", color: "var(--ink-subtle)" },
+  report: { glyph: "•", color: "var(--callout-tip-glyph)" },
+  stage: { glyph: "✓", color: "var(--ink)" },
+  done: { glyph: "✓", color: "var(--callout-tip-glyph)" },
+  fail: { glyph: "✕", color: "var(--danger)" },
+};
+
+/**
+ * 진행 로그. live 면 새 줄이 생길 때 맨 아래로 따라가고, 마지막 줄 뒤에
+ * 점 세 개가 깜빡인다. 시각은 작업 시작부터 흐른 시간(분:초)으로 보인다.
+ */
+function AiLog({
+  entries,
+  live = false,
+  fallback,
+}: {
+  entries: AiLogEntry[];
+  live?: boolean;
+  fallback?: string | null;
+}) {
+  const box = useRef<HTMLOListElement>(null);
+  const last = entries[entries.length - 1]?.at;
+  useEffect(() => {
+    if (live && box.current) box.current.scrollTo({ top: box.current.scrollHeight, behavior: "smooth" });
+  }, [live, last]);
+
+  if (entries.length === 0) {
+    return (
+      <p className="m-0 mt-2 text-[12.5px] text-ink-muted">
+        {fallback ?? "진행 로그를 기다리는 중"}
+        {live && <Dots />}
+      </p>
+    );
+  }
+  const start = Date.parse(entries[0].at);
+
+  return (
+    <ol
+      ref={box}
+      className="m-0 mt-2 max-h-[180px] list-none space-y-1 overflow-y-auto p-0 pr-1"
+    >
+      {entries.map((e, i) => {
+        const mark = LOG_MARK[e.kind] ?? LOG_MARK.report;
+        const isLast = i === entries.length - 1;
+        return (
+          <li
+            key={`${e.at}-${i}`}
+            className={`flex items-baseline gap-2 text-[12.5px] leading-[1.5] ${isLast && live ? "topic-rise" : ""}`}
+          >
+            <span className="w-[38px] shrink-0 text-right font-mono text-[10.5px] tabular-nums text-ink-subtle">
+              {clock(Date.parse(e.at) - start)}
+            </span>
+            <span aria-hidden className="w-3 shrink-0 text-center text-[10px]" style={{ color: mark.color }}>
+              {mark.glyph}
+            </span>
+            <span
+              className={`min-w-0 break-words ${
+                isLast && live ? "text-ink" : e.kind === "stage" ? "font-semibold text-ink-soft" : "text-ink-muted"
+              }`}
+            >
+              {e.message}
+              {isLast && live && <Dots />}
+            </span>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+function Dots() {
+  return (
+    <span aria-hidden className="ai-dots ml-0.5 inline-flex">
+      <span>.</span>
+      <span>.</span>
+      <span>.</span>
+    </span>
+  );
+}
+
+/** 작업 시작부터 흐른 시간. 1초마다 다시 그린다. */
+function Elapsed({ since }: { since: string }) {
+  // 서버와 브라우저의 "지금"이 달라 그대로 그리면 하이드레이션이 깨진다.
+  // 브라우저에 붙은 뒤부터 센다.
+  const mounted = useMounted();
+  const [now, setNow] = useState(0);
+  useEffect(() => {
+    const tick = () => setNow(Date.now());
+    const t = setInterval(tick, 1000);
+    const first = setTimeout(tick, 0);
+    return () => {
+      clearInterval(t);
+      clearTimeout(first);
+    };
+  }, []);
+  return (
+    <span className="font-mono text-[11px] tabular-nums text-ink-muted" title="작업 시작부터 흐른 시간">
+      {mounted && now ? clock(now - Date.parse(since)) : "–:––"}
+    </span>
+  );
+}
+
+function clock(ms: number): string {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = String(s % 60).padStart(2, "0");
+  return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${sec}` : `${m}:${sec}`;
+}
+
+function duration(from: string, to: string): string {
+  const m = Math.round((Date.parse(to) - Date.parse(from)) / 60000);
+  return m < 1 ? "1분 안쪽" : m < 60 ? `${m}분` : `${Math.floor(m / 60)}시간 ${m % 60}분`;
 }
 
 /** 메시지 끝의 세션 주소는 "세션 보기" 링크로 바꾼다. */

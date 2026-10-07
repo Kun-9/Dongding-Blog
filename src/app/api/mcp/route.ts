@@ -504,8 +504,9 @@ const handler = createMcpHandler(
       {
         title: "릴리스 AI 작업 진행 보고",
         description:
-          "작업 중인 주제의 한 줄 상황을 남긴다(어드민 카드에 '작업 중 — …'으로 보인다). 단계를 시작할 때마다 부를 것. " +
-          "사람이 취소했으면 에러가 나니 그때는 바로 멈출 것.",
+          "작업 중인 주제의 한 줄 상황을 남긴다(어드민 카드에 실시간 진행 로그로 쌓인다). 단계를 시작할 때뿐 아니라 " +
+          "작은 일마다(문서 읽기, 표 만들기, 초안 섹션 등) 1~2분에 한 번꼴로 구체적으로 부를 것. " +
+          "어드민에서 취소했으면 에러가 나니 그때는 바로 멈출 것.",
         inputSchema: z.object({ id: z.number().int(), message: z.string().min(1).max(200) }),
       },
       async ({ id, message }) => topicCall(() => reportAi(id, message)),
@@ -517,7 +518,7 @@ const handler = createMcpHandler(
         title: "릴리스 AI 작업 끝내기",
         description:
           "작업을 끝낸다. ok=true 면 상태를 비우고 message 를 남긴다(무엇을 했는지 한두 줄). " +
-          "ok=false 면 failed 로 멈추고 message 에 막힌 이유와 사람이 할 일을 쓴다. 성공이든 실패든 반드시 마지막에 부를 것.",
+          "ok=false 면 failed 로 멈추고 message 에 막힌 이유와 남은 할 일을 쓴다. 성공이든 실패든 반드시 마지막에 부를 것.",
         inputSchema: z.object({
           id: z.number().int(),
           ok: z.boolean(),
@@ -549,8 +550,8 @@ const handler = createMcpHandler(
         title: "글 이미지 올리기",
         description:
           "글에 넣을 그림을 Storage(post-images/<slug>/<name>)에 올리고 본문에 쓸 경로(/posts/<slug>/<name>)를 돌려준다. " +
-          "SVG 는 svg 에 원문을, PNG·JPEG 는 base64 에 넣는다. 흐름 그림·구조 그림은 SVG 로 직접 그릴 것: " +
-          "배경 투명, 글꼴 sans-serif, 글자 색 #5f5f5d·선 #1c1c1c 처럼 라이트·다크 모두에서 읽히는 중간 톤, 가로 720px 안팎. " +
+          "SVG 는 svg 에 원문을, PNG·JPEG 는 base64 에 넣는다. 순서·전후 비교·버전 흐름은 올리지 말고 본문에 그림 블록(```flow·compare·timeline)으로 쓴다 — 그 밖의 모양만 SVG 로. " +
+          "본문에 인라인으로 그려지므로 색은 블로그 변수로 쓴다(var(--ink, #1c1c1c) 처럼 대체값과 함께) — 양식은 get_release_writing_guide 의 'SVG 그림 양식'. " +
           "같은 이름이 있으면 덮어쓴다.",
         inputSchema: z.object({
           slug: z.string().regex(SLUG_PATTERN),
@@ -565,7 +566,9 @@ const handler = createMcpHandler(
         const type =
           ext === "svg" ? "image/svg+xml" : ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "image/jpeg";
         if (ext === "svg" && !svg) return fail(".svg 는 svg 에 원문을 넣으세요.");
-        if (ext === "svg" && /<script|on\w+\s*=/i.test(svg!)) return fail("SVG 에 script·이벤트 속성은 넣을 수 없습니다.");
+        if (ext === "svg" && /<script|\son\w+\s*=|<foreignObject|(?:xlink:)?href\s*=\s*["']\s*(?:https?:|\/\/)/i.test(svg!)) {
+          return fail("SVG 에 script·이벤트 속성·foreignObject·외부 링크는 넣을 수 없습니다.");
+        }
         const bytes = svg ? new TextEncoder().encode(svg) : Buffer.from(base64!, "base64");
         const { error } = await dbAdmin()
           .storage.from(IMAGE_BUCKET)

@@ -21,19 +21,30 @@ export function ReleaseDesk({
   const [rows, setRows] = useState(initialQueue);
   const [topics, setTopics] = useState(initialTopics);
 
-  // AI 작업이 걸려 있는 동안만 30초마다 다시 읽는다. 실행기가 단계를 넘기고
-  // 노트를 쌓는 것이 새로고침 없이 보인다.
-  const watching = topics.some((t) => t.ai.status === "queued" || t.ai.status === "running");
+  // AI 작업이 걸려 있는 동안만 다시 읽는다. 작업 중이면 5초, 대기 중이면
+  // 15초. 실행기가 남기는 로그·단계·노트가 새로고침 없이 따라온다. 탭이
+  // 가려져 있으면 쉬었다가 돌아오면 바로 한 번 읽는다.
+  const mode = topics.some((t) => t.ai.status === "running")
+    ? "running"
+    : topics.some((t) => t.ai.status === "queued")
+      ? "queued"
+      : null;
   useEffect(() => {
-    if (!watching) return;
-    const timer = setInterval(async () => {
-      const res = await fetch(API.releaseTopics).catch(() => null);
+    if (!mode) return;
+    const refresh = async () => {
+      if (document.hidden) return;
+      const res = await fetch(API.releaseTopics, { cache: "no-store" }).catch(() => null);
       if (!res?.ok) return;
       const body = (await res.json()) as { topics: TopicRow[] };
       setTopics(body.topics);
-    }, 30_000);
-    return () => clearInterval(timer);
-  }, [watching]);
+    };
+    const timer = setInterval(refresh, mode === "running" ? 5_000 : 15_000);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [mode]);
 
   const topicsOf = useMemo(() => {
     const m = new Map<string, string[]>();

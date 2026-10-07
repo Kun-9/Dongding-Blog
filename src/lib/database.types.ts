@@ -432,6 +432,8 @@ export type Database = {
           ai_until: string | null
           ai_updated_at: string | null
           notes: string
+          ai_log: Json
+          ai_started_at: string | null
         }
         Insert: {
           angle?: string | null
@@ -448,6 +450,8 @@ export type Database = {
           ai_until?: string | null
           ai_updated_at?: string | null
           notes?: string
+          ai_log?: Json
+          ai_started_at?: string | null
         }
         Update: {
           angle?: string | null
@@ -464,6 +468,8 @@ export type Database = {
           ai_until?: string | null
           ai_updated_at?: string | null
           notes?: string
+          ai_log?: Json
+          ai_started_at?: string | null
         }
         Relationships: []
       }

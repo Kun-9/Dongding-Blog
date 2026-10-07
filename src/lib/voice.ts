@@ -11,6 +11,7 @@
  * next 에 의존하지 않는 순수 모듈이다 — 스크립트에서도 그대로 돌린다.
  */
 import type { Issue } from "./lint";
+import { findDiagrams } from "./diagram";
 
 /* ── 기준 ─────────────────────────────────────────────────────────────── */
 
@@ -22,11 +23,12 @@ export const AVOID: { pattern: RegExp; label: string; hint: string }[] = [
   { pattern: /의 모든 것/, label: "~의 모든 것", hint: "다루는 범위를 그대로 쓰세요" },
   { pattern: /완벽\s?(가이드|정리)/, label: "완벽 가이드/정리", hint: "과장 빼기" },
   { pattern: /(살펴|알아|정리해)\s?보(겠습니다|도록 하겠습니다|겠어요|도록 할게요)/, label: "~살펴보겠습니다", hint: "예고하지 말고 바로 보여주세요" },
+  { pattern: /이 글(은|에서는?|에서)\s.{0,40}(정리|다룹|다루|살펴|소개|알아)/, label: "이 글은 ~를 정리합니다", hint: "글 소개 대신 바로 본론" },
   { pattern: /주목할 만한/, label: "주목할 만한", hint: "왜 중요한지를 쓰세요" },
   { pattern: /게임\s?체인저|혁신적인|획기적인/, label: "게임 체인저·혁신적", hint: "무엇이 달라졌는지로 대신" },
   { pattern: /라고 할 수 있(습니다|어요|다)/, label: "~라고 할 수 있다", hint: "단정하거나 근거를 붙이세요" },
   { pattern: /것이 중요(합니다|해요|하다)/, label: "~것이 중요하다", hint: "왜 중요한지 한 줄로" },
-  { pattern: /요약하자면|한마디로 (말하면|정리하면)/, label: "요약하자면", hint: "정리는 표나 박스로" },
+  { pattern: /요약하자면|한마디로 (말하면|정리하면)|정리하면|결론적으로|요컨대/, label: "정리하면·결론적으로", hint: "맺음 문단에서 그냥 말하세요" },
   { pattern: /마무리하며|맺으며/, label: "마무리하며", hint: "소제목은 내용으로" },
   { pattern: /되어지|되어집니다|되어져/, label: "이중 피동(되어지다)", hint: "~됩니다" },
   { pattern: /을 볼 수 있(습니다|어요|다)|를 볼 수 있(습니다|어요|다)/, label: "~를 볼 수 있다", hint: "번역투, 그냥 서술하세요" },
@@ -34,29 +36,125 @@ export const AVOID: { pattern: RegExp; label: string; hint: string }[] = [
 
 /** 글 한 편에 꼭 있어야 하는 구성 요소. 차별점이 여기서 나온다. */
 export const REQUIRED_PARTS = [
-  { key: "summary-box", label: "도입 요약 박스", how: "본문 첫 단락 근처에 `> [!INFO]` 로 무엇이·언제·누구에게 바뀌었는지 세 줄" },
-  { key: "table", label: "비교·정리 표", how: "전/후 비교, 버전별 변화, 설정값 정리 중 하나 이상" },
-  { key: "visual", label: "시각 자료", how: "직접 찍은 스크린샷이나 흐름 그림. 릴리스 노트 캡처만으로는 부족" },
-  { key: "source", label: "출처 링크", how: "해당 릴리스·PR·공식 문서 링크" },
+  { key: "summary-box", label: "도입 요약 박스", how: "첫머리 `> [!INFO]` 에 무엇이·언제부터·누구에게 바뀌는지를 두세 문장 산문으로. 굵은 라벨 불릿 금지" },
+  { key: "table", label: "비교 표", how: "꼭 필요한 비교 하나(전/후, 버전별). markdown 표나 ```compare 블록. 글 전체 두 개까지" },
+  { key: "visual", label: "본문 속 그림", how: "설명하는 문단 바로 아래에 그림 블록(```flow·```compare·```timeline) 또는 단독 줄 `![캡션](경로)`. 캡처 자리(todo-)만으로는 안 되고 직접 만든 그림이 하나 이상" },
+  { key: "source", label: "출처 링크", how: "본문 문장 안 링크로. 끝에 목록으로 몰지 않는다" },
 ] as const;
 
 /** 문체 규칙. 화면의 기준 카드와 GUIDE 가 같이 쓴다. */
 export const VOICE_RULES = [
-  "본문은 합니다체로 통일. 해요체·서술체와 섞지 않기 (표·코드·불릿 안의 명사형은 예외)",
-  "제목은 명사형·질문형. \"~가 됐다\" 같은 헤드라인 말투 금지",
+  "본문은 합니다체로 통일. 해요체·서술체와 섞지 않기 (표·코드 안은 예외)",
+  "제목은 명사형·질문형. 헤드라인 말투(~가 됐다), 콜론 부제(…: …) 금지",
   "영어·코드 뒤 조사는 붙여 쓰기: mode가, CLAUDE.md를",
   "직접 해 본 것은 \"직접 실행해 보니 ~했습니다\"로 구분",
-  "문장은 짧게, 한 문장에 한 가지",
+  "문장은 짧게, 한 문장에 한 가지. 문단은 서너 문장",
   "줄표(—)는 글 전체 두 번 이하, 굵게는 섹션당 한두 곳",
 ] as const;
 
-/** 권장 뼈대. */
+/**
+ * 설명 규칙 — 글의 목표는 처음 읽는 사람이 한 번에 이해하는 것이다.
+ * 릴리스 노트를 옮겨 적으면 아는 사람만 읽힌다.
+ */
+export const CLARITY_RULES = [
+  "독자는 이 기능을 처음 보는 사람이다. 릴리스 노트의 용어를 그대로 옮기지 않고 풀어 쓴다",
+  "새 용어는 처음 나올 때 한 문장으로 무엇인지 설명한다. 예: \"mod는 Claude Code의 동작 사이에 끼워 넣는 작은 스크립트입니다.\"",
+  "섹션은 '무엇이 달라지나 → 그래서 나에게 어떤 차이인가' 순서로. 변경 사항보다 그 결과를 먼저 말한다",
+  "추상적인 설명 바로 뒤에 구체적인 예(명령, 설정 한 줄, 화면, 숫자)를 붙인다",
+  "순서·구조·전후 차이는 글로 길게 풀기 전에 그림 블록으로 먼저 보여 주고, 문단은 그림이 못 하는 이유를 말한다",
+  "한 문단에 새 개념은 하나만. 개념이 둘이면 문단을 나눈다",
+] as const;
+
+/**
+ * 모양 규칙 — 다듬기 수준의 지침. 점검기는 그림·캡션·캡처 자리만 잡는다.
+ */
+export const FORMAT_RULES = [
+  "소제목은 그 섹션이 말하는 내용으로 짓는다. '정리·출처·마무리' 같은 틀 제목은 피한다",
+  "설명은 문단으로. 불릿은 정말 나열일 때만, '**라벨**: 설명' 꼴은 피한다",
+  "표는 꼭 필요한 비교만. 표 둘을 붙여 두지 않는다",
+  "끝은 표나 목록보다 한 문단으로 맺는다",
+] as const;
+
+/** 그림 규칙 — 점검기가 캡션·캡처 자리를 잡는다. */
+export const VISUAL_RULES = [
+  "그림은 그 내용을 설명하는 문단 바로 다음에 둔다(앞뒤 빈 줄). 그림 모음 섹션은 만들지 않는다",
+  "순서·단계는 ```flow, 전/후·버전 차이는 ```compare, 버전·시점 흐름은 ```timeline 그림 블록으로 쓴다. 블로그가 테마 색·반응형·애니메이션까지 그린다(아래 그림 블록 문법)",
+  "그림 블록의 캡션은 첫 줄 `caption: …` 에 40자 안팎 명사구로",
+  "캡션은 alt 자리에 쓴다. 그림 아래에 붙는다. 그림이 보여 주는 것을 40자 안팎 명사구로",
+  "캡처가 필요한 자리는 그 자리에 `![캡션](/posts/<slug>/todo-<이름>.png)` 를 넣는다. 본문에 '캡처 필요' 자리로 보이고, 남아 있으면 발행이 막힌다. 같은 경로로 실제 캡처를 올리면 채워진다",
+  "그림 블록으로 안 되는 모양(겹친 계층, 화면 구조 등)만 SVG 로 직접 그린다. 블로그 색 변수를 쓰면 라이트·다크 테마를 그대로 따라간다(아래 SVG 그림 양식)",
+] as const;
+
+/**
+ * SVG 그림 양식. 본문에 인라인으로 그려지므로 CSS 변수가 그대로 먹는다.
+ * 변수마다 라이트 색을 대체값으로 둬서, 확대 보기처럼 <img> 로 뜰 때도
+ * 읽히게 한다.
+ */
+export const SVG_STYLE = `- 캔버스: \`viewBox="0 0 720 H"\` (H 는 내용만큼, 보통 240~420). width·height 속성은 넣지 않는다. 배경은 투명
+- 글꼴: 루트에 \`font-family="inherit"\`. 본문 14px(500), 보조 12px, 강조 15px(600). 라벨은 12자 안쪽
+- 색은 변수로만, 대체값을 함께:
+  - 글자 \`var(--ink, #1c1c1c)\` · 보조 글자 \`var(--ink-muted, #5f5f5d)\`
+  - 상자 \`fill="var(--surface-alt, #f1ede2)"\` · 선 \`var(--border-strong, rgba(28,28,28,.4))\`
+  - 강조(지금 이야기하는 것) \`var(--callout-tip-glyph, #5d7a46)\` 와 바탕 \`var(--callout-tip-bg, #ecf1e8)\`
+  - 두 번째 강조 \`var(--callout-info-glyph, #5a8590)\` / 경고 \`var(--callout-warning-glyph, #9a7a23)\`
+- 모양: 상자 \`rx="10"\`, 선 1.5px, 화살표는 \`<marker>\` 하나를 정의해 재사용. 여백 24px 이상, 노드는 6~8개 이하
+- 종류: 흐름(왼→오, 번호 배지), 전/후 비교(두 열, 바뀐 칸만 강조색), 버전 타임라인(가로선 위 점), 겹친 상자(계층)
+- 그림 하나에 생각 하나. 설명은 캡션과 본문이 한다 — 그림 안에 문장을 쓰지 않는다
+- \`<script>\`, \`on*\` 속성, \`<foreignObject>\`, 외부 링크는 넣지 않는다(올릴 때 거절된다)
+
+\`\`\`svg
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 200" font-family="inherit">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="var(--ink-muted, #5f5f5d)"/>
+    </marker>
+  </defs>
+  <rect x="24" y="70" width="180" height="60" rx="10" fill="var(--surface-alt, #f1ede2)" stroke="var(--border-strong, rgba(28,28,28,.4))" stroke-width="1.5"/>
+  <text x="114" y="105" text-anchor="middle" font-size="14" font-weight="500" fill="var(--ink, #1c1c1c)">tool.call</text>
+  <line x1="204" y1="100" x2="270" y2="100" stroke="var(--ink-muted, #5f5f5d)" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <rect x="272" y="70" width="180" height="60" rx="10" fill="var(--callout-tip-bg, #ecf1e8)" stroke="var(--callout-tip-glyph, #5d7a46)" stroke-width="1.5"/>
+  <text x="362" y="105" text-anchor="middle" font-size="14" font-weight="600" fill="var(--ink, #1c1c1c)">사용자 mod</text>
+</svg>
+\`\`\``;
+
+/** 그림 블록 문법(lib/diagram.ts). 사람과 실행기가 같이 본다. */
+export const DIAGRAM_SYNTAX = `코드 펜스 언어를 flow·compare·timeline 으로 쓰면 그림이 된다. 줄 끝 \`*\` 는 강조(지금 이야기하는 것), \`~\` 는 흐리게(예정·선택). 칸은 \`|\` 로 가른다. 문법이 틀리면 코드로 보이고 점검에서 경고가 난다.
+
+- flow: 한 줄에 한 단계, \`제목 | 짧은 설명\`. 2~8단계, 제목 24자까지. 네 단계까지는 가로, 그 이상은 세로로 그려진다
+- compare: 머리 줄 \`| 이전 | 이후\`(열 이름은 바꿔도 된다), 그 아래 \`항목 | 이전 | 이후\`. 10줄까지. 같은 값은 "그대로"로 보인다
+- timeline: \`시점 | 일어난 일\`. 2~10줄
+
+\`\`\`\`
+\`\`\`flow
+caption: tool.call 이벤트가 mod 체인을 지나는 순서
+tool.call | 도구 호출 이벤트
+sec-default | 내장 가드
+사용자 mod | 직접 설치 *
+기본 동작 | 설정 훅 → 권한 → 실행 ~
+\`\`\`
+
+\`\`\`compare
+caption: 2.1.283 전후의 기본 권한 동작
+| 이전 | 이후
+기본 모드 | default | auto *
+셸 명령 | 매번 확인 | 위험할 때만 확인
+관리형 설정 | 우선 | 우선
+\`\`\`
+
+\`\`\`timeline
+caption: auto mode가 기본값이 되기까지
+v2.1.200 | 실험 기능으로 추가
+v2.1.283 | 기본값으로 전환 *
+\`\`\`
+\`\`\`\``;
+
+/** 권장 흐름. 이름은 흐름일 뿐 소제목으로 쓰지 않는다. */
 export const OUTLINE = [
-  ["요약 박스", "무엇이, 어느 버전부터, 누구에게"],
-  ["무엇이 바뀌었나", "전/후 비교 표"],
-  ["직접 써 보기", "스크린샷·명령·결과"],
-  ["왜 바뀌었나", "PR·이슈에서 읽은 맥락"],
-  ["정리", "설정값·명령 표, 출처 링크"],
+  ["들어가기", "요약 박스(산문) 뒤에 왜 지금 읽을 만한지 한 문단"],
+  ["달라진 점", "무엇이 어떻게 바뀌었는지 문단으로, 필요하면 비교 표 하나와 흐름 그림"],
+  ["써 보기", "명령·코드·화면 캡처를 이야기 흐름 안에"],
+  ["배경", "PR·이슈·문서에서 읽은 이유와 제약"],
+  ["맺음", "한 문단: 조심할 점이나 남은 의문"],
 ] as const;
 
 /** 사람과 모델이 같이 읽는 기준 문서. MCP 가 그대로 내보낸다. */
@@ -66,8 +164,41 @@ export const GUIDE = `# 릴리스 글 쓰기 기준
 ${VOICE_RULES.map((v) => `- ${v}`).join("\n")}
 
 제목 예시
-- 나쁨: auto mode 가 기본값이 됐다
-- 좋음: Claude Code, 권한을 묻지 않는 이유 / auto mode 기본값 전환 정리
+- 나쁨: auto mode 가 기본값이 됐다 / Claude Code Mods 정리: next(e)로 이어지는 미들웨어
+- 좋음: Claude Code가 권한을 묻지 않게 된 이유 / 플러그인이 미들웨어가 된 Claude Code Mods
+
+## 설명 (목표: 처음 읽는 사람이 한 번에 이해)
+${CLARITY_RULES.map((v) => `- ${v}`).join("\n")}
+
+## 모양
+${FORMAT_RULES.map((v) => `- ${v}`).join("\n")}
+
+## 그림
+${VISUAL_RULES.map((v) => `- ${v}`).join("\n")}
+
+배치 예시 (설명 문단 바로 다음 줄, 앞뒤 빈 줄)
+
+\`\`\`
+체인의 순서는 mod의 출처로 정해집니다. 바깥에 있는 mod가 이벤트를 먼저 보고 결과를 마지막에 봅니다.
+
+![tool.call 이벤트가 mod 체인을 지나는 순서](/posts/claude-code-mods/mod-chain.svg)
+
+관리형 설정의 훅은 이 체인보다 먼저 실행됩니다.
+\`\`\`
+
+캡처 자리 예시
+
+\`\`\`
+예제 mod를 띄우면 스피너 옆에 도구 호출 수가 붙습니다.
+
+![도구 호출 수가 붙은 스피너](/posts/claude-code-mods/todo-spinner.png)
+\`\`\`
+
+### 그림 블록 문법
+${DIAGRAM_SYNTAX}
+
+### SVG 그림 양식
+${SVG_STYLE}
 
 ## 피할 표현
 ${AVOID.map((a) => `- ${a.label} → ${a.hint}`).join("\n")}
@@ -75,7 +206,7 @@ ${AVOID.map((a) => `- ${a.label} → ${a.hint}`).join("\n")}
 ## 구성 (필수)
 ${REQUIRED_PARTS.map((p) => `- ${p.label}: ${p.how}`).join("\n")}
 
-## 권장 뼈대
+## 권장 흐름 (소제목 이름이 아니다)
 ${OUTLINE.map(([h, d], i) => `${i + 1}. ${h} — ${d}`).join("\n")}
 `;
 
@@ -233,12 +364,60 @@ export function checkVoice(post: VoiceInput): VoiceReport {
     });
   }
 
+  // 그림 — 캡션, 캡처 자리.
+  const figures = [...post.body.matchAll(/^!\[([^\]]*)\]\(([^)\s]+)\)(?:\{[A-Za-z0-9]+\})?\s*$/gm)];
+  for (const f of figures) {
+    const [, alt, src] = f;
+    const line = post.body.slice(0, f.index).split("\n").length;
+    if (!alt.trim()) {
+      issues.push({ rule: "figure-no-caption", severity: "warning", line, message: `그림에 캡션이 없습니다. alt 자리에 40자 안팎 명사구로: ${src}` });
+    } else if (alt.length > 60) {
+      issues.push({ rule: "figure-long-caption", severity: "warning", line, message: `캡션이 깁니다(${alt.length}자). 그림이 보여 주는 것만 40자 안팎으로: "${excerpt(alt)}"` });
+    }
+  }
+  // 그림 블록 — 문법 오류, 캡션.
+  const diagrams = findDiagrams(post.body);
+  for (const d of diagrams) {
+    if (d.result.errors.length) {
+      issues.push({ rule: "diagram-error", severity: "warning", line: d.line, message: `\`\`\`${d.kind} 블록을 그릴 수 없습니다: ${d.result.errors.join(" / ")}` });
+      continue;
+    }
+    const cap = d.result.diagram?.caption ?? "";
+    if (!cap) {
+      issues.push({ rule: "figure-no-caption", severity: "warning", line: d.line, message: `\`\`\`${d.kind} 블록에 캡션이 없습니다. 첫 줄에 \`caption: …\` 을 40자 안팎으로` });
+    } else if (cap.length > 60) {
+      issues.push({ rule: "figure-long-caption", severity: "warning", line: d.line, message: `캡션이 깁니다(${cap.length}자). 40자 안팎으로: "${excerpt(cap)}"` });
+    }
+  }
+  const drawn = diagrams.filter((d) => d.result.diagram);
+
+  const captures = figures.filter((f) => /\/todo-[^/]*$/.test(f[2]));
+  if (captures.length) {
+    issues.push({
+      rule: "capture-pending",
+      // 초안·점검 단계에서는 참고. 발행 단계에서 막는다(release-topics).
+      severity: "info",
+      message: `캡처 자리 ${captures.length}곳이 남았습니다: ${captures.map((f) => f[1] || f[2]).join(", ")}`,
+    });
+  }
+  post.body.split("\n").forEach((l, i) => {
+    if (/^>\s?\[!(NOTE|INFO|TIP|WARNING)\]\s*(스크린샷|캡처|사진)/.test(l) || /^>\s*(스크린샷|캡처)\s*[:：]/.test(l)) {
+      issues.push({
+        rule: "capture-box",
+        severity: "warning",
+        line: i + 1,
+        message: "캡처 자리를 박스로 표시했습니다. 그 자리에 `![캡션](/posts/<slug>/todo-<이름>.png)` 를 넣으세요",
+      });
+    }
+  });
+
   // 구성 — 필수 요소.
   const head = post.body.split("\n").slice(0, 15).join("\n");
   const parts = {
     "summary-box": /^>\s?\[!(INFO|NOTE|TIP)\]/im.test(head),
-    table: /^\s*\|.*\|\s*\n\s*\|\s*:?-{3,}/m.test(post.body),
-    visual: /!\[[^\]]*\]\([^)]+\)/.test(post.body),
+    table: /^\s*\|.*\|\s*\n\s*\|\s*:?-{3,}/m.test(post.body) || drawn.some((d) => d.kind === "compare"),
+    // 캡처 자리(todo-)는 그림으로 치지 않는다.
+    visual: drawn.length > 0 || figures.some((f) => !/\/todo-[^/]*$/.test(f[2])),
     source: /https?:\/\/(github\.com|docs\.|code\.claude\.com|[^\s)]*anthropic\.com)/.test(post.body),
   };
   for (const p of REQUIRED_PARTS) {
