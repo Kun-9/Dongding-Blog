@@ -1,5 +1,5 @@
 /**
- * 글 주제 — 만들기(POST), 단계 이동·편집(PATCH), 삭제(DELETE).
+ * 글 주제 — 목록(GET), 만들기(POST), 단계 이동·편집·AI 맡기기(PATCH), 삭제(DELETE).
  *
  * 규칙은 `lib/release-topics` 에 있다. 여기는 입력 검증과 상태 코드만 맡는다.
  */
@@ -7,12 +7,16 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireApiUser } from "@/lib/api-shared";
 import {
+  AI_UNTIL,
   TopicError,
   advanceTopic,
+  cancelAi,
+  queueAi,
   createTopic,
   deleteTopic,
   dropTopic,
   editTopic,
+  getTopics,
   revertTopic,
 } from "@/lib/release-topics";
 
@@ -39,6 +43,12 @@ const PatchSchema = z.discriminatedUnion("action", [
     id: z.number().int(),
     reason: z.string().trim().min(1).max(300).nullable(),
   }),
+  z.object({
+    action: z.literal("ai"),
+    id: z.number().int(),
+    until: z.enum(AI_UNTIL as [string, ...string[]]),
+  }),
+  z.object({ action: z.literal("ai_cancel"), id: z.number().int() }),
   z.object({
     action: z.literal("edit"),
     id: z.number().int(),
@@ -81,6 +91,17 @@ function failed(e: unknown) {
   );
 }
 
+/** 화면이 AI 작업 상태를 다시 읽을 때 쓴다. */
+export async function GET() {
+  const blocked = await requireApiUser();
+  if (blocked) return blocked;
+  try {
+    return NextResponse.json({ topics: await getTopics() });
+  } catch (e) {
+    return failed(e);
+  }
+}
+
 export async function POST(req: Request) {
   const blocked = await requireApiUser();
   if (blocked) return blocked;
@@ -108,7 +129,11 @@ export async function PATCH(req: Request) {
           ? await revertTopic(input.id)
           : input.action === "drop"
             ? await dropTopic(input.id, input.reason)
-            : await editTopic(input.id, input);
+            : input.action === "ai"
+              ? await queueAi(input.id, input.until as (typeof AI_UNTIL)[number])
+              : input.action === "ai_cancel"
+                ? await cancelAi(input.id)
+                : await editTopic(input.id, input);
     return NextResponse.json({ topic });
   } catch (e) {
     return failed(e);
