@@ -7,6 +7,8 @@
 import "server-only";
 
 import { dbAdmin } from "@/lib/supabase";
+import { loadPost } from "@/lib/mcp-blog";
+import { checkVoice } from "@/lib/voice";
 import type { Json } from "@/lib/database.types";
 import {
   STAGES,
@@ -181,8 +183,12 @@ export async function editTopic(
 }
 
 /**
- * 다음 단계를 끝냈다고 기록한다. 근거(note)는 필수다 — "수요 확인 완료"만
- * 남으면 나중에 무엇을 확인했는지 알 수 없다.
+ * 다음 단계를 끝냈다고 기록한다. 근거(note)는 필수다. "자료 완료"만 남으면
+ * 나중에 무엇을 만들었는지 알 수 없다.
+ *
+ * 점검(review) 단계만은 근거를 사람 말로 받지 않는다. 서버가 초안 본문을
+ * 문체·구성 기준(lib/voice)으로 검사해서 경고가 남으면 넘기지 않고, 통과하면
+ * 그 결과를 근거에 붙인다.
  */
 export async function advanceTopic(
   id: number,
@@ -200,9 +206,27 @@ export async function advanceTopic(
     throw new TopicError("초안 단계는 글 slug 가 있어야 넘긴다");
   }
 
+  let note = input.note;
+  if (next.key === "review") {
+    const post = postSlug ? await loadPost(postSlug) : null;
+    if (!post) throw new TopicError(`'${postSlug}' 글이 없다. 초안 slug 를 확인할 것`);
+    const report = checkVoice(post);
+    const blocking = report.issues.filter((i) => i.severity !== "info");
+    if (blocking.length > 0) {
+      const list = blocking
+        .slice(0, 6)
+        .map((i) => `· ${i.line ? `${i.line}행 ` : ""}${i.message}`)
+        .join("\n");
+      const more = blocking.length > 6 ? `\n· 외 ${blocking.length - 6}건` : "";
+      throw new TopicError(`점검 통과 못 함 — 경고 ${blocking.length}건\n${list}${more}`);
+    }
+    const infos = report.issues.length;
+    note = `${note}\n[자동 점검] 통과 · 참고 ${infos}건`;
+  }
+
   const checks = {
     ...topic.checks,
-    [next.key]: { at: new Date().toISOString(), note: input.note },
+    [next.key]: { at: new Date().toISOString(), note },
   };
   await save(id, { stage: next.key, checks, post_slug: postSlug });
 

@@ -13,13 +13,14 @@ import {
   stageLabel,
   type StageKey,
 } from "@/lib/release-stages";
+import { AVOID, OUTLINE, REQUIRED_PARTS, VOICE_RULES } from "@/lib/voice";
 
 /** 단계마다 근거 칸에 무엇을 적을지. */
 const NOTE_HINT: Partial<Record<StageKey, string>> = {
-  demand:
-    "검색어와 결과. 예: 'claude code auto mode' 한국어 글 0건, 영어 블로그 3건 — 설정법만 다루고 배경 설명 없음",
-  sources: "읽은 문서·PR·이슈 링크와 릴리스 노트에 없던 맥락",
+  sources: "읽은 문서·PR·이슈 링크, 직접 실행해 본 결과, 릴리스 노트에 없던 맥락",
+  assets: "만든 자료 목록. 예: 버전별 동작 비교 표, 설정 화면 스크린샷 2장, 흐름 그림 1개",
   draft: "초안에서 잡은 구성, 남은 빈칸",
+  review: "점검하면서 고친 것. 문체·구성 검사는 서버가 본문으로 직접 돌립니다",
   published: "발행 메모",
 };
 
@@ -29,9 +30,10 @@ const NOTE_HINT: Partial<Record<StageKey, string>> = {
  */
 const TONE: Record<StageKey, "note" | "info" | "tip" | "warning"> = {
   picked: "note",
-  demand: "info",
-  sources: "tip",
+  sources: "info",
+  assets: "tip",
   draft: "warning",
+  review: "note",
   published: "note",
 };
 
@@ -126,6 +128,7 @@ export function TopicBoard({ topics, onTopicsChange, candidates, onQueued }: Pro
       </div>
 
       <Overview active={active} lane={lane} onLane={setLane} />
+      <GuideCard />
 
       <Collapse open={creating}>
         <div className="mb-3 rounded-xl border border-border-strong bg-surface p-5">
@@ -252,13 +255,13 @@ function Overview({
 
   return (
     <div className="topic-rise mb-5 overflow-hidden rounded-xl border border-border-token bg-surface">
-      <ol className="m-0 grid list-none grid-cols-5 divide-x divide-border-token p-0">
+      <ol className="m-0 grid list-none grid-cols-3 gap-px bg-border-token p-0 sm:grid-cols-6">
         {LANES.map((l, i) => {
           const n = counts[i];
           const on = lane === l.key;
           const c = tone(l.key);
           return (
-            <li key={l.key} className="min-w-0">
+            <li key={l.key} className="min-w-0 bg-surface">
               <button
                 type="button"
                 onClick={() => onLane(on ? null : l.key)}
@@ -315,6 +318,115 @@ function Overview({
   );
 }
 
+/* ── 글쓰기 기준 ─────────────────────────────────────────────────────── */
+
+/** 점검(review) 단계가 검사하는 기준 그대로. 접혀 있어도 핵심은 한 줄로 보인다. */
+function GuideCard() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="topic-rise mb-5 rounded-xl border border-border-token bg-surface">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="flex w-full flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 text-left sm:px-5"
+      >
+        <span className="font-sans text-[13px] font-semibold text-ink">글쓰기 기준</span>
+        <span className="rounded-full bg-ink px-2 py-0.5 font-sans text-[11px] font-semibold text-bg">
+          합니다체
+        </span>
+        <span className="flex flex-wrap gap-1">
+          {REQUIRED_PARTS.map((p) => (
+            <span
+              key={p.key}
+              className="rounded-full border border-border-token px-2 py-0.5 font-sans text-[11px] text-ink-muted"
+            >
+              {p.label}
+            </span>
+          ))}
+        </span>
+        <span
+          aria-hidden
+          className={`ml-auto text-[11px] text-ink-subtle transition-transform duration-300 ${open ? "rotate-180" : ""}`}
+        >
+          ▾
+        </span>
+      </button>
+
+      <Collapse open={open}>
+        <div className="grid gap-5 border-t border-border-token px-4 py-4 sm:px-5 md:grid-cols-3">
+          <GuideColumn title="문체">
+            <ul className="m-0 list-none space-y-1.5 p-0">
+              {VOICE_RULES.map((v) => (
+                <li key={v} className="flex gap-2 text-[13px] leading-[1.55] text-ink-soft">
+                  <span aria-hidden className="mt-[7px] size-1 shrink-0 rounded-full bg-ink-subtle" />
+                  {v}
+                </li>
+              ))}
+            </ul>
+          </GuideColumn>
+
+          <GuideColumn title="필수 구성">
+            <ul className="m-0 list-none space-y-2.5 p-0">
+              {REQUIRED_PARTS.map((p) => (
+                <li key={p.key}>
+                  <div className="font-sans text-[13px] font-semibold text-ink">{p.label}</div>
+                  <div className="text-[12.5px] leading-[1.55] text-ink-muted">{p.how}</div>
+                </li>
+              ))}
+            </ul>
+          </GuideColumn>
+
+          <GuideColumn title="권장 뼈대">
+            <ol className="m-0 list-none space-y-2 p-0">
+              {OUTLINE.map(([h, d], i) => (
+                <li key={h} className="flex gap-2.5">
+                  <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-surface-alt font-mono text-[10.5px] text-ink-muted">
+                    {i + 1}
+                  </span>
+                  <span className="text-[13px] leading-[1.5]">
+                    <span className="font-semibold text-ink">{h}</span>
+                    <span className="text-ink-muted"> · {d}</span>
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </GuideColumn>
+
+          <div className="md:col-span-3">
+            <div className="mb-1.5 font-sans text-[10.5px] font-bold uppercase tracking-[0.08em] text-ink-muted">
+              피할 표현
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {AVOID.map((a) => (
+                <span
+                  key={a.label}
+                  title={a.hint}
+                  className="rounded-md bg-surface-alt px-2 py-1 text-[12px] text-ink-muted line-through decoration-ink-subtle"
+                >
+                  {a.label}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </Collapse>
+    </div>
+  );
+}
+
+function GuideColumn({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div>
+      <div className="mb-2 font-sans text-[10.5px] font-bold uppercase tracking-[0.08em] text-ink-muted">
+        {title}
+      </div>
+      {children}
+    </div>
+  );
+}
+
 /* ── 진행바 ──────────────────────────────────────────────────────────── */
 
 /**
@@ -359,7 +471,10 @@ function Progress({ topic }: { topic: TopicRow }) {
           );
         })}
       </div>
-      <div className="mt-1.5 grid grid-cols-5 gap-1">
+      <div
+        className="mt-1.5 grid gap-1"
+        style={{ gridTemplateColumns: `repeat(${STAGES.length}, minmax(0, 1fr))` }}
+      >
         {STAGES.map((s, i) => (
           <span
             key={s.key}
@@ -671,7 +786,11 @@ function TopicCard({
         </ol>
       )}
 
-      {error && <p className="m-0 mt-3 text-[13px] text-danger">{error}</p>}
+      {error && (
+        <p className="topic-rise m-0 mt-3 whitespace-pre-line rounded-lg border border-danger/30 px-3 py-2.5 text-[12.5px] leading-[1.6] text-danger">
+          {error}
+        </p>
+      )}
 
       {/* 보조 동작 — 조용하게 */}
       <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 pt-4">
