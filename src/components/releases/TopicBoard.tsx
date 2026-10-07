@@ -722,7 +722,7 @@ function TopicCard({
 
             {!publishing && <AiPanel topic={topic} onChange={onChange} inline />}
             {publishing && !aiBusy && (
-              <div className="pt-3">
+              <div className="flex flex-wrap items-center gap-1.5 pt-3">
                 <button
                   type="button"
                   onClick={() => {
@@ -736,6 +736,12 @@ function TopicCard({
                     →
                   </span>
                 </button>
+                {topic.postSlug && <PreviewLink slug={topic.postSlug} />}
+              </div>
+            )}
+            {!publishing && topic.postSlug && (
+              <div className="pt-2">
+                <PreviewLink slug={topic.postSlug} quiet />
               </div>
             )}
           </>
@@ -801,7 +807,10 @@ function TopicCard({
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 self-end pt-4">
         {topic.postSlug && next && (
           <a
-            href={`/posts/${topic.postSlug}`}
+            href={`/preview/${topic.postSlug}`}
+            target="_blank"
+            rel="noreferrer"
+            title="발행 전 미리보기"
             className="mr-auto font-mono text-[11.5px] text-ink-muted no-underline hover:text-ink"
           >
             /{topic.postSlug}
@@ -908,9 +917,18 @@ function TopicCard({
           }
         >
           {topic.postSlug && (
-            <div className="rounded-lg border border-border-token bg-surface-alt px-3 py-2.5 font-mono text-[12.5px] text-ink-soft">
-              /posts/{topic.postSlug}
-            </div>
+            <a
+              href={`/preview/${topic.postSlug}`}
+              target="_blank"
+              rel="noreferrer"
+              className="group flex items-center justify-between gap-3 rounded-lg border border-border-token bg-surface-alt px-3 py-2.5 no-underline transition-colors hover:border-border-strong"
+            >
+              <span className="font-mono text-[12.5px] text-ink-soft">/posts/{topic.postSlug}</span>
+              <span className="inline-flex items-center gap-1 font-sans text-[12px] font-medium text-ink">
+                발행 전 미리보기
+                <span aria-hidden className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5">↗</span>
+              </span>
+            </a>
           )}
           <Field label="발행 메모" hint="선택">
             <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} className={field} />
@@ -1327,6 +1345,29 @@ function groupByRepo(items: TopicRow["candidates"]): [string, TopicRow["candidat
   const m = new Map<string, TopicRow["candidates"]>();
   for (const x of items) m.set(x.repo, [...(m.get(x.repo) ?? []), x]);
   return [...m];
+}
+
+/** 발행 전 미리보기(/preview/slug) — 새 탭으로 연다. */
+function PreviewLink({ slug, quiet, className = "" }: { slug: string; quiet?: boolean; className?: string }) {
+  return (
+    <a
+      href={`/preview/${slug}`}
+      target="_blank"
+      rel="noreferrer"
+      className={`group inline-flex items-center gap-1.5 font-sans no-underline transition-colors ${
+        quiet
+          ? "text-[12px] text-ink-muted hover:text-ink"
+          : "rounded-full border border-border-strong px-3.5 py-1.5 text-[12.5px] font-medium text-ink hover:bg-hover"
+      } ${className}`}
+    >
+      <svg viewBox="0 0 16 16" aria-hidden className="size-3.5">
+        <path d="M1.5 8s2.5-4.5 6.5-4.5S14.5 8 14.5 8s-2.5 4.5-6.5 4.5S1.5 8 1.5 8Z" fill="none" stroke="currentColor" strokeWidth="1.3" />
+        <circle cx="8" cy="8" r="2" fill="none" stroke="currentColor" strokeWidth="1.3" />
+      </svg>
+      {quiet ? "초안 미리보기" : "미리보기"}
+      <span aria-hidden className="text-[11px] transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5">↗</span>
+    </a>
+  );
 }
 
 function Btn({
