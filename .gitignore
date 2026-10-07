@@ -46,7 +46,8 @@ next-env.d.ts
 .vscode/
 
 # Local agent / scratch
-.claude/
+.claude/*
+!.claude/skills/
 .omc/
 tmp/
 
