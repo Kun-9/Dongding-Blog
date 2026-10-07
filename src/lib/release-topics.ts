@@ -84,6 +84,11 @@ export async function getTopics(): Promise<TopicRow[]> {
     db.from("release_topics").select(TOPIC_COLUMNS).order("id"),
     db.from("release_topic_candidates").select("topic_id, candidate_id"),
   ]);
+  // 마이그레이션 전에 배포돼도 글감 화면은 살아 있어야 한다. 테이블이 없으면
+  // (PGRST205 / 42P01) 주제 없이 그린다.
+  if (topics.error?.code === "PGRST205" || topics.error?.code === "42P01") {
+    return [];
+  }
   if (topics.error) throw new Error(topics.error.message);
 
   const byTopic = new Map<number, string[]>();
