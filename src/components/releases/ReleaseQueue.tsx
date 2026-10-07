@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type Dispatch, type SetStateAction } from "react";
 import { API } from "@/lib/api-routes";
 import type { CandidateStatus, QueueRow } from "@/lib/release-queue";
 
@@ -19,8 +19,14 @@ const MOVES: { key: CandidateStatus; label: string }[] = [
   { key: "new", label: "되돌리기" },
 ];
 
-export function ReleaseQueue({ initial }: { initial: QueueRow[] }) {
-  const [rows, setRows] = useState(initial);
+interface Props {
+  rows: QueueRow[];
+  setRows: Dispatch<SetStateAction<QueueRow[]>>;
+  /** 글감 id → 묶인 글 주제 제목. */
+  topicsOf: Map<string, string[]>;
+}
+
+export function ReleaseQueue({ rows, setRows, topicsOf }: Props) {
   const [tab, setTab] = useState<CandidateStatus>("new");
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -55,19 +61,30 @@ export function ReleaseQueue({ initial }: { initial: QueueRow[] }) {
 
   return (
     <section className="mb-14">
+      <div className="mb-4">
+        <div className="mb-1 font-sans text-[11px] font-bold uppercase tracking-[0.1em] text-ink-muted">
+          Inbox
+        </div>
+        <h2 className="m-0 font-sans text-[20px] font-semibold tracking-[-0.02em] text-ink">
+          글감 검토
+        </h2>
+      </div>
       <div className="mb-4 flex flex-wrap gap-1.5">
         {TABS.map((t) => (
           <button
             key={t.key}
             type="button"
             onClick={() => setTab(t.key)}
-            className={`rounded-full border px-3 py-1.5 font-sans text-[13px] transition-colors ${
+            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 font-sans text-[13px] transition-colors ${
               tab === t.key
-                ? "border-border-strong bg-surface font-semibold text-ink"
-                : "border-border-token text-ink-muted"
+                ? "border-ink bg-ink font-semibold text-bg"
+                : "border-border-token bg-surface text-ink-muted hover:text-ink"
             }`}
           >
-            {t.label} {count(t.key)}
+            {t.label}
+            <span className="font-mono text-[11.5px] tabular-nums opacity-70">
+              {count(t.key)}
+            </span>
           </button>
         ))}
       </div>
@@ -77,13 +94,16 @@ export function ReleaseQueue({ initial }: { initial: QueueRow[] }) {
       )}
 
       {shown.length === 0 ? (
-        <p className="py-8 text-[14px] text-ink-muted">여기는 비어 있습니다.</p>
+        <p className="topic-rise rounded-xl border border-dashed border-border-token py-10 text-center text-[14px] text-ink-muted">
+          여기는 비어 있습니다.
+        </p>
       ) : (
-        <ul className="m-0 list-none space-y-2 p-0">
-          {shown.map((r) => (
+        <ul key={tab} className="m-0 list-none space-y-2 p-0">
+          {shown.map((r, i) => (
             <li
               key={r.id}
-              className="rounded-xl border border-border-token bg-surface p-[14px]"
+              style={{ animationDelay: `${Math.min(i, 10) * 35}ms` }}
+              className="topic-rise rounded-xl border border-border-token bg-surface px-4 py-3.5 transition-colors duration-200 hover:border-border-strong"
             >
               <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
                 <span className="font-sans text-[13px] font-semibold text-ink">
@@ -101,6 +121,23 @@ export function ReleaseQueue({ initial }: { initial: QueueRow[] }) {
                   {r.name}
                 </div>
               )}
+              {r.note && (
+                <div className="mt-1 text-[13px] leading-[1.5] text-ink-muted">
+                  {r.note}
+                </div>
+              )}
+              {topicsOf.get(r.id) && (
+                <div className="mt-1.5 flex flex-wrap gap-1">
+                  {topicsOf.get(r.id)!.map((t) => (
+                    <span
+                      key={t}
+                      className="rounded-md bg-surface-alt px-1.5 py-0.5 font-sans text-[11.5px] text-ink-soft"
+                    >
+                      → {t}
+                    </span>
+                  ))}
+                </div>
+              )}
               <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
                 <a
                   href={r.url}
@@ -116,7 +153,7 @@ export function ReleaseQueue({ initial }: { initial: QueueRow[] }) {
                     type="button"
                     disabled={busy === r.id}
                     onClick={() => move(r.id, m.key)}
-                    className="rounded-full border border-border-token px-2.5 py-1 font-sans text-[12px] text-ink-soft transition-colors hover:border-border-strong disabled:opacity-40"
+                    className="rounded-full border border-border-token px-2.5 py-1 font-sans text-[12px] text-ink-soft transition-[border-color,transform] hover:border-border-strong active:scale-[0.96] disabled:opacity-40"
                   >
                     {m.label}
                   </button>
