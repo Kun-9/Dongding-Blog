@@ -422,10 +422,9 @@ export async function queueAi(id: number, until: AiUntil): Promise<TopicRow> {
   }
   await saveAi(id, { ai_status: "queued", ai_until: until, ai_message: null });
 
-  // 루틴을 바로 깨운다. 실패해도 요청은 queued 로 남아 정기 실행이 집어 간다.
-  const fire = await fireReleaseRoutine(
-    `어드민에서 주제 #${id} '${topic.title}' 을(를) ${until} 단계까지 맡겼다. claim_release_work 로 집어서 처리할 것.`,
-  );
+  // 루틴을 바로 깨운다. 깨운 세션은 이 주제만 집는다(지시서 0단계).
+  // 실패해도 요청은 queued 로 남아 정기 실행이 집어 간다.
+  const fire = await fireReleaseRoutine(`topic_id=${id} until=${until}`);
   // 실행기가 벌써 집어 갔으면(running) 그쪽 메시지를 덮지 않는다.
   await dbAdmin()
     .from("release_topics")
@@ -455,17 +454,18 @@ export async function cancelAi(id: number): Promise<TopicRow> {
  * running(실행기가 죽은 것)을 running 으로 바꿔 돌려준다. 없으면 null.
  *
  * 조건부 update 로 집어서 실행기 둘이 같은 주제를 동시에 잡지 않는다.
+ * id 를 주면 그 주제만 본다 — 맡기기 버튼이 깨운 세션이 자기 주제만 집는다.
  */
-export async function claimAiWork(): Promise<TopicRow | null> {
+export async function claimAiWork(id?: number): Promise<TopicRow | null> {
   const db = dbAdmin();
   const stale = new Date(Date.now() - STALE_MS).toISOString();
-  const { data } = await db
+  let q = db
     .from("release_topics")
     .select("id, ai_status, ai_updated_at")
     .or(`ai_status.eq.queued,and(ai_status.eq.running,ai_updated_at.lt."${stale}")`)
-    .is("dropped_reason", null)
-    .order("ai_updated_at", { ascending: true })
-    .limit(5);
+    .is("dropped_reason", null);
+  if (id !== undefined) q = q.eq("id", id);
+  const { data } = await q.order("ai_updated_at", { ascending: true }).limit(5);
 
   for (const c of data ?? []) {
     const { data: won } = await db

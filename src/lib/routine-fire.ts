@@ -1,15 +1,14 @@
 /**
  * Claude Code 루틴 즉시 실행 — "AI에게 맡기기"를 누르면 정각을 기다리지 않고
- * 실행기 루틴을 바로 깨운다.
+ * 실행기 루틴을 그 주제 하나만 맡아 돌도록 바로 깨운다. kakepu·Plate 와 같은 방식.
  *
- * 루틴 API 트리거(research preview)를 쓴다. claude.ai/code/routines 에서
- * 루틴을 편집해 API 트리거를 추가하면 URL 과 토큰이 나온다. 둘 다 서버 환경변수
- * 로만 둔다.
+ * 루틴 API 트리거(research preview)를 쓴다. claude.ai/code/routines 에서 루틴에
+ * API 트리거를 추가하면 트리거 id 와 토큰이 나온다. 둘 다 서버 환경변수로만 둔다.
  *
- *   RELEASE_ROUTINE_URL   https://api.anthropic.com/v1/claude_code/routines/<id>/fire
- *   RELEASE_ROUTINE_TOKEN 루틴 API 토큰
+ *   ROUTINE_TRIGGER_ID  trig_…
+ *   ROUTINE_FIRE_TOKEN  루틴 API 토큰
  *
- * 설정이 없으면 아무것도 하지 않는다 — 루틴의 정기 실행이 결국 집어 간다.
+ * 설정이 없거나 호출이 실패하면 요청은 queued 로 남아 루틴의 정기 실행이 집어 간다.
  * 실행기는 claim 으로 하나씩만 집으므로 즉시 실행과 정기 실행이 겹쳐도 같은
  * 주제를 두 번 처리하지 않는다.
  */
@@ -23,12 +22,13 @@ export type FireResult =
   | { fired: false; reason: string };
 
 export async function fireReleaseRoutine(text: string): Promise<FireResult> {
-  const url = process.env.RELEASE_ROUTINE_URL;
-  const token = process.env.RELEASE_ROUTINE_TOKEN;
-  if (!url || !token) return { fired: false, reason: "즉시 실행이 설정되지 않음" };
+  const trigger = process.env.ROUTINE_TRIGGER_ID;
+  const token = process.env.ROUTINE_FIRE_TOKEN;
+  if (!trigger || !token) return { fired: false, reason: "즉시 실행이 설정되지 않음" };
 
+  let res: Response;
   try {
-    const res = await fetch(url, {
+    res = await fetch(`https://api.anthropic.com/v1/claude_code/routines/${trigger}/fire`, {
       method: "POST",
       headers: {
         authorization: `Bearer ${token}`,
@@ -40,13 +40,23 @@ export async function fireReleaseRoutine(text: string): Promise<FireResult> {
       cache: "no-store",
       signal: AbortSignal.timeout(10_000),
     });
-    if (!res.ok) {
-      // 시간당 100회 한도, 토큰 만료 등. 정기 실행이 남아 있으니 요청은 살린다.
-      return { fired: false, reason: `루틴 호출 실패 (${res.status})` };
-    }
-    const body = (await res.json().catch(() => ({}))) as { claude_code_session_url?: string };
-    return { fired: true, sessionUrl: body.claude_code_session_url ?? null };
-  } catch {
+  } catch (e) {
+    // 시간만 다 됐으면 요청은 이미 닿았을 수 있다. 안 닿았어도 정기 실행이 집어 간다.
+    if (e instanceof DOMException && e.name === "TimeoutError") return { fired: true, sessionUrl: null };
     return { fired: false, reason: "루틴 호출 실패 (응답 없음)" };
   }
+  if (!res.ok) {
+    console.error("[routine] fire", res.status, await res.text().catch(() => ""));
+    return {
+      fired: false,
+      reason:
+        res.status === 429
+          ? "루틴 호출 한도 초과"
+          : res.status === 401 || res.status === 403
+            ? "루틴 토큰 만료"
+            : `루틴 호출 실패 (${res.status})`,
+    };
+  }
+  const body = (await res.json().catch(() => ({}))) as { claude_code_session_url?: string };
+  return { fired: true, sessionUrl: body.claude_code_session_url ?? null };
 }

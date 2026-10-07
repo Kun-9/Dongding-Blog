@@ -74,7 +74,7 @@ async function assertWorkerPost(slug: string) {
 }
 
 const Action = z.discriminatedUnion("action", [
-  z.object({ action: z.literal("claim") }),
+  z.object({ action: z.literal("claim"), id: ID.optional() }),
   z.object({ action: z.literal("report"), id: ID, message: z.string().min(1).max(200) }),
   z.object({ action: z.literal("finish"), id: ID, ok: z.boolean(), message: z.string().min(1).max(500) }),
   z.object({
@@ -153,7 +153,7 @@ export async function POST(req: Request) {
   try {
     switch (input.action) {
       case "claim": {
-        const t = await claimAiWork();
+        const t = await claimAiWork(input.id);
         return ok({ work: t ? withNext(t) : null });
       }
       case "report":
