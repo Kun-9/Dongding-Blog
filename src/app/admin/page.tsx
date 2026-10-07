@@ -12,6 +12,7 @@ import {
   getPublishedThisWeek,
 } from "@/lib/post-stats";
 import { getRecentComments } from "@/lib/comments-recent";
+import { getNewCandidateCount } from "@/lib/release-queue";
 import { fmtDate } from "@/lib/tokens";
 import { requireUser } from "@/lib/auth";
 import { signOut } from "@/app/login/actions";
@@ -25,15 +26,23 @@ export default async function Page() {
   // proxy 가 이미 걸러내지만, 데이터에 손대기 직전에 한 번 더 확인한다.
   await requireUser();
 
-  const [posts, drafts, categories, monthly, thisWeek, comments] =
-    await Promise.all([
-      getAllPosts(),
-      getAllDrafts(),
-      getCategoriesWithCounts(),
-      getMonthlyPublishCounts(12),
-      getPublishedThisWeek(),
-      getRecentComments(3),
-    ]);
+  const [
+    posts,
+    drafts,
+    categories,
+    monthly,
+    thisWeek,
+    comments,
+    newCandidates,
+  ] = await Promise.all([
+    getAllPosts(),
+    getAllDrafts(),
+    getCategoriesWithCounts(),
+    getMonthlyPublishCounts(12),
+    getPublishedThisWeek(),
+    getRecentComments(3),
+    getNewCandidateCount(),
+  ]);
 
   const maxMonthly = Math.max(1, ...monthly.map((b) => b.count));
   const totalCatPosts = categories.reduce((a, x) => a + (x.count ?? 0), 0);
@@ -164,6 +173,27 @@ export default async function Page() {
             })}
           </ul>
         </div>
+      </section>
+
+      {/* Releases — 검토는 /admin/releases 가 맡고, 여기서는 입구만. */}
+      <section className="mb-8">
+        <Link
+          href="/admin/releases"
+          className="flex items-center justify-between gap-3 rounded-xl border border-border-token bg-surface px-[18px] py-4 no-underline transition-[border-color] duration-[180ms] hover:border-border-strong"
+          style={{ color: "inherit" }}
+        >
+          <div>
+            <div className="font-sans text-[14.5px] font-semibold tracking-[-0.01em] text-ink">
+              릴리스 글감
+            </div>
+            <div className="mt-0.5 text-[12.5px] text-ink-muted">
+              {newCandidates > 0
+                ? `검토를 기다리는 글감 ${newCandidates}건`
+                : "검토할 새 글감이 없습니다"}
+            </div>
+          </div>
+          <span className="shrink-0 text-[12.5px] text-ink-muted">→</span>
+        </Link>
       </section>
 
       {/* Drafts */}
