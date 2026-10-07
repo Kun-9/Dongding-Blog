@@ -391,3 +391,30 @@ pre {
     );
   background-attachment: fixed;
 }
+
+/* ── 집필 진행판 모션 (/admin/releases) ───────────────────────────────
+   카드 등장, 다음 단계 펄스, 진행바 빛결. 움직임을 줄이라는 설정이면 끈다. */
+@keyframes topic-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes topic-pulse {
+  0%, 100% { opacity: 0.45; }
+  50%      { opacity: 1; }
+}
+@keyframes topic-ring {
+  0%   { box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 45%, transparent); }
+  100% { box-shadow: 0 0 0 6px transparent; }
+}
+@keyframes topic-sheen {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(100%); }
+}
+.topic-rise  { animation: topic-rise 420ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.topic-pulse { animation: topic-pulse 1.8s ease-in-out infinite; }
+.topic-ring  { animation: topic-ring 1.8s ease-out infinite; }
+.topic-sheen { animation: topic-sheen 2.4s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .topic-rise, .topic-pulse, .topic-ring, .topic-sheen { animation: none; }
+}

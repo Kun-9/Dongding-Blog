@@ -61,19 +61,30 @@ export function ReleaseQueue({ rows, setRows, topicsOf }: Props) {
 
   return (
     <section className="mb-14">
+      <div className="mb-4">
+        <div className="mb-1 font-sans text-[11px] font-bold uppercase tracking-[0.1em] text-ink-muted">
+          Inbox
+        </div>
+        <h2 className="m-0 font-sans text-[20px] font-semibold tracking-[-0.02em] text-ink">
+          글감 검토
+        </h2>
+      </div>
       <div className="mb-4 flex flex-wrap gap-1.5">
         {TABS.map((t) => (
           <button
             key={t.key}
             type="button"
             onClick={() => setTab(t.key)}
-            className={`rounded-full border px-3 py-1.5 font-sans text-[13px] transition-colors ${
+            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 font-sans text-[13px] transition-colors ${
               tab === t.key
-                ? "border-border-strong bg-surface font-semibold text-ink"
-                : "border-border-token text-ink-muted"
+                ? "border-ink bg-ink font-semibold text-bg"
+                : "border-border-token bg-surface text-ink-muted hover:text-ink"
             }`}
           >
-            {t.label} {count(t.key)}
+            {t.label}
+            <span className="font-mono text-[11.5px] tabular-nums opacity-70">
+              {count(t.key)}
+            </span>
           </button>
         ))}
       </div>
@@ -83,13 +94,16 @@ export function ReleaseQueue({ rows, setRows, topicsOf }: Props) {
       )}
 
       {shown.length === 0 ? (
-        <p className="py-8 text-[14px] text-ink-muted">여기는 비어 있습니다.</p>
+        <p className="topic-rise rounded-xl border border-dashed border-border-token py-10 text-center text-[14px] text-ink-muted">
+          여기는 비어 있습니다.
+        </p>
       ) : (
-        <ul className="m-0 list-none space-y-2 p-0">
-          {shown.map((r) => (
+        <ul key={tab} className="m-0 list-none space-y-2 p-0">
+          {shown.map((r, i) => (
             <li
               key={r.id}
-              className="rounded-xl border border-border-token bg-surface p-[14px]"
+              style={{ animationDelay: `${Math.min(i, 10) * 35}ms` }}
+              className="topic-rise rounded-xl border border-border-token bg-surface px-4 py-3.5 transition-colors duration-200 hover:border-border-strong"
             >
               <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
                 <span className="font-sans text-[13px] font-semibold text-ink">
@@ -139,7 +153,7 @@ export function ReleaseQueue({ rows, setRows, topicsOf }: Props) {
                     type="button"
                     disabled={busy === r.id}
                     onClick={() => move(r.id, m.key)}
-                    className="rounded-full border border-border-token px-2.5 py-1 font-sans text-[12px] text-ink-soft transition-colors hover:border-border-strong disabled:opacity-40"
+                    className="rounded-full border border-border-token px-2.5 py-1 font-sans text-[12px] text-ink-soft transition-[border-color,transform] hover:border-border-strong active:scale-[0.96] disabled:opacity-40"
                   >
                     {m.label}
                   </button>

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { API } from "@/lib/api-routes";
+import { useMounted } from "@/lib/hooks";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import type { QueueRow } from "@/lib/release-queue";
 import type { TopicRow } from "@/lib/release-topics";
@@ -22,6 +23,30 @@ const NOTE_HINT: Partial<Record<StageKey, string>> = {
   published: "발행 메모",
 };
 
+/**
+ * 단계 색 — 새 색을 만들지 않고 콜아웃 팔레트를 빌린다. 다크 모드 대응이
+ * 이미 되어 있고, 본문 콜아웃과 같은 온도라 화면이 따로 놀지 않는다.
+ */
+const TONE: Record<StageKey, "note" | "info" | "tip" | "warning"> = {
+  picked: "note",
+  demand: "info",
+  sources: "tip",
+  draft: "warning",
+  published: "note",
+};
+
+function tone(key: StageKey | "done") {
+  if (key === "done") {
+    return { fg: "var(--ink)", bg: "var(--surface-alt)", ink: "var(--ink)" };
+  }
+  const t = TONE[key];
+  return {
+    fg: `var(--callout-${t}-glyph)`,
+    bg: `var(--callout-${t}-bg)`,
+    ink: `var(--callout-${t}-ink)`,
+  };
+}
+
 /** 진행판 칸 — 각 주제가 지금 붙잡고 있는 단계. 발행까지 끝나면 done. */
 type Lane = StageKey | "done";
 
@@ -29,10 +54,18 @@ function laneOf(t: TopicRow): Lane {
   return nextStage(t.stage)?.key ?? "done";
 }
 
-const LANES: { key: Lane; label: string }[] = [
-  ...STAGES.slice(1).map((s) => ({ key: s.key as Lane, label: s.label })),
-  { key: "done", label: "발행됨" },
+const LANES: { key: Lane; label: string; no: string }[] = [
+  // 번호는 카드의 진행바와 맞춘다 — 1단계(글감 묶음)는 만들 때 끝난다.
+  ...STAGES.slice(1).map((s, i) => ({
+    key: s.key as Lane,
+    label: s.label,
+    no: String(i + 2).padStart(2, "0"),
+  })),
+  { key: "done", label: "발행됨", no: "✓" },
 ];
+
+const field =
+  "w-full rounded-lg border border-border-token bg-surface px-3 py-2 text-[13.5px] leading-[1.55] text-ink placeholder:text-ink-subtle transition-colors focus:border-border-strong focus:outline-none";
 
 interface Props {
   topics: TopicRow[];
@@ -66,60 +99,37 @@ export function TopicBoard({ topics, onTopicsChange, candidates, onQueued }: Pro
     onQueued(topic.candidates.map((c) => c.id));
   }
 
+  const remove = (id: number) => onTopicsChange(topics.filter((x) => x.id !== id));
+
   return (
     <section className="mb-14">
-      <div className="mb-3 flex items-baseline justify-between gap-3">
-        <h2 className="m-0 font-sans text-[17px] font-semibold tracking-[-0.01em] text-ink">
-          집필 진행
-        </h2>
+      <div className="mb-4 flex items-end justify-between gap-3">
+        <div>
+          <div className="mb-1 font-sans text-[11px] font-bold uppercase tracking-[0.1em] text-ink-muted">
+            Pipeline
+          </div>
+          <h2 className="m-0 font-sans text-[20px] font-semibold tracking-[-0.02em] text-ink">
+            집필 진행
+          </h2>
+        </div>
         <button
           type="button"
           onClick={() => setCreating((v) => !v)}
-          className="rounded-full border border-border-token px-3 py-1.5 font-sans text-[13px] text-ink-soft transition-colors hover:border-border-strong"
+          className={`rounded-full px-3.5 py-1.5 font-sans text-[13px] font-medium transition-colors ${
+            creating
+              ? "border border-border-token bg-surface text-ink-muted hover:text-ink"
+              : "bg-ink text-bg hover:opacity-90"
+          }`}
         >
-          {creating ? "닫기" : "새 주제 +"}
+          {creating ? "닫기" : "+ 새 주제"}
         </button>
       </div>
 
-      {/* 진행판 — 칸마다 그 단계를 붙잡고 있는 주제 수. 누르면 거른다. */}
-      <ol className="m-0 mb-4 grid list-none grid-cols-5 gap-1 p-0">
-        {LANES.map((l, i) => {
-          const n = active.filter((t) => laneOf(t) === l.key).length;
-          const on = lane === l.key;
-          return (
-            <li key={l.key} className="min-w-0">
-              <button
-                type="button"
-                onClick={() => setLane(on ? null : l.key)}
-                aria-pressed={on}
-                className={`flex w-full flex-col items-start rounded-lg border px-2 py-2 text-left transition-colors sm:px-3 ${
-                  on
-                    ? "border-ink bg-surface"
-                    : "border-border-token bg-surface hover:border-border-strong"
-                }`}
-              >
-                <span className="font-sans text-[10.5px] font-bold uppercase tracking-[0.06em] text-ink-muted">
-                  {/* 스테퍼와 번호를 맞춘다 — 1단계(글감 묶음)는 만들 때 끝난다. */}
-                  {i + 1 < LANES.length ? `${i + 2}단계` : "끝"}
-                </span>
-                <span className="mt-0.5 w-full truncate font-sans text-[12px] text-ink-soft sm:text-[13px]">
-                  {l.label}
-                </span>
-                <span
-                  className={`mt-1 font-sans text-[20px] font-semibold tabular-nums leading-none ${
-                    n > 0 ? "text-ink" : "text-ink-subtle"
-                  }`}
-                >
-                  {n}
-                </span>
-              </button>
-            </li>
-          );
-        })}
-      </ol>
+      <Overview active={active} lane={lane} onLane={setLane} />
 
-      {creating && (
-        <div className="mb-3 rounded-xl border border-border-strong bg-surface p-[14px]">
+      <Collapse open={creating}>
+        <div className="mb-3 rounded-xl border border-border-strong bg-surface p-5">
+          <div className="mb-3 font-sans text-[13px] font-semibold text-ink">새 주제</div>
           <TopicEditor
             candidates={candidates}
             submitLabel="주제 만들기"
@@ -134,44 +144,67 @@ export function TopicBoard({ topics, onTopicsChange, candidates, onQueued }: Pro
             }}
           />
         </div>
-      )}
+      </Collapse>
 
       {sorted.length === 0 ? (
-        <p className="py-6 text-[14px] text-ink-muted">
-          {lane ? "이 단계에 머문 주제가 없습니다." : "아직 주제가 없습니다. 쓸래로 고른 글감을 주제로 묶어보세요."}
-        </p>
+        <div className="topic-rise rounded-xl border border-dashed border-border-token px-6 py-10 text-center">
+          <p className="m-0 text-[14px] text-ink-muted">
+            {lane
+              ? "이 단계에 머문 주제가 없습니다."
+              : "아직 주제가 없습니다. 쓸래로 고른 글감을 주제로 묶어보세요."}
+          </p>
+          {lane && (
+            <button
+              type="button"
+              onClick={() => setLane(null)}
+              className="mt-2 font-sans text-[13px] text-ink-soft underline-offset-4 hover:underline"
+            >
+              전체 보기
+            </button>
+          )}
+        </div>
       ) : (
-        <ul className="m-0 list-none space-y-2 p-0">
-          {sorted.map((t) => (
+        <ul
+          key={lane ?? "all"}
+          className="m-0 grid list-none grid-cols-1 gap-3 p-0 md:grid-cols-2"
+        >
+          {sorted.map((t, i) => (
             <TopicCard
               key={t.id}
+              index={i}
               topic={t}
               candidates={candidates}
               onChange={replace}
-              onDelete={() => onTopicsChange(topics.filter((x) => x.id !== t.id))}
+              onDelete={() => remove(t.id)}
             />
           ))}
         </ul>
       )}
 
       {dropped.length > 0 && (
-        <div className="mt-4">
+        <div className="mt-5">
           <button
             type="button"
             onClick={() => setShowDropped((v) => !v)}
-            className="font-sans text-[13px] text-ink-muted"
+            className="flex items-center gap-1.5 font-sans text-[13px] text-ink-muted transition-colors hover:text-ink"
           >
-            접은 주제 {dropped.length} {showDropped ? "▴" : "▾"}
+            <span
+              className={`inline-block text-[10px] transition-transform ${showDropped ? "rotate-90" : ""}`}
+            >
+              ▶
+            </span>
+            접은 주제 {dropped.length}
           </button>
           {showDropped && (
-            <ul className="m-0 mt-2 list-none space-y-2 p-0">
-              {dropped.map((t) => (
+            <ul className="m-0 mt-3 grid list-none grid-cols-1 gap-3 p-0 md:grid-cols-2">
+              {dropped.map((t, i) => (
                 <TopicCard
                   key={t.id}
+                  index={i}
                   topic={t}
                   candidates={candidates}
                   onChange={replace}
-                  onDelete={() => onTopicsChange(topics.filter((x) => x.id !== t.id))}
+                  onDelete={() => remove(t.id)}
                 />
               ))}
             </ul>
@@ -202,60 +235,160 @@ async function call(
   }
 }
 
-/* ── 단계 표시 ───────────────────────────────────────────────────────── */
+/* ── 진행판 ──────────────────────────────────────────────────────────── */
 
-function Stepper({ topic }: { topic: TopicRow }) {
-  const done = stageIndex(topic.stage);
-  const paused = topic.droppedReason !== null;
+function Overview({
+  active,
+  lane,
+  onLane,
+}: {
+  active: TopicRow[];
+  lane: Lane | null;
+  onLane: (l: Lane | null) => void;
+}) {
+  const counts = LANES.map((l) => active.filter((t) => laneOf(t) === l.key).length);
+  const total = counts.reduce((a, b) => a + b, 0);
+  const mounted = useMounted();
 
   return (
-    <ol className="m-0 flex list-none items-start p-0">
-      {STAGES.map((s, i) => {
-        const isDone = i <= done;
-        const isNext = i === done + 1 && !paused;
-        return (
-          <li key={s.key} className="relative flex min-w-0 flex-1 flex-col items-center">
-            {i > 0 && (
-              <span
-                aria-hidden
-                className={`absolute right-1/2 top-[9px] h-[2px] w-full ${
-                  isDone ? "bg-ink" : "bg-border-token"
+    <div className="topic-rise mb-5 overflow-hidden rounded-xl border border-border-token bg-surface">
+      <ol className="m-0 grid list-none grid-cols-5 divide-x divide-border-token p-0">
+        {LANES.map((l, i) => {
+          const n = counts[i];
+          const on = lane === l.key;
+          const c = tone(l.key);
+          return (
+            <li key={l.key} className="min-w-0">
+              <button
+                type="button"
+                onClick={() => onLane(on ? null : l.key)}
+                aria-pressed={on}
+                className={`relative flex w-full flex-col items-start px-2.5 pb-3.5 pt-3 text-left transition-colors sm:px-4 ${
+                  on ? "bg-hover" : "hover:bg-hover"
                 }`}
+              >
+                <span className="flex items-center gap-1.5">
+                  <span
+                    aria-hidden
+                      className="size-1.5 rounded-full transition-colors duration-300"
+                    style={{ background: n > 0 ? c.fg : "var(--border)" }}
+                  />
+                  <span className="font-mono text-[10.5px] text-ink-subtle">{l.no}</span>
+                </span>
+                <span className="mt-1.5 w-full truncate font-sans text-[12px] font-medium text-ink-soft sm:text-[13px]">
+                  {l.label}
+                </span>
+                <span
+                  className={`mt-1 font-sans text-[24px] font-bold leading-none tabular-nums tracking-[-0.03em] sm:text-[28px] ${
+                    n > 0 ? "text-ink" : "text-ink-subtle"
+                  }`}
+                >
+                  {n}
+                </span>
+                <span
+                  aria-hidden
+                  className={`absolute inset-x-0 bottom-0 h-[2px] origin-left transition-transform duration-300 ease-out ${
+                    on ? "scale-x-100" : "scale-x-0"
+                  }`}
+                  style={{ background: c.fg }}
+                />
+              </button>
+            </li>
+          );
+        })}
+      </ol>
+
+      {/* 분포 막대 — 주제가 어느 단계에 몰려 있는지 한눈에. */}
+      <div className="flex h-1 w-full bg-surface-alt">
+        {LANES.map((l, i) => (
+          <span
+            key={l.key}
+            className="h-full transition-[width] duration-700 ease-out"
+            style={{
+              width: mounted && total > 0 ? `${(counts[i] / total) * 100}%` : "0%",
+              background: tone(l.key).fg,
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── 진행바 ──────────────────────────────────────────────────────────── */
+
+/**
+ * 다섯 칸짜리 진행바. 끝낸 칸은 마운트 뒤 왼쪽부터 차례로 차오르고, 다음
+ * 칸은 단계 색으로 숨 쉰다 — "지금 여기"가 정지 화면에서도 읽힌다.
+ */
+function Progress({ topic }: { topic: TopicRow }) {
+  const done = stageIndex(topic.stage);
+  const paused = topic.droppedReason !== null;
+  const next = nextStage(topic.stage);
+  const mounted = useMounted();
+
+  return (
+    <div>
+      <div className="flex gap-1">
+        {STAGES.map((s, i) => {
+          const isDone = i <= done;
+          const isNext = i === done + 1 && !paused;
+          return (
+            <span
+              key={s.key}
+              className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-surface-alt"
+            >
+              <span
+                className="absolute inset-y-0 left-0 rounded-full transition-[width] duration-500 ease-out"
+                style={{
+                  width: mounted && isDone ? "100%" : "0%",
+                  transitionDelay: `${i * 90}ms`,
+                  background: paused ? "var(--ink-subtle)" : "var(--ink)",
+                }}
               />
-            )}
-            <span
-              className={`relative z-[1] flex size-5 items-center justify-center rounded-full border-2 font-sans text-[10px] font-bold ${
-                isDone
-                  ? "border-ink bg-ink text-bg"
-                  : isNext
-                    ? "border-accent bg-surface text-accent"
-                    : "border-border-token bg-surface text-ink-subtle"
-              }`}
-            >
-              {isDone ? "✓" : i + 1}
+              {isNext && (
+                <>
+                  <span
+                    className="topic-pulse absolute inset-0 rounded-full"
+                    style={{ background: tone(s.key).fg }}
+                  />
+                  <span className="topic-sheen absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent" />
+                </>
+              )}
             </span>
-            <span
-              className={`mt-1 w-full truncate px-0.5 text-center font-sans text-[11px] ${
-                isNext ? "font-semibold text-ink" : isDone ? "text-ink-soft" : "text-ink-subtle"
-              }`}
-            >
-              {s.label}
-            </span>
-          </li>
-        );
-      })}
-    </ol>
+          );
+        })}
+      </div>
+      <div className="mt-1.5 grid grid-cols-5 gap-1">
+        {STAGES.map((s, i) => (
+          <span
+            key={s.key}
+            className={`truncate font-sans text-[10.5px] transition-colors duration-300 ${
+              next && i === done + 1 && !paused
+                ? "font-semibold text-ink"
+                : i <= done
+                  ? "text-ink-muted"
+                  : "text-ink-subtle"
+            }`}
+          >
+            {s.label}
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }
 
 /* ── 주제 카드 ───────────────────────────────────────────────────────── */
 
 function TopicCard({
+  index,
   topic,
   candidates,
   onChange,
   onDelete,
 }: {
+  index: number;
   topic: TopicRow;
   candidates: QueueRow[];
   onChange: (t: TopicRow) => void;
@@ -271,8 +404,13 @@ function TopicCard({
 
   const next = nextStage(topic.stage);
   const paused = topic.droppedReason !== null;
-  const urls = new Map(candidates.map((c) => [c.id, c.url]));
+  const lane = laneOf(topic);
+  const c = tone(lane);
+  const urls = new Map(candidates.map((x) => [x.id, x.url]));
   const history = STAGES.filter((s) => topic.checks[s.key]);
+  const step = stageIndex(topic.stage) + 1;
+  // 처음 그릴 때 한 장씩 차례로 떠오른다. 너무 길어지지 않게 8장에서 끊는다.
+  const rise = { animationDelay: `${Math.min(index, 8) * 55}ms` };
 
   async function patch(body: Record<string, unknown>) {
     setBusy(true);
@@ -297,178 +435,269 @@ function TopicCard({
     else onDelete();
   }
 
+  if (mode === "edit") {
+    return (
+      <li className="topic-rise rounded-xl border border-border-strong bg-surface p-5">
+        <div className="mb-3 font-sans text-[13px] font-semibold text-ink">주제 편집</div>
+        <TopicEditor
+          initial={topic}
+          candidates={candidates}
+          submitLabel="저장"
+          onCancel={() => setMode("view")}
+          onSubmit={async (input) => {
+            const res = await call("PATCH", { action: "edit", id: topic.id, ...input });
+            if ("topic" in res) {
+              onChange(res.topic);
+              setMode("view");
+            }
+            return res;
+          }}
+        />
+      </li>
+    );
+  }
+
   return (
     <li
-      className={`rounded-xl border bg-surface p-[14px] ${
-        paused ? "border-dashed border-border-token opacity-75" : "border-border-token"
+      style={rise}
+      className={`topic-rise flex flex-col rounded-xl border bg-surface p-5 transition-[transform,box-shadow,border-color] duration-300 ease-out ${
+        paused
+          ? "border-dashed border-border-token"
+          : "border-border-token hover:-translate-y-0.5 hover:border-border-strong hover:shadow-[0_14px_32px_-18px_rgba(0,0,0,0.28)]"
       }`}
     >
-      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-        <span className="font-sans text-[15px] font-semibold text-ink">{topic.title}</span>
-        {topic.postSlug && (
-          <a
-            href={`/posts/${topic.postSlug}`}
-            className="font-mono text-[12px] text-ink-muted no-underline hover:text-ink"
-          >
-            /{topic.postSlug}
-          </a>
-        )}
+      {/* 머리 — 지금 단계 배지와 진척 */}
+      <div className="flex items-center justify-between gap-3">
+        <span
+          className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-sans text-[11.5px] font-semibold transition-colors duration-500"
+          style={
+            paused
+              ? { background: "var(--surface-alt)", color: "var(--ink-muted)" }
+              : { background: c.bg, color: c.ink }
+          }
+        >
+          <span
+            aria-hidden
+            className={`size-1.5 rounded-full bg-current ${paused || !next ? "" : "topic-ring"}`}
+            style={{ color: paused ? "var(--ink-subtle)" : c.fg }}
+          />
+          {paused ? "접음" : next ? `${next.label} 차례` : "발행 완료"}
+        </span>
+        <span className="font-mono text-[11.5px] tabular-nums text-ink-subtle">
+          {step}/{STAGES.length}
+        </span>
       </div>
+
+      <h3
+        className={`m-0 mt-3.5 font-sans text-[16.5px] font-semibold leading-[1.35] tracking-[-0.015em] ${
+          paused ? "text-ink-muted" : "text-ink"
+        }`}
+      >
+        {topic.title}
+      </h3>
       {topic.angle && (
-        <p className="m-0 mt-1 text-[13.5px] leading-[1.5] text-ink-soft">{topic.angle}</p>
+        <p className="m-0 mt-1.5 text-[13.5px] leading-[1.6] text-ink-muted">{topic.angle}</p>
       )}
 
-      <div className="mt-3.5">
-        <Stepper topic={topic} />
+      <div className="mt-4">
+        <Progress topic={topic} />
       </div>
 
-      <p className="m-0 mt-3 text-[13px] leading-[1.5] text-ink-muted">
-        {paused ? (
-          <>접음 — {topic.droppedReason}</>
-        ) : next ? (
-          <>
-            <span className="font-semibold text-ink-soft">다음 · {next.label}</span>{" "}
-            {next.todo}
-          </>
-        ) : (
-          <>발행까지 끝났습니다.</>
-        )}
-      </p>
-
       {topic.candidates.length > 0 && (
-        <div className="mt-2.5 flex flex-wrap gap-1">
-          {topic.candidates.map((c) => (
+        <div className="mt-4 flex flex-wrap gap-1.5">
+          {topic.candidates.map((x) => (
             <a
-              key={c.id}
-              href={urls.get(c.id) ?? `https://github.com/${c.repo}/releases/tag/${c.tag}`}
+              key={x.id}
+              href={urls.get(x.id) ?? `https://github.com/${x.repo}/releases/tag/${x.tag}`}
               target="_blank"
               rel="noreferrer"
-              className="rounded-md bg-surface-alt px-1.5 py-0.5 font-mono text-[11.5px] text-ink-muted no-underline hover:text-ink"
+              title={x.id}
+              className="inline-flex items-center gap-1 rounded-full border border-border-token px-2 py-[3px] font-mono text-[11px] text-ink-soft no-underline transition-colors hover:border-border-strong hover:text-ink"
             >
-              {c.repo.split("/")[1]} {c.tag}
+              <span className="text-ink-subtle">{x.repo.split("/")[1]}</span>
+              {x.tag}
             </a>
           ))}
         </div>
       )}
 
+      {/* 다음 할 일 — 카드에서 가장 눈에 띄어야 하는 자리 */}
+      <div className="mt-4 rounded-lg bg-surface-alt p-3.5">
+        {paused ? (
+          <>
+            <div className="font-sans text-[10.5px] font-bold uppercase tracking-[0.08em] text-ink-muted">
+              접은 이유
+            </div>
+            <p className="m-0 mt-1 text-[13.5px] leading-[1.55] text-ink-soft">
+              {topic.droppedReason}
+            </p>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => patch({ action: "drop", reason: null })}
+              className="mt-3 rounded-full border border-border-token bg-surface px-3 py-1 font-sans text-[12.5px] text-ink-soft transition-colors hover:border-border-strong disabled:opacity-40"
+            >
+              다시 펼치기
+            </button>
+          </>
+        ) : next ? (
+          <>
+            <div
+              className="font-sans text-[10.5px] font-bold uppercase tracking-[0.08em]"
+              style={{ color: c.fg }}
+            >
+              Next · {next.label}
+            </div>
+            <p className="m-0 mt-1 text-[13.5px] leading-[1.55] text-ink-soft">{next.todo}</p>
+
+            <Collapse open={mode === "advance"}>
+              <div className="space-y-2 pt-3">
+                <textarea
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  rows={3}
+                  placeholder={NOTE_HINT[next.key]}
+                  className={field}
+                />
+                {next.key === "draft" && (
+                  <input
+                    value={slug}
+                    onChange={(e) => setSlug(e.target.value)}
+                    placeholder="글 slug"
+                    className={`${field} font-mono text-[13px]`}
+                  />
+                )}
+                <div className="flex gap-1.5">
+                  <Btn
+                    primary
+                    disabled={busy || !note.trim()}
+                    onClick={() =>
+                      patch({
+                        action: "advance",
+                        note,
+                        postSlug: slug.trim() || null,
+                      }).then((ok) => ok && setNote(""))
+                    }
+                  >
+                    {next.label} 완료
+                  </Btn>
+                  <Btn onClick={() => setMode("view")}>취소</Btn>
+                </div>
+              </div>
+            </Collapse>
+            <Collapse open={mode === "drop"}>
+              <div className="space-y-2 pt-3">
+                <input
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  placeholder="접는 이유. 예: 이미 한국어 글이 충분하다"
+                  className={field}
+                />
+                <div className="flex gap-1.5">
+                  <Btn
+                    primary
+                    disabled={busy || !reason.trim()}
+                    onClick={() =>
+                      patch({ action: "drop", reason }).then((ok) => ok && setReason(""))
+                    }
+                  >
+                    접기
+                  </Btn>
+                  <Btn onClick={() => setMode("view")}>취소</Btn>
+                </div>
+              </div>
+            </Collapse>
+            <Collapse open={mode === "view"}>
+              <div className="pt-3">
+                <button
+                  type="button"
+                  onClick={() => setMode("advance")}
+                  className="group inline-flex items-center gap-1.5 rounded-full bg-ink px-3.5 py-1.5 font-sans text-[12.5px] font-medium text-bg transition-[opacity,transform] hover:opacity-90 active:scale-[0.97]"
+                >
+                  {next.label} 기록하기
+                  <span
+                    aria-hidden
+                    className="transition-transform duration-200 group-hover:translate-x-0.5"
+                  >
+                    →
+                  </span>
+                </button>
+              </div>
+            </Collapse>
+          </>
+        ) : (
+          <>
+            <div className="font-sans text-[10.5px] font-bold uppercase tracking-[0.08em] text-ink-muted">
+              발행 완료
+            </div>
+            {topic.postSlug && (
+              <a
+                href={`/posts/${topic.postSlug}`}
+                className="mt-1 inline-block font-mono text-[13px] text-ink no-underline underline-offset-4 hover:underline"
+              >
+                /posts/{topic.postSlug} →
+              </a>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* 근거 타임라인 — 단계를 넘길 때 남긴 기록 */}
       {history.length > 0 && (
-        <ol className="m-0 mt-3 list-none space-y-1.5 border-t border-border-token p-0 pt-3">
+        <ol className="m-0 ml-[3px] mt-4 list-none space-y-3 border-l border-border-token p-0 pl-4">
           {history.map((s) => {
-            const c = topic.checks[s.key]!;
+            const check = topic.checks[s.key]!;
             return (
-              <li key={s.key} className="text-[13px] leading-[1.55]">
-                <span className="font-sans font-semibold text-ink-soft">{s.label}</span>
-                <span className="ml-1.5 text-[12px] tabular-nums text-ink-subtle">
-                  {c.at.slice(0, 10)}
-                </span>
-                <div className="whitespace-pre-wrap break-words text-ink-muted">{c.note}</div>
+              <li key={s.key} className="topic-rise relative">
+                <span
+                  aria-hidden
+                  className="absolute -left-[20.5px] top-[6px] size-[7px] rounded-full ring-2 ring-surface"
+                  style={{ background: tone(s.key).fg }}
+                />
+                <div className="flex items-baseline gap-2">
+                  <span className="font-sans text-[12.5px] font-semibold text-ink-soft">
+                    {s.label}
+                  </span>
+                  <span className="font-mono text-[11px] tabular-nums text-ink-subtle">
+                    {check.at.slice(5, 10).replace("-", ".")}
+                  </span>
+                </div>
+                <p className="m-0 mt-0.5 whitespace-pre-wrap break-words text-[13px] leading-[1.6] text-ink-muted">
+                  {check.note}
+                </p>
               </li>
             );
           })}
         </ol>
       )}
 
-      {mode === "advance" && next && (
-        <div className="mt-3 space-y-2">
-          <label className="block font-sans text-[12px] font-semibold text-ink-soft">
-            {next.label} 근거
-          </label>
-          <textarea
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            rows={3}
-            placeholder={NOTE_HINT[next.key]}
-            className="w-full rounded-lg border border-border-token bg-bg px-3 py-2 text-[13.5px] leading-[1.5] text-ink placeholder:text-ink-subtle focus:border-border-strong focus:outline-none"
-          />
-          {next.key === "draft" && (
-            <input
-              value={slug}
-              onChange={(e) => setSlug(e.target.value)}
-              placeholder="글 slug"
-              className="w-full rounded-lg border border-border-token bg-bg px-3 py-2 font-mono text-[13px] text-ink placeholder:text-ink-subtle focus:border-border-strong focus:outline-none"
-            />
+      {error && <p className="m-0 mt-3 text-[13px] text-danger">{error}</p>}
+
+      {/* 보조 동작 — 조용하게 */}
+      <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 pt-4">
+        {topic.postSlug && next && (
+          <a
+            href={`/posts/${topic.postSlug}`}
+            className="mr-auto font-mono text-[11.5px] text-ink-muted no-underline hover:text-ink"
+          >
+            /{topic.postSlug}
+          </a>
+        )}
+        <div className="ml-auto flex items-center gap-3">
+          {!paused && stageIndex(topic.stage) > 0 && (
+            <Quiet disabled={busy} onClick={() => patch({ action: "revert" })}>
+              ↶ {stageLabel(topic.stage)} 취소
+            </Quiet>
           )}
-        </div>
-      )}
-
-      {mode === "drop" && (
-        <input
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          placeholder="접는 이유. 예: 이미 한국어 글이 충분하다"
-          className="mt-3 w-full rounded-lg border border-border-token bg-bg px-3 py-2 text-[13.5px] text-ink placeholder:text-ink-subtle focus:border-border-strong focus:outline-none"
-        />
-      )}
-
-      {mode === "edit" && (
-        <div className="mt-3 border-t border-border-token pt-3">
-          <TopicEditor
-            initial={topic}
-            candidates={candidates}
-            submitLabel="저장"
-            onCancel={() => setMode("view")}
-            onSubmit={async (input) => {
-              const res = await call("PATCH", { action: "edit", id: topic.id, ...input });
-              if ("topic" in res) {
-                onChange(res.topic);
-                setMode("view");
-              }
-              return res;
-            }}
-          />
-        </div>
-      )}
-
-      {error && <p className="m-0 mt-2 text-[13px] text-danger">{error}</p>}
-
-      {mode !== "edit" && (
-        <div className="mt-3 flex flex-wrap items-center gap-1.5">
-          {mode === "view" ? (
-            <>
-              {!paused && next && (
-                <Btn primary onClick={() => setMode("advance")}>
-                  {next.label} 기록
-                </Btn>
-              )}
-              {!paused && stageIndex(topic.stage) > 0 && (
-                <Btn disabled={busy} onClick={() => patch({ action: "revert" })}>
-                  {stageLabel(topic.stage)} 되돌리기
-                </Btn>
-              )}
-              <Btn onClick={() => setMode("edit")}>편집</Btn>
-              {paused ? (
-                <Btn disabled={busy} onClick={() => patch({ action: "drop", reason: null })}>
-                  다시 펼치기
-                </Btn>
-              ) : (
-                next && <Btn onClick={() => setMode("drop")}>접기</Btn>
-              )}
-              <Btn disabled={busy} onClick={() => setConfirmDelete(true)}>
-                삭제
-              </Btn>
-            </>
-          ) : (
-            <>
-              <Btn
-                primary
-                disabled={busy || (mode === "advance" ? !note.trim() : !reason.trim())}
-                onClick={() =>
-                  mode === "advance"
-                    ? patch({
-                        action: "advance",
-                        note,
-                        postSlug: slug.trim() || null,
-                      }).then((ok) => ok && setNote(""))
-                    : patch({ action: "drop", reason }).then((ok) => ok && setReason(""))
-                }
-              >
-                {mode === "advance" ? `${next?.label} 완료` : "접기"}
-              </Btn>
-              <Btn onClick={() => setMode("view")}>취소</Btn>
-            </>
+          <Quiet onClick={() => setMode("edit")}>편집</Quiet>
+          {!paused && next && mode === "view" && (
+            <Quiet onClick={() => setMode("drop")}>접기</Quiet>
           )}
+          <Quiet danger disabled={busy} onClick={() => setConfirmDelete(true)}>
+            삭제
+          </Quiet>
         </div>
-      )}
+      </div>
 
       <ConfirmDialog
         open={confirmDelete}
@@ -491,10 +720,25 @@ function Btn({
     <button
       type="button"
       {...props}
-      className={`rounded-full border px-2.5 py-1 font-sans text-[12px] transition-colors disabled:opacity-40 ${
+      className={`rounded-full px-3 py-1.5 font-sans text-[12.5px] font-medium transition-[color,background-color,border-color,opacity,transform] active:scale-[0.97] disabled:opacity-40 ${
         primary
-          ? "border-ink bg-ink text-bg"
-          : "border-border-token text-ink-soft hover:border-border-strong"
+          ? "bg-ink text-bg hover:opacity-90"
+          : "border border-border-token bg-surface text-ink-soft hover:border-border-strong"
+      }`}
+    />
+  );
+}
+
+function Quiet({
+  danger,
+  ...props
+}: React.ButtonHTMLAttributes<HTMLButtonElement> & { danger?: boolean }) {
+  return (
+    <button
+      type="button"
+      {...props}
+      className={`font-sans text-[12px] text-ink-muted transition-colors disabled:opacity-40 ${
+        danger ? "hover:text-danger" : "hover:text-ink"
       }`}
     />
   );
@@ -529,9 +773,11 @@ function TopicEditor({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // 이미 묶인 글감이 먼저, 그다음 쓸래, 새 글감 순.
+  // 처음 열었을 때 묶여 있던 글감이 먼저, 그다음 쓸래, 새 글감 순. 체크할
+  // 때마다 순서가 바뀌면 누르던 줄이 도망가므로 초기값 기준으로만 센다.
+  const [initialIds] = useState(() => new Set(initial?.candidates.map((c) => c.id) ?? []));
   const rank = (c: QueueRow) =>
-    picked.has(c.id) ? 0 : c.status === "queued" ? 1 : 2;
+    initialIds.has(c.id) ? 0 : c.status === "queued" ? 1 : 2;
   const list = [...candidates].sort(
     (a, b) => rank(a) - rank(b) || b.publishedAt.localeCompare(a.publishedAt),
   );
@@ -557,16 +803,13 @@ function TopicEditor({
     if ("error" in res) setError(res.error);
   }
 
-  const field =
-    "w-full rounded-lg border border-border-token bg-bg px-3 py-2 text-[13.5px] text-ink placeholder:text-ink-subtle focus:border-border-strong focus:outline-none";
-
   return (
-    <div className="space-y-2">
+    <div className="space-y-2.5">
       <input
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         placeholder="주제. 예: auto mode 가 기본값이 됐다"
-        className={field}
+        className={`${field} font-semibold`}
       />
       <input
         value={angle}
@@ -575,36 +818,65 @@ function TopicEditor({
         className={field}
       />
       <div>
-        <div className="mb-1 font-sans text-[12px] font-semibold text-ink-soft">
-          묶을 글감 {picked.size}
+        <div className="mb-1.5 flex items-baseline justify-between">
+          <span className="font-sans text-[12px] font-semibold text-ink-soft">묶을 글감</span>
+          <span className="font-mono text-[11.5px] tabular-nums text-ink-muted">
+            {picked.size}개 선택
+          </span>
         </div>
-        <ul className="m-0 max-h-[220px] list-none overflow-y-auto rounded-lg border border-border-token p-1">
-          {list.map((c) => (
-            <li key={c.id}>
-              <label className="flex cursor-pointer items-baseline gap-2 rounded-md px-2 py-1 hover:bg-hover">
-                <input
-                  type="checkbox"
-                  checked={picked.has(c.id)}
-                  onChange={() => toggle(c.id)}
-                  className="translate-y-[1px]"
-                />
-                <span className="font-sans text-[12.5px] text-ink">{c.repo}</span>
-                <span className="font-mono text-[12px] text-ink-soft">{c.tag}</span>
-                {c.note && (
-                  <span className="min-w-0 truncate text-[12px] text-ink-muted">{c.note}</span>
-                )}
-              </label>
-            </li>
-          ))}
+        <ul className="m-0 max-h-[240px] list-none overflow-y-auto rounded-lg border border-border-token bg-bg p-1">
+          {list.map((c) => {
+            const on = picked.has(c.id);
+            return (
+              <li key={c.id}>
+                <label
+                  className={`flex cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-1.5 transition-colors ${
+                    on ? "bg-surface" : "hover:bg-hover"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={on}
+                    onChange={() => toggle(c.id)}
+                    className="size-3.5 shrink-0 accent-[var(--ink)]"
+                  />
+                  <span className="shrink-0 font-mono text-[12px] text-ink">
+                    <span className="text-ink-subtle">{c.repo.split("/")[1]} </span>
+                    {c.tag}
+                  </span>
+                  {c.note && (
+                    <span className="min-w-0 truncate text-[12px] text-ink-muted">{c.note}</span>
+                  )}
+                </label>
+              </li>
+            );
+          })}
         </ul>
       </div>
       {error && <p className="m-0 text-[13px] text-danger">{error}</p>}
-      <div className="flex gap-1.5">
+      <div className="flex gap-1.5 pt-1">
         <Btn primary disabled={busy || !title.trim()} onClick={submit}>
           {submitLabel}
         </Btn>
         <Btn onClick={onCancel}>취소</Btn>
       </div>
+    </div>
+  );
+}
+
+/**
+ * 높이를 몰라도 부드럽게 접고 펴는 칸. grid-template-rows 를 0fr ↔ 1fr 로
+ * 옮기면 내용 높이까지 전환된다. 닫힌 쪽은 inert 로 포커스에서 뺀다.
+ */
+function Collapse({ open, children }: { open: boolean; children: ReactNode }) {
+  return (
+    <div
+      className={`grid transition-[grid-template-rows,opacity] duration-300 ease-out ${
+        open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+      }`}
+      inert={!open}
+    >
+      <div className="min-h-0 overflow-hidden">{children}</div>
     </div>
   );
 }
