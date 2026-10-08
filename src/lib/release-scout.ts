@@ -16,7 +16,7 @@ export const SCOUT_PROMPT = `# 릴리스 글감 탐색기 지시서
 
 모든 호출은 POST \`$APP/api/releases/scout/\` 에 JSON 본문 \`{"action": "...", ...}\`. 헤더는 \`Authorization: Bearer $TOKEN\`, \`content-type: application/json\`. 끝의 슬래시를 빼지 않는다.
 
-Bash 호출끼리는 셸 변수·함수가 이어지지 않는다. 그래도 토큰을 스크립트·env 파일에 저장하지 않는다(권한 분류기가 막는다). 매 호출 curl 에 주소와 헤더를 값 그대로 쓴다:
+Bash 호출끼리는 셸 변수·함수가 이어지지 않는다. 토큰은 스크립트·env 파일은 물론 \`T=...\`·\`TOKEN=...\` 같은 셸 변수에도 담지 않는다. 변수에 담아 \`$T\` 로 보내면 권한 분류기가 유출(Exfil Scouting)로 막는다. 매 호출 curl 의 Authorization 헤더에 토큰 값을 그대로 적는다. 아래 예시의 \`$APP\`·\`$TOKEN\` 은 값을 넣을 자리다:
 
 \`\`\`bash
 curl -sS -X POST "$APP/api/releases/scout/" -H "Authorization: Bearer $TOKEN" -H "content-type: application/json" --data-binary '{"action":"inbox"}'
@@ -83,7 +83,7 @@ export const TREND_PROMPT = `# 트렌드 글감 탐색기 지시서
 
 모든 호출은 POST \`$APP/api/releases/scout/\` 에 JSON 본문 \`{"action": "...", ...}\`. 헤더는 \`Authorization: Bearer $TOKEN\`, \`content-type: application/json\`. 끝의 슬래시를 빼지 않는다.
 
-Bash 호출끼리는 셸 변수·함수가 이어지지 않는다. 그래도 토큰을 스크립트·env 파일에 저장하지 않는다(권한 분류기가 막는다). 매 호출 curl 에 주소와 헤더를 값 그대로 쓴다:
+Bash 호출끼리는 셸 변수·함수가 이어지지 않는다. 토큰은 스크립트·env 파일은 물론 \`T=...\`·\`TOKEN=...\` 같은 셸 변수에도 담지 않는다. 변수에 담아 \`$T\` 로 보내면 권한 분류기가 유출(Exfil Scouting)로 막는다. 매 호출 curl 의 Authorization 헤더에 토큰 값을 그대로 적는다. 아래 예시의 \`$APP\`·\`$TOKEN\` 은 값을 넣을 자리다:
 
 \`\`\`bash
 curl -sS -X POST "$APP/api/releases/scout/" -H "Authorization: Bearer $TOKEN" -H "content-type: application/json" --data-binary '{"action":"signals"}'
