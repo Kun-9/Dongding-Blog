@@ -109,6 +109,7 @@ curl -sS -X POST "$APP/api/releases/worker/" -H "Authorization: Bearer $TOKEN" -
 ### review — 점검
 - \`check\` (slug). 경고가 있으면 \`post_get\` 으로 원문을 보고 \`post_update\` 의 replacements 로 최소 범위만 고친다. 다시 검사. 세 번까지.
 - 통과하면 \`advance\` (서버가 한 번 더 검사). 세 번 뒤에도 경고가 남으면 finish ok=false 로 남은 경고를 그대로 적는다.
+- 점검은 화면을 보지 않는다. 이 환경은 운영 미리보기를 열 수 없으니, 끝낼 때 finish 의 \`todo\` 에 "모바일 확인(node .claude/skills/release-post/mobile-check.mjs <slug>)"을 남긴다. 사람이나 로컬 세션이 발행 전에 돌린다.
 
 ### 개념 글일 때 — \`kind\` 가 \`concept\`
 - MVC·JWT 처럼 헷갈리는 개념 하나를 처음 보는 사람도 한 번에 이해하게 쓰는 글이다. 릴리스·버전·배포일이 없다.

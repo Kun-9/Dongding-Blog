@@ -496,4 +496,5 @@ caption: 확인이 필요한 명령만 사용자에게 간다
 
 - 릴리스 글: MCP `check_release_voice`(slug) 또는 실행기 API `check`. 그림 관련 규칙은 `diagram-error`·`figure-dropped`·`figure-empty`·`figure-no-caption`·`figure-long-caption`·`capture-pending`.
 - 직접 보려면 스튜디오(`/studio`) 미리보기가 같은 렌더러를 쓴다. 다크 모드와 좁은 화면에서도 한 번 본다.
+- 좁은 화면 확인은 `node .claude/skills/release-post/mobile-check.mjs <slug>` 로 한다. 390px·라이트/다크로 끝까지 내리며 가로 넘침, 판 밖으로 나간 요소, 토큰 중간에서 끊긴 터미널 줄을 잡는다. 렌더러(`diagram/*`)를 고쳤으면 그 그림이 든 글로 돌려 본다.
 - 키트·모션·장면 속성을 늘리거나 바꾸면 **blog-figure-extend** 스킬을 따른다(모듈 하나 + 등록, `sync-docs.ts` 로 표 갱신). 그림 블록 종류·장면 문법은 `src/lib/diagram.ts`(`barScene`·`sceneCells`)와 `Scene.tsx`, 쓰기 기준 `src/lib/voice.ts` 의 `DIAGRAM_SYNTAX`, 스튜디오 문법표를 같이 고친다.
