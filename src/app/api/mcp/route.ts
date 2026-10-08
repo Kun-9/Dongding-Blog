@@ -43,7 +43,7 @@ import {
   type TopicRow,
 } from "@/lib/release-topics";
 import { STAGES, nextStage } from "@/lib/release-stages";
-import { GUIDE, checkVoice } from "@/lib/voice";
+import { GUIDE, checkVoice, releaseDay } from "@/lib/voice";
 
 const VISIBILITY = z.enum(["published", "private", "draft", "review"]);
 const SEVERITY = z.enum(["error", "warning", "info"]);
@@ -471,7 +471,8 @@ const handler = createMcpHandler(
         title: "릴리스 글감 원문",
         description:
           "글감(GitHub 릴리스) 본문을 돌려준다. id 는 '<owner/repo>@<tag>' 꼴이며 list_release_topics 의 " +
-          "candidates[].id 를 그대로 넘긴다. 본문이 수천 자씩이라 필요한 것만 고를 것.",
+          "candidates[].id 를 그대로 넘긴다. 본문이 수천 자씩이라 필요한 것만 고를 것. " +
+          "released 는 배포일(공개 시각의 한국 날짜)로, 글 요약 박스에 `v2.1.280(2026년 9월 23일 배포)` 꼴로 그대로 쓴다.",
         inputSchema: z.object({ ids: z.array(z.string()).min(1).max(10) }),
       },
       async ({ ids }) => {
@@ -480,7 +481,8 @@ const handler = createMcpHandler(
           .select("id, repo, tag, name, published_at, url, status, note, body")
           .in("id", ids);
         if (error) return fail(error.message);
-        return json(data);
+        // released: 글 요약 박스에 그대로 쓰는 한국 날짜 배포일.
+        return json(data.map((c) => ({ ...c, released: releaseDay(c.published_at) })));
       },
     );
 

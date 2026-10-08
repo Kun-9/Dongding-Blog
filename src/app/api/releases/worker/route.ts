@@ -21,7 +21,7 @@ import { revalidateContent } from "@/lib/api-shared";
 import { syncLinkMeta } from "@/lib/link-meta";
 import { postExists, toRow, PostBodySchema } from "@/app/api/posts/_shared";
 import { applyReplacements, loadPost, loadTaxonomy } from "@/lib/mcp-blog";
-import { checkVoice } from "@/lib/voice";
+import { checkVoice, releaseDay } from "@/lib/voice";
 import { WORKER_PROMPT } from "@/lib/release-worker";
 import {
   TopicError,
@@ -178,7 +178,8 @@ export async function POST(req: Request) {
           .select("id, repo, tag, name, published_at, url, body")
           .in("id", input.ids);
         if (error) throw new Error(error.message);
-        return ok({ candidates: data });
+        // released: 글 요약 박스에 그대로 쓰는 한국 날짜 배포일.
+        return ok({ candidates: data.map((c) => ({ ...c, released: releaseDay(c.published_at) })) });
       }
       case "taxonomy": {
         const tax = await loadTaxonomy();

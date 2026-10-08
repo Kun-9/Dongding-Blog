@@ -35,9 +35,17 @@ export const AVOID: { pattern: RegExp; label: string; hint: string }[] = [
   { pattern: /을 볼 수 있(습니다|어요|다)|를 볼 수 있(습니다|어요|다)/, label: "~를 볼 수 있다", hint: "번역투, 그냥 서술하세요" },
 ];
 
+/**
+ * 릴리스 배포일 — GitHub 릴리스 공개 시각(UTC)의 한국 날짜. 글감 응답의 `released` 와
+ * 요약 박스 표기 `v2.1.280(2026년 9월 23일 배포)` 가 같은 값을 쓴다. UTC 날짜를 그대로 옮기면 하루씩 틀린다.
+ */
+export function releaseDay(iso: string): string {
+  return new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", year: "numeric", month: "long", day: "numeric" }).format(new Date(iso));
+}
+
 /** 글 한 편에 꼭 있어야 하는 구성 요소. 차별점이 여기서 나온다. */
 export const REQUIRED_PARTS = [
-  { key: "summary-box", label: "도입 요약 박스", how: "첫머리 `> [!INFO]` 에 무엇이·언제부터·누구에게 바뀌는지를 두세 문장 산문으로. 굵은 라벨 불릿 금지" },
+  { key: "summary-box", label: "도입 요약 박스", how: "첫머리 `> [!INFO]` 에 무엇이·언제부터·누구에게 바뀌는지를 두세 문장 산문으로. 버전마다 실제 배포일을 `v2.1.280(2026년 9월 23일 배포)` 꼴로 붙인다. 배포일은 GitHub 릴리스 공개 시각의 한국 날짜(글감의 `released`), 글감이 없으면 공식 발표일. 굵은 라벨 불릿 금지" },
   { key: "table", label: "비교 표", how: "꼭 필요한 비교 하나(전/후, 버전별). markdown 표나 ```compare·```matrix 블록. 글 전체 두 개까지" },
   { key: "visual", label: "본문 속 그림", how: "설명하는 문단 바로 아래에 그림 블록(```flow 등 10종)·```figure 또는 단독 줄 `![캡션](경로)`. 캡처 자리(todo-)만으로는 안 되고 직접 만든 그림이 하나 이상" },
   { key: "source", label: "출처 링크", how: "본문 문장 안 링크로. 끝에 목록으로 몰지 않는다" },
@@ -74,7 +82,11 @@ export const FORMAT_RULES = [
   "설명은 문단으로. 불릿은 정말 나열일 때만, '**라벨**: 설명' 꼴은 피한다",
   "표는 꼭 필요한 비교만. 표 둘을 붙여 두지 않는다",
   "끝은 표나 목록보다 한 문단으로 맺는다",
+  "분량은 그림·코드를 뺀 산문 3,000자 안팎(읽기 5~6분). 4,000자를 넘으면 점검에서 막힌다. 다 담으려 하지 말고 독자가 바로 쓸 것만 남긴다",
 ] as const;
+
+/** 산문 분량 상한(그림·코드 블록·링크 주소·이미지 줄 제외). FORMAT_RULES 와 같은 값. */
+const PROSE_MAX = 4000;
 
 /** 그림 규칙 — 점검기가 캡션·캡처 자리를 잡는다. */
 export const VISUAL_RULES = [
@@ -489,6 +501,45 @@ export function checkVoice(post: VoiceInput): VoiceReport {
       });
     }
   });
+
+  // 분량 — 그림·코드를 뺀 산문만 센다.
+  const prose = post.body
+    .replace(/^(```|~~~)[\s\S]*?^\1\s*$/gm, "")
+    .replace(/^!\[.*$/gm, "")
+    .replace(/<!--[\s\S]*?-->/g, "")
+    .replace(/\]\([^)]*\)/g, "]")
+    .replace(/\s+/g, " ")
+    .trim().length;
+  if (prose > PROSE_MAX) {
+    issues.push({
+      rule: "too-long",
+      severity: "warning",
+      message: `분량이 깁니다(그림·코드 뺀 산문 ${prose.toLocaleString("ko-KR")}자). 3,000자 안팎으로 줄이세요`,
+    });
+  }
+
+  // 배포일 — 요약 박스의 버전마다 `(YYYY년 M월 D일 배포)`. 버전이 없는 발표면 날짜 하나는 있어야 한다.
+  const bodyLines = post.body.split("\n");
+  const boxAt = bodyLines.findIndex((l) => /^>\s?\[!(INFO|NOTE|TIP)\]/.test(l));
+  if (boxAt >= 0 && boxAt < 15) {
+    let end = boxAt;
+    while (end + 1 < bodyLines.length && /^>/.test(bodyLines[end + 1])) end++;
+    const box = bodyLines.slice(boxAt, end + 1).join(" ");
+    // 같은 버전이 여러 번 나오면 한 곳에만 붙어 있으면 된다.
+    const versions = [...new Set(box.match(/v\d+(?:\.\d+)+/g) ?? [])];
+    const esc = (v: string) => v.replace(/\./g, "\\.");
+    const undated = versions.filter((v) => !new RegExp(`${esc(v)}\\s?\\(\\d{4}년 \\d{1,2}월 \\d{1,2}일 배포\\)`).test(box));
+    if (undated.length || (!versions.length && !/\d{4}년 \d{1,2}월 \d{1,2}일/.test(box))) {
+      issues.push({
+        rule: "missing-release-date",
+        severity: "warning",
+        line: boxAt + 1,
+        message: undated.length
+          ? `요약 박스의 ${undated.join(", ")} 에 실제 배포일이 없습니다. \`v2.1.280(2026년 9월 23일 배포)\` 꼴로 붙이세요(글감의 released)`
+          : "요약 박스에 실제 배포일이 없습니다. 발표·배포 날짜를 `2026년 9월 23일` 꼴로 쓰세요",
+      });
+    }
+  }
 
   // 구성 — 필수 요소.
   const head = post.body.split("\n").slice(0, 15).join("\n");

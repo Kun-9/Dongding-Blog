@@ -31,5 +31,6 @@ trap 'rmdir "$LOCK"' EXIT
 
 echo "$(date '+%F %T') 시작"
 "$CLAUDE_BIN" -p "$(cat scripts/release-worker-prompt.md)" \
-  --allowedTools "mcp__dongding-blog__*" "WebSearch" "WebFetch"
+  --allowedTools "mcp__dongding-blog__*" "WebSearch" "WebFetch" "Skill" "Read" \
+    "Bash(node .claude/skills/blog-capture/capture.mjs:*)" "Bash(claude --version)"
 echo "$(date '+%F %T') 끝"

@@ -46,7 +46,7 @@ curl -sS -X POST "$APP/api/releases/worker/" -H "Authorization: Bearer $TOKEN" -
 | slugs | — | 이미 있는 글 slug 목록 |
 | post_get | slug | 글 원문 |
 | post_create | slug, title, summary, category, tags, body | draft 글 생성 |
-| post_update | slug, title?, summary?, tags?, replacements?[{old,new}] | 이 주제의 draft 글만 수정. replacements 는 본문에 정확히 한 번 나오는 문자열만 바꾼다 |
+| post_update | slug, title?, summary?, tags?, replacements?[{old,new}] 또는 body | 이 주제의 draft 글만 수정. replacements 는 본문에 정확히 한 번 나오는 문자열만 바꾼다. body(통째 교체)는 초안 단계에서 다시 쓸 때만 |
 | check | slug 또는 title+body | 문체·구성 점검. \`passed\` 가 true 여야 점검 단계를 넘긴다 |
 | image | slug, name, svg 또는 base64 | 글 이미지 업로드. 돌려받은 path 를 본문에 쓴다 |
 
@@ -88,7 +88,9 @@ curl -sS -X POST "$APP/api/releases/worker/" -H "Authorization: Bearer $TOKEN" -
 
 ### draft — 초안
 - \`taxonomy\` 로 카테고리 확인. 릴리스 노트용 카테고리가 따로 있으면 그것, 없으면 \`ai\`. 태그는 기존 태그에서 고른다(예: \`claude-code\`).
-- 작업 노트로 초안을 쓴다. 뼈대: 요약 박스(\`> [!INFO]\`) → 무엇이 바뀌었나(비교 표) → 직접 써 보기 → 왜 바뀌었나 → 정리(표, 출처 링크).
+- 작업 노트로 초안을 쓴다. 뼈대는 쓰기 기준의 "권장 흐름"이다: 요약 박스(\`> [!INFO]\`) → 달라진 점(비교 표·그림) → 써 보기 → 배경 → 맺음 한 문단. "정리·출처" 같은 틀 섹션은 만들지 않고, 출처는 문장 안 링크로 단다.
+- 요약 박스에는 버전마다 실제 배포일을 \`v2.1.280(2026년 9월 23일 배포)\` 꼴로 붙인다. 배포일은 \`candidates\` 응답의 \`released\` 를 그대로 쓴다(UTC 날짜를 옮기면 하루씩 틀린다). 글감이 없는 주제는 공식 발표일.
+- 제목은 쓰기 기준을 따른다. 주제 이름을 그대로 쓰지 않는다(콜론 부제 금지).
 - 목표는 처음 읽는 사람이 한 번에 이해하는 것이다. 쓰기 기준의 "설명" 규칙대로: 새 용어는 처음 나올 때 한 문장으로 풀고, 변경보다 독자에게 생기는 차이를 먼저, 추상적인 설명 뒤엔 바로 구체적인 예.
 - 본문은 합니다체로만. 제목은 명사형·질문형. 직접 확인하지 않은 동작을 "해 보니"로 쓰지 않는다.
 - 그림은 설명하는 문단 바로 다음에. 그림 블록·figure 는 \`caption:\` 줄, 이미지는 alt 에 40자 안팎 명사구로 캡션. 직접 뜬 화면은 "직접 v2.1.292에서 열어 보니"처럼 버전과 함께 밝힌다. 자료 단계에서 끝내 못 뜬 화면만 박스가 아니라 그 자리에 \`![캡션](/posts/<slug>/todo-<이름>.png)\`.
