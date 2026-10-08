@@ -1,6 +1,6 @@
 ---
 name: blog-figures
-description: dongding 블로그 글 본문에 그림을 넣는 방법 — 그림 블록 10종(```flow·cycle·compare·matrix·timeline·sequence·layers·tree·stats·bars), ```figure 디자인 키트 HTML, SVG 의 문법과 고르는 기준, 그림 애니메이션 표준(data-anim·data-loop, Motion), 장면(`scene: on` — 화면에 붙어 스크롤 박자마다 넘어가는 timeline·bars)과 숫자 굴리기. 블로그 글(특히 릴리스 글)을 쓰거나 고치다가 흐름·비교·구조·숫자를 그림으로 보여 줘야 할 때, 그림에 애니메이션·인터랙션을 넣거나 고칠 때, 또는 점검에서 diagram-error·figure-dropped·figure-no-caption 경고가 났을 때 쓴다.
+description: dongding 블로그 글 본문에 그림을 넣는 방법 — 그림 블록 10종(```flow·cycle·compare·matrix·timeline·sequence·layers·tree·stats·bars), ```figure 디자인 키트 HTML, SVG 의 문법과 고르는 기준, 그림 애니메이션 표준(data-anim·data-loop, Motion), 장면(`scene: on` — 화면에 붙어 스크롤 박자마다 넘어가는 그림. 그림 블록 전부와 figure, 터미널 화면 재현)과 숫자 굴리기. 블로그 글(특히 릴리스 글)을 쓰거나 고치다가 흐름·비교·구조·숫자를 그림으로 보여 줘야 할 때, 그림에 애니메이션·인터랙션을 넣거나 고칠 때, 또는 점검에서 diagram-error·figure-dropped·figure-no-caption 경고가 났을 때 쓴다.
 ---
 
 # 블로그 그림 넣기
@@ -51,7 +51,7 @@ description: dongding 블로그 글 본문에 그림을 넣는 방법 — 그림
 | 파일 구조, 계층 | `tree` |
 | 핵심 숫자 몇 개 | `stats` |
 | 수치 크기 비교 | `bars` |
-| 활용 예 두세 개(무엇을 하는지, 화면에 무엇이 뜨는지) | `timeline` 장면 + 직접 띄운 화면(아래 "활용 예") |
+| 활용 예 두세 개(무엇을 하는지, 화면에 무엇이 뜨는지) | figure 장면으로 화면 재현(아래 "활용 예") |
 
 글 전체에서 같은 종류만 반복하지 말고 내용에 맞게 섞는다. 비교는 `compare`·`matrix` 가 비교 표 요건도 채운다.
 
@@ -190,12 +190,20 @@ bypass | 0 | 0회(확인 없음) ~
 
 ## 장면 — 스크롤 박자마다 넘어가는 그림
 
-timeline·bars 에 머리 줄 `scene: on` 을 쓰면 장면이 된다. 그림과 설명이 화면 가운데 무대로 붙고, 스크롤은 다음 단계로 넘어가라는 신호로만 쓰인다. 단계가 바뀌면 그림이 0.8초 동안 다음 상태로 가서 멈추고, 설명은 아래에서 올라오며 바뀐 뒤 `**굵게**` 부분에 형광펜이 칠해진다. 스크롤을 놓으면 단계 자리에 맞춰 선다. 아래 점 표시줄이 지금 단계와 다음 단계까지 남은 거리를 보여 준다.
+그림 블록이나 ```figure 에 머리 줄 `scene: on` 을 쓰면 장면이 된다. 그림과 설명이 화면 가운데 무대로 붙고, 스크롤은 다음 단계로 넘어가라는 신호로만 쓰인다. 단계가 바뀌면 그림이 0.8초 동안 다음 상태로 가서 멈추고, 설명은 아래에서 올라오며 바뀐 뒤 `**굵게**` 부분에 형광펜이 칠해진다. 스크롤을 놓으면 단계 자리에 맞춰 선다. 아래 점 표시줄이 지금 단계와 다음 단계까지 남은 거리를 보여 준다.
 
 - 글마다 한두 개, 이야기의 핵심 그림에만. 나머지는 정지 그림으로 둔다.
 - 캡션은 판 안 왼쪽 위 제목이 된다.
 - 단계 설명은 한두 문장, 200자까지. 머리말은 시점(timeline)이나 단계 이름(bars)이다. `**굵게**` 는 형광펜, `` `코드` `` 는 코드 글자. 본문 문단을 그대로 옮기지 말고, 그 단계에서 그림이 보여 주는 것을 짚는다.
 - 장면 하나는 단계 수만큼 화면 절반씩 스크롤을 차지한다. 단계를 늘리기보다 줄인다.
+- 그림마다 단계를 나누는 법이 다르다.
+
+| 그림 | 단계 | 움직임 |
+| --- | --- | --- |
+| timeline | 시점마다 `>` | 버전 슬라이드가 넘어가고 레일이 찬다 |
+| bars | `step:` 줄마다 그 단계의 값 | 막대가 자라고·줄고·축이 당겨진다 |
+| flow·cycle·compare·matrix·sequence·layers·tree·stats | `>` 가 달린 칸마다 | 지금 칸이 빛나고, 아직 안 온 칸은 흐리다. 설명 없는 칸은 앞 단계와 함께 나온다 |
+| figure | `step:` 줄마다, 요소에 단 `data-step`·`data-on`·`data-v`·`data-text` | 정한 대로 나타나고·강조되고·값과 글자가 바뀐다. 화면 재현 같은 자유 구성 |
 
 ### timeline 장면 — 2~6줄
 
@@ -248,29 +256,73 @@ step: 줄어든 막대를 키워 보면 | zoom
 ```
 ````
 
-### 활용 예 — 장면으로 넘기고 실제 화면을 붙인다
+### 그 밖의 그림 블록 장면 — 설명이 달린 칸이 단계
 
-새 기능을 어디에 쓰는지는 공식 예제·샘플에서 고른 두세 개로 보여 준다. 이름과 이벤트만 적은 카드로 끝내면 독자는 무슨 예제인지 모른다. 2026-10-08 Mods 글에서 카드 셋 중 하나만 강조했다가 "왜 하나만 하이라이트인지, 무슨 예제인지 모르겠고, 인터랙티브하지도 않다"는 지적을 받았다.
-
-1. **timeline 장면으로 넘긴다.** 시점 자리에 예제 이름, 제목에 하는 일(몇 단어), `>` 설명에 화면에 무엇이 뜨는지와 쓰는 훅·명령을 한두 문장으로. 강조는 장면이 지금 단계에만 준다. 줄 끝 `*` 는 쓰지 않는다.
-2. **직접 띄운 화면을 장면 아래에 붙인다.** blog-capture 로 예제를 실제로 돌려 뜬다(플러그인·mod 는 `--plugin`, 준비할 파일은 `--setup`, 턴이 끝난 뒤 누를 키는 `--wait`). 예제마다 한 장, 문단에서 "직접 v2.1.292에서 ~해 보니"로 무엇을 시켰고 무엇이 떴는지 쓴다. 띄울 수 없는 예제는 장면 설명만으로 둔다.
-3. **따라 할 명령 한 줄**을 마지막에 붙인다(예: `claude --plugin-dir ./claude-code/mods/blast-radius`).
+flow·cycle·compare·matrix·sequence·layers·tree·stats 는 `>` 설명이 달린 칸마다 한 단계다(2~8단계). 그림 모양은 정지 그림과 같고, 지금 칸이 빛나며 커지고 아직 안 온 칸은 흐리다.
 
 ````
-```timeline
-caption: 공식 예제 mod 셋이 화면에 띄우는 것
+```flow
+caption: tool.call 하나가 지나는 순서
 scene: on
-replay-theater | 지난 턴의 편집 되감기
-> 턴이 끝나면 프롬프트 위에 `Replay: 3 edits`가 뜨고, `/replay`를 치면 파일 편집을 **diff 한 장씩** 넘겨 봅니다. `tool.call`은 적어 두기만 하고 늘 `next(e)`로 넘깁니다.
-token-weather | 컨텍스트 일기예보
-> 턴이 끝날 때마다 프롬프트 위 한 줄에 **컨텍스트가 몇 퍼센트 찼는지**를 날씨로 보여 줍니다. `turn.complete`에서 읽고 `ui.render`로 그립니다.
-blast-radius | 위험한 명령 붙잡기
-> `rm -rf`나 강제 푸시를 실행 직전에 멈추고 **지워질 파일**을 보여 줍니다. Proceed면 `next(e)`, Cancel이면 `deny`로 답합니다.
+tool.call | 도구 호출 이벤트
+> Claude가 도구를 부르면 **tool.call** 이벤트가 생깁니다.
+sec-default | 내장 가드
+> 조직 설정이 있으면 **내장 가드**가 먼저 봅니다.
+사용자 mod | 직접 설치 *
+> 내가 설치한 mod가 **next를 부를지** 정합니다.
 ```
+````
 
-직접 v2.1.292에서 replay-theater를 불러온 뒤 Claude에게 파일 세 개를 고치게 하고 `/replay`를 치니, 첫 단계로 `greet.js`의 diff가 열렸습니다.
+### figure 장면 — 요소마다 단계를 적는 자유 구성
 
-![v2.1.292 replay-theater가 연 pane, 편집 3개 중 1단계](/posts/claude-code-mods/replay-theater-pane.svg)
+정해진 그림 블록으로 안 되는 장면(실제 화면 재현, 값이 단계마다 바뀌는 구성)은 ```figure 로 짠다. HTML 앞 머리 줄에 `scene: on`, 단계마다 `step: 이름` 과 바로 아래 `> 설명`(2~8단계)을 쓰고, 요소에 단계를 적는다. 단계는 1부터 센다.
+
+| 속성 | 뜻 |
+| --- | --- |
+| `data-step="2"` | 2단계에 나타나 끝까지 남는다. `"2-3"` 은 2~3단계에만 보인다 |
+| `data-on="2:accent\|3+:dim"` | 그 단계에 상태를 입힌다. `accent`(빛남)·`dim`(흐림)·`hide`(숨김)·`strike`(취소선). `2` 는 그 단계만, `3+` 는 3부터, `2-3` 은 범위 |
+| `data-v="1:90%\|2:12%"` | 단계마다 `--v` 를 바꾼다(`fig-bar` 길이). 그 단계까지 마지막 값 |
+| `data-text="1:$2.06\|2:$0.16"` | 단계마다 글자를 바꾼다. 앞뒤 글자가 같은 숫자끼리면 센다 |
+
+- 단계마다 바뀌는 화면은 `fig-layer` 안에 겹쳐 두고 `data-step="1-1"`·`"2-2"` 로 하나씩 보인다. 높이는 가장 큰 화면이 정해 흔들리지 않는다.
+- 터미널 화면은 `fig-term`(어두운 판) 안에 `fig-term-bar`(머리줄, 점 셋은 자동)와 `fig-term-body` 를 둔다. 머리줄 오른쪽 `fig-term-tag` 칩에 지금 움직이는 훅·명령을 `data-text` 로 바꿔 넣는다. 줄은 `div` 하나씩, 색은 `fig-t-dim`·`fig-t-ok`·`fig-t-bad`·`fig-t-warn`, 안쪽 상자 `fig-t-box`, 버튼·배지 `fig-t-key`, 위 구분선 `fig-t-sep`.
+
+### 활용 예 — 실제 화면을 장면으로 재현한다
+
+새 기능을 어디에 쓰는지는 공식 예제·샘플에서 고른 두세 개로 보여 준다. 예제마다 그것이 화면에 띄우는 것을 figure 장면의 터미널로 다시 그려, 스크롤하면 예제가 차례로 실행되는 것처럼 넘긴다.
+
+2026-10-08 Mods 글에서 두 번 고쳤다. 이름·이벤트만 적은 카드 셋은 "무슨 예제인지 모르겠고 인터랙티브하지 않다"는 지적을 받았다. 그 뒤 timeline 장면으로 넘겼더니 "시간 순서가 아닌 예제에 타임라인은 어색하다"는 지적을 받았다. 예제는 버전 레일이 아니라 화면으로 보여 준다.
+
+1. **예제마다 한두 단계.** 화면이 뜨는 순간, 사용자가 무언가를 누른 뒤처럼 달라지는 화면마다 한 단계다. `>` 설명에는 화면에 무엇이 떴는지와 그때 쓰는 훅·명령을 한두 문장으로 쓴다.
+2. **화면 문구는 옮긴다. 지어내지 않는다.** 직접 띄운 화면(blog-capture 의 `--plugin`·`--setup`·`--wait`), 공식 README·스크린샷, 소스의 문자열에서 옮긴다. 캡션에 "v2.1.292 화면을 줄여 다시 그림"처럼 밝힌다. ☂ 같은 그림 문자는 빼고 글자만 옮긴다.
+3. **캡처는 장면 안에 합친다.** 같은 화면을 장면과 이미지로 두 번 보이지 않는다. 장면으로 못 옮기는 화면(그림·색이 핵심인 화면)만 이미지로 붙인다. 본문에서는 "직접 v2.1.292에서 ~해 보니"로 무엇을 시켰고 무엇이 떴는지 쓴다.
+4. **따라 할 명령 한 줄**을 마지막에 붙인다(예: `claude --plugin-dir ./claude-code/mods/blast-radius`).
+
+````
+```figure
+caption: 공식 예제 mod를 띄운 세션(v2.1.292 화면을 줄여 다시 그림)
+scene: on
+step: replay-theater · 턴이 끝나면
+> 턴이 끝나면 프롬프트 위에 **Replay: 3 edits**가 뜹니다.
+step: blast-radius · 실행 직전
+> `rm -rf build`가 실행되기 전에 멈추고 **지워질 파일**을 보여 줍니다.
+<div class="fig-term">
+  <div class="fig-term-bar">claude · ~/demo<span class="fig-term-tag" data-text="1:tool.call → next(e)|2:tool.call 붙잡기">tool.call → next(e)</span></div>
+  <div class="fig-term-body fig-layer">
+    <div data-step="1-1">
+      <div class="fig-t-ok">● 세 파일을 고쳤습니다.</div>
+      <div class="fig-t-sep"><span class="fig-t-key" data-on="1:accent">Replay: 3 edits</span></div>
+    </div>
+    <div data-step="2-2">
+      <div>&gt; build 폴더 지워 줘</div>
+      <div class="fig-t-box" data-on="2:accent">
+        <div>Command <span class="fig-t-warn">rm -rf build</span></div>
+        <div>Would delete 4 files <span class="fig-t-dim">(about 68 KB)</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+```
 ````
 
 ## ```figure — 디자인 키트 HTML
@@ -290,6 +342,8 @@ blast-radius | 위험한 명령 붙잡기
 | 배치 | `fig-flow`(가로 흐름, 640px 아래는 세로 + 화살표 회전) `fig-row`(줄바꿈 되는 가로) `fig-col`·`fig-stack`(세로) `fig-grid-2`·`fig-grid-3`·`fig-grid-4`(좁으면 2열→1열) `fig-center` `fig-gap-lg` |
 | 상자 | `fig-box` + `fig-accent`(강조) `fig-muted`(점선) `fig-info`(파랑) `fig-warn`(노랑) |
 | 글자 | `fig-label`(작은 대문자 머리말) `fig-title`(굵은 제목) `fig-sub`(보조 설명) `fig-big`(큰 숫자) `fig-mono` |
+| 겹치기 | `fig-layer`(자식이 한 칸에 겹친다. 장면에서 단계마다 바뀌는 화면) |
+| 터미널 | `fig-term` `fig-term-bar` `fig-term-tag`(머리줄 칩) `fig-term-body` · 줄 색 `fig-t-dim` `fig-t-ok` `fig-t-bad` `fig-t-warn` · `fig-t-box`(안쪽 상자) `fig-t-key`(버튼·배지) `fig-t-sep`(구분선) |
 | 조각 | `fig-arrow`(→, `fig-down` 을 더하면 ↓) `fig-num`(번호 배지) `fig-chip`(알약) `fig-dot` `fig-ok`(✓) `fig-no`(–) `fig-part`(반쯤) `fig-bar`(막대, `style="--v: 70%"`, `fig-accent` 면 강조색) |
 
 `code`·`kbd`·`mark`·`table`·`details` 는 클래스 없이도 키트 모양이 입혀진다.

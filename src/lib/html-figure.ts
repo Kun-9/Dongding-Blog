@@ -54,6 +54,38 @@ export interface FigureHtml {
   html: string;
   /** 지운 태그·속성·클래스. 비어 있으면 원문 그대로 살았다. */
   dropped: string[];
+  /** `scene: on` — 단계 이름과 설명. 요소마다 data-step·data-on·data-v·data-text 로 단계를 탄다. */
+  scene?: { steps: { name: string; note: string }[] };
+  /** 장면 머리 줄 오류. 있으면 장면 없이 그린다(점검기가 잡는다). */
+  errors: string[];
+}
+
+/** 장면 상태 — data-on 의 값. */
+export const SCENE_STATES = ["accent", "dim", "hide", "strike"] as const;
+/** 단계 범위: `2`(그 단계), `2+`(2부터 끝까지), `2-3`(2부터 3까지). */
+const RANGE = String.raw`\d{1,2}(?:\+|-\d{1,2})?`;
+const STEP_ATTR = new RegExp(`^${RANGE}$`);
+const ON_ITEM = `${RANGE}:(?:${SCENE_STATES.join("|")})`;
+const ON_ATTR = new RegExp(`^${ON_ITEM}(?:\\|${ON_ITEM})*$`);
+const V_ATTR = /^\d{1,2}:-?\d+(?:\.\d+)?%?(?:\|\d{1,2}:-?\d+(?:\.\d+)?%?)*$/;
+const TEXT_ATTR = /^\d{1,2}:[^|&]{0,40}(?:\|\d{1,2}:[^|&]{0,40})*$/;
+
+/** 장면 HTML 의 단계 번호가 1~n 안에 있고 범위가 바로 섰는지. 어긋난 값을 돌려준다. */
+function badSteps(html: string, n: number): string[] {
+  const bad: string[] = [];
+  const ok = (k: number) => k >= 1 && k <= n;
+  const range = (r: string) => {
+    const m = r.match(/^(\d+)(?:\+|-(\d+))?$/);
+    return !!m && ok(Number(m[1])) && (!m[2] || (ok(Number(m[2])) && Number(m[2]) >= Number(m[1])));
+  };
+  for (const [, name, value] of html.matchAll(/data-(step|on|v|text)="([^"]*)"/g)) {
+    const good =
+      name === "step"
+        ? range(value)
+        : value.split("|").every((it) => (name === "on" ? range(it.split(":")[0]) : ok(Number(it.split(":")[0]))));
+    if (!good) bad.push(`data-${name}="${value}"`);
+  }
+  return bad;
 }
 
 const ENTITY = /&(?![a-zA-Z][a-zA-Z0-9]{1,31};|#\d{1,7};|#x[0-9a-fA-F]{1,6};)/g;
@@ -105,6 +137,11 @@ function cleanAttrs(tag: string, source: string, dropped: Set<string>): string {
       (name === "data-loop" && (LOOPS as readonly string[]).includes(value))
     ) {
       out.push(`${name}="${value}"`);
+    } else if ((name === "data-step" && STEP_ATTR.test(value)) || (name === "data-on" && ON_ATTR.test(value)) || (name === "data-v" && V_ATTR.test(value))) {
+      // 장면 단계(figure 장면). 값 모양이 정해져 있어 그대로 둔다.
+      out.push(`${name}="${value}"`);
+    } else if (name === "data-text" && value.length <= 200 && TEXT_ATTR.test(value)) {
+      out.push(`data-text="${escAttr(value)}"`);
     } else if (name === "data-from" && /^-?\d+(\.\d+)?$/.test(value)) {
       out.push(`data-from="${value}"`);
     } else if (name === "aria-hidden" && value === "true") {
@@ -169,15 +206,45 @@ export function sanitizeFigureHtml(input: string): { html: string; dropped: stri
 }
 
 /** 펜스 원문 → 캡션 + 거른 HTML. */
+/**
+ * 머리 줄(`caption:`·`scene:`·`step:`·`> 설명`)을 떼고 나머지 HTML 을 거른다. 머리 줄은
+ * HTML 이 시작되기 전에만 읽는다.
+ */
 export function parseFigureHtml(source: string): FigureHtml {
   let caption: string | undefined;
+  let sceneOpt: string | undefined;
+  const steps: { name: string; note: string }[] = [];
+  const errors: string[] = [];
   const lines = source.split("\n");
-  const at = lines.findIndex((l) => l.trim());
-  const cap = at >= 0 ? lines[at].trim().match(/^caption\s*:\s*(.+)$/i) : null;
-  if (cap) {
-    caption = cap[1].trim();
-    lines.splice(at, 1);
+  let i = 0;
+  for (; i < lines.length; i++) {
+    const t = lines[i].trim();
+    if (!t) continue;
+    const cap = t.match(/^caption\s*:\s*(.+)$/i);
+    const sc = t.match(/^scene\s*:\s*(.*)$/i);
+    const st = t.match(/^step\s*:\s*(.+)$/i);
+    const note = t.match(/^>\s?(.*)$/);
+    if (cap) caption = cap[1].trim();
+    else if (sc) sceneOpt = sc[1].trim();
+    else if (st) steps.push({ name: st[1].trim(), note: "" });
+    else if (note) {
+      const last = steps[steps.length - 1];
+      if (last) last.note = `${last.note} ${note[1].trim()}`.trim();
+      else errors.push("figure 장면의 `> 설명` 은 `step: 이름` 줄 바로 아래에 둡니다");
+    } else break;
   }
-  const { html, dropped } = sanitizeFigureHtml(lines.join("\n").trim());
-  return { caption, html, dropped };
+  const { html, dropped } = sanitizeFigureHtml(lines.slice(i).join("\n").trim());
+  const on = /^(on|true|yes|1)$/i.test(sceneOpt ?? "");
+  if (sceneOpt !== undefined && !on && !/^(off|false|no|0)$/i.test(sceneOpt)) errors.push("scene 은 `scene: on` 으로 씁니다");
+  if (!on && steps.length) errors.push("figure 의 `step:` 줄은 `scene: on` 과 함께 씁니다");
+  if (on) {
+    if (steps.length < 2 || steps.length > 8) errors.push(`figure 장면은 \`step:\` 이 2~8개입니다(지금 ${steps.length})`);
+    const bad = steps.length ? badSteps(html, steps.length) : [];
+    if (bad.length) errors.push(`figure 장면의 단계 번호는 1~${steps.length} 안에서 앞이 작게 씁니다: ${bad.slice(0, 4).join(", ")}`);
+    steps.forEach((s) => {
+      if (!s.note) errors.push(`figure 장면의 단계 "${s.name.slice(0, 14)}" 바로 아래에 \`> 설명\` 줄이 있어야 합니다`);
+      else if (s.note.length > 200) errors.push(`figure 장면의 설명 "${s.note.slice(0, 20)}…" 가 깁니다(200자까지)`);
+    });
+  }
+  return { caption, html, dropped, errors, scene: on && !errors.length ? { steps } : undefined };
 }

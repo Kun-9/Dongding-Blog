@@ -10,10 +10,11 @@
  *       `key: value` 로 둔다(layout·actors·unit·center).
  *       줄 끝 `*` = 강조, `~` = 흐리게(점선). `|` 로 칸을 가른다.
  *
- * 장면: 머리 줄 `scene: on` 이면 timeline·bars 가 화면에 붙는 무대가 되어 스크롤 박자마다
- *       다음 단계로 넘어간다(components/prose/diagram/Scene). 단계 설명은 `> 내용` 줄이다.
- *       timeline 은 시점마다 바로 아래 `>` 한 줄, bars 는 `step: 이름` 줄마다 `>` 와 그 단계의 값.
- *       장면이 아닌 그림의 `>` 줄은 그리지 않는다.
+ * 장면: 머리 줄 `scene: on` 이면 그림이 화면에 붙는 무대가 되어 스크롤 박자마다 다음 단계로
+ *       넘어간다(components/prose/diagram/Scene). 단계 설명은 `> 내용` 줄이다.
+ *       timeline 은 시점마다 `>` 한 줄(버전 슬라이드), bars 는 `step: 이름` 줄마다 `>` 와 그 단계의
+ *       값(자라고·줄고·축 당기기). 나머지 종류는 `>` 가 달린 칸마다 한 단계 — 지금 칸이 빛나고
+ *       아직 안 온 칸은 흐리다(지난 칸은 그대로). 장면이 아닌 그림의 `>` 줄은 그리지 않는다.
  *
  * next 에 의존하지 않는 순수 모듈이다 — 점검기와 스크립트에서도 쓴다.
  */
@@ -109,17 +110,17 @@ export interface BarScene {
   steps: { name: string; note: string; zoom: boolean; values: number[][] }[];
 }
 
-export type Diagram = { caption?: string } & (
+export type Diagram = { caption?: string; scene?: boolean } & (
   | { kind: "flow"; nodes: Item[] }
   | { kind: "cycle"; nodes: Item[]; center?: string }
   | { kind: "compare"; columns: [string, string]; rows: CompareRow[] }
   | { kind: "matrix"; columns: string[]; rows: MatrixRow[] }
-  | { kind: "timeline"; points: TimelinePoint[]; scene?: boolean }
+  | { kind: "timeline"; points: TimelinePoint[] }
   | { kind: "sequence"; actors: string[]; messages: Message[] }
   | { kind: "layers"; layout: "nest" | "stack"; items: Item[] }
   | { kind: "tree"; roots: TreeNode[] }
   | { kind: "stats"; items: Stat[] }
-  | { kind: "bars"; unit?: string; items: Bar[]; scene?: BarScene }
+  | { kind: "bars"; unit?: string; items: Bar[]; barScene?: BarScene }
 );
 
 export interface ParseResult {
@@ -234,10 +235,20 @@ export function parseDiagram(kind: DiagramKind, source: string): ParseResult {
   }
   /** i 번째 줄에서 만든 칸에 설명을 붙인다. */
   const at = <T extends Mark>(x: T, i: number): T => (details.has(i) ? { ...x, detail: details.get(i) } : x);
-  const done = (d: Diagram): ParseResult => ({ diagram: errors.length ? null : d, errors });
   const scene = /^(on|true|yes|1)$/i.test(opts.scene ?? "");
   if (opts.scene !== undefined && !scene && !/^(off|false|no|0)$/i.test(opts.scene)) errors.push("scene 은 `scene: on` 으로 씁니다");
-  if (scene && kind !== "timeline" && kind !== "bars") errors.push("scene 은 timeline·bars 에서만 씁니다");
+  const done = (d: Diagram): ParseResult => {
+    if (scene) {
+      d.scene = true;
+      // timeline·bars 는 자기 규칙으로 검사했다. 나머지는 설명이 달린 칸이 단계다.
+      if (d.kind !== "timeline" && d.kind !== "bars") {
+        const n = sceneCells(d).filter((c) => c.detail).length;
+        if (n < 2) errors.push(`${d.kind} 장면은 \`> 설명\` 이 달린 칸이 둘 이상이어야 합니다(지금 ${n})`);
+        if (n > 8) errors.push(`${d.kind} 장면의 단계(\`> 설명\` 이 달린 칸)는 8개까지입니다(지금 ${n})`);
+      }
+    }
+    return { diagram: errors.length ? null : d, errors };
+  };
 
   switch (kind) {
     case "flow": {
@@ -312,7 +323,7 @@ export function parseDiagram(kind: DiagramKind, source: string): ParseResult {
         if (!p.when || !p.what) errors.push(`timeline ${i + 1}번째 줄은 \`시점 | 내용\` 꼴입니다`);
         else if (scene && !p.detail) errors.push(`timeline 장면은 시점마다 바로 아래 \`> 설명\` 줄이 있어야 합니다: "${short(p.when)}"`);
       });
-      return done({ kind, caption, points, scene: scene || undefined });
+      return done({ kind, caption, points });
     }
 
     case "sequence": {
@@ -412,7 +423,7 @@ export function parseDiagram(kind: DiagramKind, source: string): ParseResult {
         const sc = barScene(raw, details, opts, errors);
         const first = sc.steps[0]?.values ?? [];
         const items: Bar[] = sc.rows.map((r, k) => ({ ...r, value: (first[k] ?? []).reduce((a, b) => a + b, 0) }));
-        return done({ kind, caption, unit: opts.unit || undefined, items, scene: sc });
+        return done({ kind, caption, unit: opts.unit || undefined, items, barScene: sc });
       }
       const items: Bar[] = [];
       for (const [i, line] of body.entries()) {
@@ -431,6 +442,48 @@ export function parseDiagram(kind: DiagramKind, source: string): ParseResult {
       return done({ kind, caption, unit: opts.unit || undefined, items });
     }
   }
+}
+
+/** 장면에서 칸이 그려지는 순서 — 렌더러가 매기는 `--i` 순서와 같다(tree 는 위에서 아래). */
+export function sceneCells(d: Diagram): (Mark & { label: string })[] {
+  switch (d.kind) {
+    case "flow":
+    case "cycle":
+      return d.nodes;
+    case "layers":
+      return d.items;
+    case "compare":
+    case "matrix":
+      return d.rows.map((r) => ({ ...r, label: r.item }));
+    case "timeline":
+      return d.points.map((p) => ({ ...p, label: p.when }));
+    case "sequence":
+      return d.messages.map((m) => ({ ...m, label: m.from === m.to ? d.actors[m.from] : `${d.actors[m.from]} → ${d.actors[m.to]}` }));
+    case "tree": {
+      const out: TreeNode[] = [];
+      const walk = (ns: TreeNode[]) => ns.forEach((n) => (out.push(n), walk(n.children)));
+      walk(d.roots);
+      return out;
+    }
+    case "stats":
+      return d.items;
+    case "bars":
+      return d.items;
+  }
+}
+
+/**
+ * 일반 장면의 계획 — `>` 설명이 달린 칸마다 한 단계. 설명 없는 칸은 앞 단계와 함께 나온다
+ * (첫 설명 앞의 칸은 첫 단계). cellStep[i] = i 번째 칸이 나오는 단계.
+ */
+export function spotPlan(d: Diagram): { notes: { k: string; text: string }[]; cellStep: number[] } {
+  const notes: { k: string; text: string }[] = [];
+  const cellStep: number[] = [];
+  for (const c of sceneCells(d)) {
+    if (c.detail) notes.push({ k: c.label, text: c.detail });
+    cellStep.push(Math.max(0, notes.length - 1));
+  }
+  return { notes, cellStep };
 }
 
 const STEP_RE = /^step\s*:\s*(.+?)(?:\s*\|\s*(zoom))?\s*$/i;

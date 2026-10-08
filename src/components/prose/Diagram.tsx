@@ -14,7 +14,8 @@ import { Compare, Matrix } from "./diagram/Compare";
 import { Cycle, Flow } from "./diagram/Flow";
 import { Bars, Stats } from "./diagram/Numbers";
 import { Shell } from "./diagram/parts";
-import { BarsScene, TimelineScene } from "./diagram/Scene";
+import { BarsScene, FigureScene, SpotScene, TimelineScene } from "./diagram/Scene";
+import { spotPlan } from "@/lib/diagram";
 import { Layers, Tree } from "./diagram/Structure";
 import { Sequence, Timeline } from "./diagram/Timeline";
 
@@ -56,8 +57,16 @@ const BARE = new Set<DiagramData["kind"]>(["compare", "matrix"]);
 export function Diagram({ diagram }: { diagram: DiagramData }) {
   const sig = sigOf(JSON.stringify(diagram));
   // 장면은 자기 무대를 그린다. 내용이 바뀌면(스튜디오) key 로 새로 그려 진행 상태를 버린다.
-  if (diagram.kind === "timeline" && diagram.scene) return <TimelineScene key={sig} caption={diagram.caption} points={diagram.points} />;
-  if (diagram.kind === "bars" && diagram.scene) return <BarsScene key={sig} caption={diagram.caption} unit={diagram.unit} scene={diagram.scene} />;
+  if (diagram.scene) {
+    if (diagram.kind === "timeline") return <TimelineScene key={sig} caption={diagram.caption} points={diagram.points} />;
+    if (diagram.kind === "bars" && diagram.barScene) return <BarsScene key={sig} caption={diagram.caption} unit={diagram.unit} scene={diagram.barScene} />;
+    const { notes, cellStep } = spotPlan(diagram);
+    return (
+      <SpotScene key={sig} caption={diagram.caption} notes={notes} cellStep={cellStep}>
+        <Body d={diagram} />
+      </SpotScene>
+    );
+  }
   return (
     <Shell caption={diagram.caption} bare={BARE.has(diagram.kind)} sig={sig}>
       <Body d={diagram} />
@@ -67,6 +76,7 @@ export function Diagram({ diagram }: { diagram: DiagramData }) {
 
 /** ```figure — 이미 거른 HTML 이다(parseFigureHtml). */
 export function HtmlFigure({ figure }: { figure: FigureHtml }) {
+  if (figure.scene) return <FigureScene key={sigOf(figure.html)} caption={figure.caption} html={figure.html} steps={figure.scene.steps} />;
   return (
     <Shell caption={figure.caption} sig={sigOf(figure.html)}>
       <div className="fig-html" dangerouslySetInnerHTML={{ __html: figure.html }} />

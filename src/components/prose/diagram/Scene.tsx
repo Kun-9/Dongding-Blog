@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * 장면 — `scene: on` 인 timeline·bars. 화면 높이 무대가 붙어 있고, 스크롤은 박자만 센다.
+ * 장면 — `scene: on` 인 그림 블록과 ```figure. 화면 높이 무대가 붙어 있고, 스크롤은 박자만 센다.
  * 박자가 바뀌면 그림은 0.8초 동안 다음 단계로 가서 멈춘다. 스크롤을 놓으면 박자 자리에
  * 맞춰 선다(html.sc-snap, scroll-snap proximity). 기준은 .claude/skills/blog-figures.
  *
@@ -397,6 +397,156 @@ export function BarsScene({ caption, unit, scene }: { caption?: string; unit?: s
           ))}
         </div>
       ) : null}
+    </Stage>
+  );
+}
+
+/* ── 그 밖의 그림 블록 — 칸마다 한 단계 ─────────────────────────────────── */
+
+/**
+ * flow·cycle·compare·matrix·sequence·layers·tree·stats 의 장면. 렌더러가 칸마다 단 `--i`
+ * (칸 번호, 연결선은 .5)로 칸이 몇 단계에 나오는지 찾아, 지금 칸은 빛나고 아직 안 온 칸은
+ * 흐리게 둔다(지난 칸은 그대로). 그림 모양은 정지 그림과 같다.
+ */
+export function SpotScene({
+  caption,
+  notes,
+  cellStep,
+  children,
+}: {
+  caption?: string;
+  notes: { k: string; text: string }[];
+  cellStep: number[];
+  children: ReactNode;
+}) {
+  const box = useRef<HTMLDivElement>(null);
+  const paint = (s: number) => {
+    box.current?.querySelectorAll<HTMLElement | SVGElement>("[style*='--i']").forEach((el) => {
+      const v = parseFloat(el.style.getPropertyValue("--i"));
+      // 음수 차례(참여자·고리 바탕)는 늘 보이는 배경이다.
+      if (Number.isNaN(v) || v < 0) return;
+      const at = cellStep[Math.min(cellStep.length - 1, Math.ceil(v - 1e-6))] ?? 0;
+      el.classList.toggle("sc-future", at > s);
+      el.classList.toggle("sc-cur", at === s);
+      el.classList.toggle("sc-past", at < s);
+    });
+  };
+  return (
+    <Stage
+      label={caption ?? notes.map((x) => x.k).join(", ")}
+      head={caption ? <div className="sc-ttl">{caption}</div> : null}
+      notes={notes}
+      onStep={(s) => paint(s)}
+    >
+      <div ref={box} className="sc-spot">
+        {children}
+      </div>
+    </Stage>
+  );
+}
+
+/* ── figure — 요소마다 단계를 적는 자유 구성 ─────────────────────────────── */
+
+/** `2`·`2+`·`2-3` 이 단계 n 을 덮나. exact 면 `2` 는 그 단계만, 아니면 2부터 끝까지. */
+function covers(range: string, n: number, exact: boolean) {
+  const m = range.match(/^(\d+)(\+|-(\d+))?$/);
+  if (!m) return false;
+  const a = Number(m[1]);
+  if (m[3]) return n >= a && n <= Number(m[3]);
+  if (m[2] === "+" || !exact) return n >= a;
+  return n === a;
+}
+
+/** `1:값|3:값` 에서 단계 n 까지 마지막으로 정해진 값. 없으면 null. */
+function latest(spec: string, n: number): string | null {
+  let best = -1;
+  let out: string | null = null;
+  for (const item of spec.split("|")) {
+    const at = item.indexOf(":");
+    const k = Number(item.slice(0, at));
+    if (k <= n && k > best) {
+      best = k;
+      out = item.slice(at + 1);
+    }
+  }
+  return out;
+}
+
+const NUM = /^(\D*?)(-?\d[\d,]*(?:\.\d+)?)(\D*)$/;
+
+/** 글자를 바꾼다. 앞뒤 글자가 같은 숫자끼리면 0.8초 동안 세고, 아니면 바로 바꾼다. */
+function swapText(el: HTMLElement, next: string, instant: boolean, timers: WeakMap<Element, number>) {
+  cancelAnimationFrame(timers.get(el) ?? 0);
+  const a = (el.textContent ?? "").trim().match(NUM);
+  const b = next.trim().match(NUM);
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (instant || reduce || !a || !b || a[1] !== b[1] || a[3] !== b[3]) {
+    el.textContent = next;
+    return;
+  }
+  const from = Number(a[2].replace(/,/g, ""));
+  const to = Number(b[2].replace(/,/g, ""));
+  const dec = b[2].split(".")[1]?.length ?? 0;
+  const t0 = performance.now();
+  const frame = (now: number) => {
+    const t = clamp((now - t0) / TWEEN_MS);
+    el.textContent = `${b[1]}${lerp(from, to, easeOut(t)).toFixed(dec)}${b[3]}`;
+    if (t < 1) timers.set(el, requestAnimationFrame(frame));
+    else el.textContent = next;
+  };
+  timers.set(el, requestAnimationFrame(frame));
+}
+
+/**
+ * ```figure 장면. 단계는 작성자가 1부터 센다.
+ * - data-step="2" 2단계에 나타나 남는다, "2-3" 2~3단계에만 보인다.
+ * - data-on="2:accent|3+:dim" 그 단계에 상태를 입힌다(accent·dim·hide·strike).
+ * - data-v="1:90%|2:12%" 단계마다 --v(막대 길이 등)를 바꾼다.
+ * - data-text="1:$2.06|2:$0.16" 단계마다 글자를 바꾼다. 숫자끼리면 센다.
+ */
+export function FigureScene({ caption, html, steps }: { caption?: string; html: string; steps: { name: string; note: string }[] }) {
+  const box = useRef<HTMLDivElement>(null);
+  const first = useRef(new WeakMap<Element, { v: string; text: string }>());
+  const timers = useRef(new WeakMap<Element, number>());
+  const [ready, setReady] = useState(false);
+  const paint = (s: number, instant: boolean) => {
+    const root = box.current;
+    if (!root) return;
+    if (!ready) setReady(true);
+    const n = s + 1;
+    const orig = (el: HTMLElement) => {
+      if (!first.current.has(el)) first.current.set(el, { v: el.style.getPropertyValue("--v"), text: el.textContent ?? "" });
+      return first.current.get(el)!;
+    };
+    root.querySelectorAll<HTMLElement>("[data-step]").forEach((el) => el.classList.toggle("sc-off", !covers(el.dataset.step!, n, false)));
+    root.querySelectorAll<HTMLElement>("[data-on]").forEach((el) => {
+      const on = new Set(
+        el.dataset.on!.split("|").flatMap((item) => {
+          const [range, state] = item.split(":");
+          return covers(range, n, true) ? [state] : [];
+        }),
+      );
+      for (const st of ["accent", "dim", "hide", "strike"]) el.classList.toggle(`is-${st}`, on.has(st));
+    });
+    root.querySelectorAll<HTMLElement>("[data-v]").forEach((el) => {
+      const v = latest(el.dataset.v!, n) ?? orig(el).v;
+      orig(el);
+      if (v) el.style.setProperty("--v", v);
+      else el.style.removeProperty("--v");
+    });
+    root.querySelectorAll<HTMLElement>("[data-text]").forEach((el) => {
+      const o = orig(el);
+      swapText(el, latest(el.dataset.text!, n) ?? o.text, instant, timers.current);
+    });
+  };
+  return (
+    <Stage
+      label={caption ?? steps.map((x) => x.name).join(", ")}
+      head={caption ? <div className="sc-ttl">{caption}</div> : null}
+      notes={steps.map((x) => ({ k: x.name, text: x.note }))}
+      onStep={paint}
+    >
+      <div ref={box} className="fig-html sc-html" data-ready={ready ? "" : undefined} dangerouslySetInnerHTML={{ __html: html }} />
     </Stage>
   );
 }

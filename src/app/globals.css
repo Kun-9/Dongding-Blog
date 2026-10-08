@@ -520,13 +520,16 @@ svg [data-anim]:not([transform]) {
 .dg-roll-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 /* ============================================================
-   장면(components/prose/diagram/Scene) — scene: on 인 timeline·bars.
+   장면(components/prose/diagram/Scene) — scene: on 인 그림 블록과 figure.
    화면 높이 무대가 붙고, 박자(.sc-beat)마다 스냅한다.
    ============================================================ */
 html.sc-snap { scroll-snap-type: y proximity; }
 .sc { position: relative; margin: 2.25rem 0; }
 .sc-stage { position: sticky; top: 0; height: 100svh; display: grid; align-content: safe center; padding: 64px 0 24px; }
 .sc-in { display: grid; gap: 40px; }
+/* 줄바꿈 없는 글자(터미널 칩 등)가 판을 칸 밖으로 밀어 단계마다 폭·높이가 바뀌지 않게 */
+.sc-in > *,
+.sc-board > * { min-width: 0; }
 .sc-beats { margin-top: -100svh; }
 .sc-beat { display: block; height: 50svh; scroll-snap-align: start; }
 .sc-beat:last-child { height: 120svh; }
@@ -647,6 +650,34 @@ html.sc-snap { scroll-snap-type: y proximity; }
 @media (prefers-reduced-motion: reduce) {
   .sc-board, .sc-note, .sc-note b, .sc-pips i, .sc-d, .sc-lb, .sc-ver { transition: none; }
   .sc-head::after { animation: none; }
+}
+
+/* 그 밖의 그림 블록 장면(SpotScene) — 칸이 나오는 단계로 지금·아직을 가른다.
+   지난 칸은 그대로 둔다: 겹친 상자(layers)에서 바깥이 흐려지면 안쪽 지금 칸까지 흐려진다. */
+.sc-spot [style*="--i"] { transition: opacity 0.45s ease, filter 0.45s ease; }
+.sc-spot .sc-future { opacity: 0.12; }
+/* 키우지 않는다: 표 행(compare·matrix)은 스크롤 래퍼 안이라 커지면 스크롤바가 생기거나 잘린다. */
+.sc-spot .sc-cur { filter: drop-shadow(0 6px 16px color-mix(in oklab, var(--callout-tip-glyph) 50%, transparent)); }
+
+/* figure 장면(FigureScene) — data-step·data-on·data-v·data-text 가 단계마다 붙이는 상태 */
+.sc-html [data-step],
+.sc-html [data-on] { transition: opacity 0.45s, translate 0.45s, box-shadow 0.45s, border-color 0.45s, background-color 0.45s, color 0.45s; }
+.sc-html .is-dim { opacity: 0.3; }
+.sc-html .is-hide { opacity: 0; }
+.sc-html .is-strike { text-decoration: line-through; opacity: 0.5; }
+/* 숨김이 이긴다 — 같은 요소에 dim·strike 가 같이 붙어도 보이지 않는다 */
+.sc-html .sc-off.sc-off { opacity: 0; translate: 0 8px; pointer-events: none; }
+/* JS 가 붙기 전(서버 렌더·JS 없음·장면이 오류로 정지 그림이 됐을 때)에는 1단계 모습만 */
+.fig-html:not([data-ready]) [data-step]:not([data-step^="1"]) { opacity: 0; }
+.sc-html .is-accent {
+  border-color: var(--callout-tip-glyph);
+  box-shadow:
+    0 0 0 3px color-mix(in oklab, var(--callout-tip-glyph) 35%, transparent),
+    0 10px 26px -12px color-mix(in oklab, var(--callout-tip-glyph) 70%, transparent);
+}
+.sc-html .fig-bar::after { transition: width 0.8s cubic-bezier(0.2, 0.8, 0.2, 1); }
+@media (prefers-reduced-motion: reduce) {
+  .sc-spot [style*="--i"], .sc-html [data-step], .sc-html [data-on], .sc-html .fig-bar::after { transition: none; }
 }
 
 /* ============================================================
@@ -865,6 +896,61 @@ html.sc-snap { scroll-snap-type: y proximity; }
 }
 .fig-bar.fig-accent { border: 0; box-shadow: none; background: color-mix(in oklab, var(--ink) 7%, transparent); }
 .fig-bar.fig-accent::after { background: var(--callout-tip-glyph); }
+
+/* 겹치기 — 자식들이 한 칸에 겹친다. 장면에서 단계마다 바뀌는 화면을 높이 흔들림 없이 둘 때. */
+.fig-layer { display: grid; }
+.fig-layer > * { grid-area: 1 / 1; }
+
+/* 터미널 — 활용 예의 실제 화면을 다시 그릴 때. 두 테마 모두 어두운 판(코드 블록과 같은 색). */
+.fig-term {
+  overflow: hidden;
+  border: 1px solid color-mix(in oklab, var(--code-ink) 12%, transparent);
+  border-radius: 12px;
+  background: var(--code-bg);
+  color: var(--code-ink);
+  font: 12.5px/1.6 var(--font-mono);
+  text-align: left;
+  word-break: normal;
+}
+.fig-term-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid color-mix(in oklab, var(--code-ink) 10%, transparent);
+  color: var(--code-muted);
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+.fig-term-bar::before {
+  content: "";
+  flex: none;
+  width: 42px;
+  height: 9px;
+  background: radial-gradient(circle, color-mix(in oklab, var(--code-ink) 28%, transparent) 4px, transparent 4.5px) 0 0 / 14px 9px repeat-x;
+}
+.fig-term-tag {
+  min-width: 0;
+  max-width: 62%;
+  margin-left: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 2px 9px;
+  border: 1px solid color-mix(in oklab, var(--code-string) 55%, transparent);
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--code-string) 16%, transparent);
+  color: var(--code-string);
+}
+.fig-term-body { padding: 12px 14px; overflow-wrap: anywhere; }
+/* 줄(안에 div 가 없는 칸)만 공백을 살린다. 감싸는 칸까지 살리면 HTML 들여쓰기가 빈 줄로 보인다. */
+.fig-term-body :not(:has(div)) { white-space: pre-wrap; }
+.fig-t-dim { color: var(--code-muted); }
+.fig-t-ok { color: var(--code-string); }
+.fig-t-bad { color: var(--code-number); }
+.fig-t-warn { color: var(--code-type); }
+.fig-t-box { margin-top: 6px; padding: 8px 10px; border: 1px solid color-mix(in oklab, var(--code-ink) 18%, transparent); border-radius: 8px; }
+.fig-t-key { display: inline-block; margin-right: 8px; padding: 0 6px; border: 1px solid color-mix(in oklab, var(--code-ink) 22%, transparent); border-radius: 5px; }
+.fig-t-sep { margin-top: 8px; padding-top: 8px; border-top: 1px solid color-mix(in oklab, var(--code-ink) 12%, transparent); }
 
 /* ============================================================
    모달(ui/Modal)·셀렉트(ui/Select) — 떠오르는 판

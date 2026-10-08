@@ -2331,7 +2331,7 @@ function MarkdownCheatsheet() {
               />
               <CheatsheetRow
                 syntax={'scene: on\nv2.1.280 | opus가 Opus 5.5로 *\n> 9월 23일 배포. **opus** 별칭이 Opus 5.5로\nstep: 캐시가 맞으면 | zoom'}
-                label="장면 — timeline·bars 머리에 scene: on. 시점·step 마다 바로 아래 > 설명, 스크롤 박자마다 다음 단계. bars 는 parts·ratio·step: 이름 | zoom"
+                label="장면 — 그림 블록·figure 머리에 scene: on, 스크롤 박자마다 다음 단계. 블록은 > 설명 달린 칸마다, bars 는 step: 이름 | zoom, figure 는 step: + data-step·data-on·data-v·data-text"
               />
               <CheatsheetRow
                 syntax={"> [!INFO] 제목\n> 본문 줄들\n> 계속"}
