@@ -26,7 +26,8 @@ interface Props<T extends string> {
   className?: string;
   /** 트리거 안 내용. 없으면 선택된 항목의 label. */
   children?: ReactNode;
-  align?: "left" | "right";
+  /** 목록을 어느 쪽에 붙일지. "right-md" 는 좁은 화면에서 왼쪽, md 부터 오른쪽. */
+  align?: "left" | "right" | "right-md";
   disabled?: boolean;
 }
 
@@ -117,7 +118,7 @@ export function Select<T extends string>({
           aria-activedescendant={`${id}-${active}`}
           onKeyDown={onKey}
           className={`pop-in absolute top-[calc(100%+6px)] z-50 m-0 w-[min(280px,80vw)] list-none rounded-xl border border-border-token bg-surface p-1.5 shadow-[0_18px_44px_-14px_rgba(0,0,0,0.35)] outline-none ${
-            align === "right" ? "right-0" : "left-0"
+            align === "right" ? "right-0" : align === "right-md" ? "left-0 md:right-0 md:left-auto" : "left-0"
           }`}
         >
           <li role="presentation" className="px-2.5 pt-1 pb-1.5 font-sans text-[10.5px] font-semibold tracking-[0.06em] text-ink-subtle uppercase">

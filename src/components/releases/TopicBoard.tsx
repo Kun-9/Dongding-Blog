@@ -53,22 +53,38 @@ function tone(key: StageKey | "done") {
   };
 }
 
-/** 진행판 칸 — 각 주제가 지금 붙잡고 있는 단계. 발행까지 끝나면 done. */
-type Lane = StageKey | "done";
+/**
+ * 누가 움직일 차례인가. 판은 단계가 아니라 이 순서로 구역을 나눈다 —
+ * 위에서부터 지금 봐야 하는 것.
+ */
+type Turn = "ai" | "me" | "idle" | "done";
 
-function laneOf(t: TopicRow): Lane {
-  return nextStage(t.stage)?.key ?? "done";
+const TURNS: { key: Turn; label: string; hint: string; color: string }[] = [
+  { key: "ai", label: "AI 작성 중", hint: "작업 중에는 화면이 저절로 갱신됩니다", color: "var(--callout-tip-ink)" },
+  { key: "me", label: "내 차례", hint: "남은 일을 처리해 발행하거나, 멈춘 작업을 다시 맡깁니다", color: "var(--callout-warning-ink)" },
+  { key: "idle", label: "맡기기 전", hint: "AI에게 맡기거나 직접 진행합니다", color: "var(--ink)" },
+  { key: "done", label: "발행함", hint: "", color: "var(--ink-muted)" },
+];
+
+function turnOf(t: TopicRow): Turn {
+  if (t.ai.status === "running" || t.ai.status === "queued") return "ai";
+  const next = nextStage(t.stage);
+  if (!next) return "done";
+  return t.ai.status === "failed" || next.key === "published" ? "me" : "idle";
 }
 
-const LANES: { key: Lane; label: string; no: string }[] = [
-  // 번호는 카드의 진행바와 맞춘다 — 1단계(글감 묶음)는 만들 때 끝난다.
-  ...STAGES.slice(1).map((s, i) => ({
-    key: s.key as Lane,
-    label: s.label,
-    no: String(i + 2).padStart(2, "0"),
-  })),
-  { key: "done", label: "발행됨", no: "✓" },
-];
+const TURN_DOT: Record<Turn, string> = {
+  ai: "var(--callout-tip-glyph)",
+  me: "var(--callout-warning-glyph)",
+  idle: "var(--border-strong)",
+  done: "var(--ink-subtle)",
+};
+
+/** 행 앞 점과 미니 진행바의 다음 칸 색. 구역 색을 따르고, 멈춘 작업만 붉게. */
+function dotColor(t: TopicRow): string {
+  if (t.droppedReason !== null) return "var(--ink-subtle)";
+  return t.ai.status === "failed" ? "var(--danger)" : TURN_DOT[turnOf(t)];
+}
 
 const field =
   "w-full rounded-lg border border-border-token bg-surface px-3 py-2 text-[13.5px] leading-[1.55] text-ink placeholder:text-ink-subtle transition-colors focus:border-border-strong focus:outline-none";
@@ -83,22 +99,34 @@ interface Props {
 }
 
 export function TopicBoard({ topics, onTopicsChange, candidates, onQueued }: Props) {
-  const [lane, setLane] = useState<Lane | null>(null);
   const [creating, setCreating] = useState(false);
-  const [showDropped, setShowDropped] = useState(false);
+  /** 펼쳐 둔 접힘 구역 — 발행함, 접은 주제. */
+  const [unfolded, setUnfolded] = useState<Set<string>>(new Set());
 
   const active = topics.filter((t) => t.droppedReason === null);
   const aiCount = topics.filter((t) => t.ai.status === "running").length;
-  const dropped = topics.filter((t) => t.droppedReason !== null);
-  const shown = lane ? active.filter((t) => laneOf(t) === lane) : active;
 
-  // AI 가 쓰고 있는 주제, 대기 중인 주제가 맨 위. 그다음 진행이 덜 된 순,
-  // 같은 단계면 먼저 만든 순.
+  // 구역 안에서는 AI 가 쓰고 있는 주제, 대기 중인 주제가 먼저. 그다음 진행이
+  // 덜 된 순, 같은 단계면 먼저 만든 순. 작성 중인 주제는 단계가 넘어가도
+  // 'AI 작성 중' 구역을 떠나지 않는다.
   const aiRank = (t: TopicRow) => (t.ai.status === "running" ? 0 : t.ai.status === "queued" ? 1 : 2);
-  const sorted = [...shown].sort(
-    (a, b) =>
-      aiRank(a) - aiRank(b) || stageIndex(a.stage) - stageIndex(b.stage) || a.id - b.id,
-  );
+  const groups = [
+    ...TURNS.map((g) => ({
+      ...g,
+      fold: g.key === "done",
+      items: active
+        .filter((t) => turnOf(t) === g.key)
+        .sort((a, b) => aiRank(a) - aiRank(b) || stageIndex(a.stage) - stageIndex(b.stage) || a.id - b.id),
+    })),
+    {
+      key: "dropped",
+      label: "접은 주제",
+      hint: "",
+      color: "var(--ink-muted)",
+      fold: true,
+      items: topics.filter((t) => t.droppedReason !== null),
+    },
+  ].filter((g) => g.items.length > 0);
 
   function replace(topic: TopicRow) {
     onTopicsChange(
@@ -110,6 +138,65 @@ export function TopicBoard({ topics, onTopicsChange, candidates, onQueued }: Pro
   }
 
   const remove = (id: number) => onTopicsChange(topics.filter((x) => x.id !== id));
+
+  const toggleFold = (key: string) =>
+    setUnfolded((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(key)) next.add(key);
+      return next;
+    });
+
+  // 구역 머리와 행을 한 부모 아래 평평하게 둔다. 주제가 구역을 옮겨도(AI 가
+  // 끝나 '내 차례'로 내려와도) 같은 key 의 형제라 펼침·편집·모달 상태가 남는다.
+  // 구역 상자는 첫·끝 행이 테두리와 모서리를 직접 그린다. 셀렉트 목록이 행
+  // 밖으로 펼쳐져야 해서 overflow-hidden 도 쓰지 않는다.
+  const rows: ReactNode[] = [];
+  groups.forEach((g, gi) => {
+    const open = !g.fold || unfolded.has(g.key);
+    rows.push(
+      <div
+        key={`head-${g.key}`}
+        className={`flex flex-wrap items-baseline gap-x-2.5 gap-y-1 ${gi > 0 ? "mt-6" : ""} ${open ? "mb-2.5" : ""}`}
+      >
+        {g.fold ? (
+          <button
+            type="button"
+            onClick={() => toggleFold(g.key)}
+            aria-expanded={open}
+            className="flex items-center gap-1.5 font-sans text-[13px] text-ink-muted transition-colors hover:text-ink"
+          >
+            <span aria-hidden className={`inline-block text-[10px] transition-transform ${open ? "rotate-90" : ""}`}>
+              ▶
+            </span>
+            {g.label}
+            <span className="font-mono text-[12px] tabular-nums">{g.items.length}</span>
+          </button>
+        ) : (
+          <>
+            <h3 className="m-0 font-sans text-[14px] font-bold tracking-[-0.01em]" style={{ color: g.color }}>
+              {g.label}
+            </h3>
+            <span className="font-mono text-[12px] tabular-nums text-ink-muted">{g.items.length}</span>
+            <span className="font-sans text-[12px] text-ink-subtle">{g.hint}</span>
+          </>
+        )}
+      </div>,
+    );
+    if (!open) return;
+    g.items.forEach((t, i) =>
+      rows.push(
+        <TopicItem
+          key={t.id}
+          topic={t}
+          first={i === 0}
+          last={i === g.items.length - 1}
+          candidates={candidates}
+          onChange={replace}
+          onDelete={() => remove(t.id)}
+        />,
+      ),
+    );
+  });
 
   return (
     <section className="mb-14">
@@ -141,7 +228,6 @@ export function TopicBoard({ topics, onTopicsChange, candidates, onQueued }: Pro
         </button>
       </div>
 
-      <Overview active={active} lane={lane} onLane={setLane} />
       <GuideCard />
 
       <Collapse open={creating}>
@@ -163,71 +249,14 @@ export function TopicBoard({ topics, onTopicsChange, candidates, onQueued }: Pro
         </div>
       </Collapse>
 
-      {sorted.length === 0 ? (
-        <div className="topic-rise rounded-xl border border-dashed border-border-token px-6 py-10 text-center">
+      {active.length === 0 && (
+        <div className="topic-rise mb-6 rounded-xl border border-dashed border-border-token px-6 py-10 text-center">
           <p className="m-0 text-[14px] text-ink-muted">
-            {lane
-              ? "이 단계에 머문 주제가 없습니다."
-              : "아직 주제가 없습니다. 쓸래로 고른 글감을 주제로 묶어보세요."}
+            아직 주제가 없습니다. 쓸래로 고른 글감을 주제로 묶어보세요.
           </p>
-          {lane && (
-            <button
-              type="button"
-              onClick={() => setLane(null)}
-              className="mt-2 font-sans text-[13px] text-ink-soft underline-offset-4 hover:underline"
-            >
-              전체 보기
-            </button>
-          )}
-        </div>
-      ) : (
-        <ul
-          key={lane ?? "all"}
-          className="m-0 grid list-none grid-cols-1 gap-3 p-0 md:grid-cols-2"
-        >
-          {sorted.map((t, i) => (
-            <TopicCard
-              key={t.id}
-              index={i}
-              topic={t}
-              candidates={candidates}
-              onChange={replace}
-              onDelete={() => remove(t.id)}
-            />
-          ))}
-        </ul>
-      )}
-
-      {dropped.length > 0 && (
-        <div className="mt-5">
-          <button
-            type="button"
-            onClick={() => setShowDropped((v) => !v)}
-            className="flex items-center gap-1.5 font-sans text-[13px] text-ink-muted transition-colors hover:text-ink"
-          >
-            <span
-              className={`inline-block text-[10px] transition-transform ${showDropped ? "rotate-90" : ""}`}
-            >
-              ▶
-            </span>
-            접은 주제 {dropped.length}
-          </button>
-          {showDropped && (
-            <ul className="m-0 mt-3 grid list-none grid-cols-1 gap-3 p-0 md:grid-cols-2">
-              {dropped.map((t, i) => (
-                <TopicCard
-                  key={t.id}
-                  index={i}
-                  topic={t}
-                  candidates={candidates}
-                  onChange={replace}
-                  onDelete={() => remove(t.id)}
-                />
-              ))}
-            </ul>
-          )}
         </div>
       )}
+      <div>{rows}</div>
     </section>
   );
 }
@@ -250,86 +279,6 @@ async function call(
   } catch {
     return { error: "요청 실패" };
   }
-}
-
-/* ── 진행판 ──────────────────────────────────────────────────────────── */
-
-function Overview({
-  active,
-  lane,
-  onLane,
-}: {
-  active: TopicRow[];
-  lane: Lane | null;
-  onLane: (l: Lane | null) => void;
-}) {
-  const counts = LANES.map((l) => active.filter((t) => laneOf(t) === l.key).length);
-  const total = counts.reduce((a, b) => a + b, 0);
-  const mounted = useMounted();
-
-  return (
-    <div className="topic-rise mb-5 overflow-hidden rounded-xl border border-border-token bg-surface">
-      <ol className="m-0 grid list-none grid-cols-3 gap-px bg-border-token p-0 sm:grid-cols-6">
-        {LANES.map((l, i) => {
-          const n = counts[i];
-          const on = lane === l.key;
-          const c = tone(l.key);
-          return (
-            <li key={l.key} className="min-w-0 bg-surface">
-              <button
-                type="button"
-                onClick={() => onLane(on ? null : l.key)}
-                aria-pressed={on}
-                className={`relative flex w-full flex-col items-start px-2.5 pb-3.5 pt-3 text-left transition-colors sm:px-4 ${
-                  on ? "bg-hover" : "hover:bg-hover"
-                }`}
-              >
-                <span className="flex items-center gap-1.5">
-                  <span
-                    aria-hidden
-                      className="size-1.5 rounded-full transition-colors duration-300"
-                    style={{ background: n > 0 ? c.fg : "var(--border)" }}
-                  />
-                  <span className="font-mono text-[10.5px] text-ink-subtle">{l.no}</span>
-                </span>
-                <span className="mt-1.5 w-full truncate font-sans text-[12px] font-medium text-ink-soft sm:text-[13px]">
-                  {l.label}
-                </span>
-                <span
-                  className={`mt-1 font-sans text-[24px] font-bold leading-none tabular-nums tracking-[-0.03em] sm:text-[28px] ${
-                    n > 0 ? "text-ink" : "text-ink-subtle"
-                  }`}
-                >
-                  {n}
-                </span>
-                <span
-                  aria-hidden
-                  className={`absolute inset-x-0 bottom-0 h-[2px] origin-left transition-transform duration-300 ease-out ${
-                    on ? "scale-x-100" : "scale-x-0"
-                  }`}
-                  style={{ background: c.fg }}
-                />
-              </button>
-            </li>
-          );
-        })}
-      </ol>
-
-      {/* 분포 막대 — 주제가 어느 단계에 몰려 있는지 한눈에. */}
-      <div className="flex h-1 w-full bg-surface-alt">
-        {LANES.map((l, i) => (
-          <span
-            key={l.key}
-            className="h-full transition-[width] duration-700 ease-out"
-            style={{
-              width: mounted && total > 0 ? `${(counts[i] / total) * 100}%` : "0%",
-              background: tone(l.key).fg,
-            }}
-          />
-        ))}
-      </div>
-    </div>
-  );
 }
 
 /* ── 글쓰기 기준 ─────────────────────────────────────────────────────── */
@@ -517,43 +466,138 @@ function Progress({ topic }: { topic: TopicRow }) {
   );
 }
 
-/* ── 주제 카드 ───────────────────────────────────────────────────────── */
+/* ── 주제 한 줄 ──────────────────────────────────────────────────────── */
 
-function TopicCard({
-  index,
+type ChipTone = "tip" | "warning" | "muted" | "danger" | "plain";
+
+const CHIP: Record<ChipTone, string> = {
+  tip: "px-2.5 font-semibold bg-[color:var(--callout-tip-bg)] text-[color:var(--callout-tip-ink)]",
+  warning: "px-2.5 font-semibold bg-[color:var(--callout-warning-bg)] text-[color:var(--callout-warning-ink)]",
+  muted: "px-2.5 font-semibold bg-surface-alt text-ink-muted",
+  danger: "px-2.5 font-semibold bg-[color-mix(in_srgb,var(--danger)_13%,var(--surface))] text-danger",
+  plain: "font-medium text-ink-subtle",
+};
+
+/** "2026-10-07T…" → "10.07" */
+const monthDay = (iso: string) => iso.slice(5, 10).replace("-", ".");
+
+/** 상태는 이 칩 하나로만 말한다. */
+function chipOf(t: TopicRow): { label: string; tone: ChipTone } {
+  const next = nextStage(t.stage);
+  if (t.droppedReason !== null) return { label: "접음", tone: "muted" };
+  if (t.ai.status === "running") return { label: `${next?.label ?? ""} 쓰는 중`, tone: "tip" };
+  if (t.ai.status === "queued") return { label: "AI 대기", tone: "muted" };
+  if (!next) {
+    const at = t.checks.published?.at;
+    return { label: at ? `${monthDay(at)} 발행` : "발행함", tone: "plain" };
+  }
+  if (t.ai.status === "failed") return { label: "AI 멈춤", tone: "danger" };
+  if (next.key === "published") return { label: "발행 대기", tone: "warning" };
+  if (t.stage === "picked") return { label: "시작 전", tone: "muted" };
+  return { label: `${stageLabel(t.stage)}까지 끝남`, tone: "muted" };
+}
+
+/** 여섯 칸 미니 진행바. 끝낸 칸은 채우고, 다음 칸은 구역 색으로 숨 쉰다. */
+function MiniProgress({ topic }: { topic: TopicRow }) {
+  const done = stageIndex(topic.stage);
+  const paused = topic.droppedReason !== null;
+  const next = nextStage(topic.stage);
+  const label = `${done + 1}/${STAGES.length} · ${stageLabel(topic.stage)}까지 끝남`;
+  return (
+    <span role="img" aria-label={label} title={label} className="inline-flex shrink-0 gap-0.5">
+      {STAGES.map((s, i) => (
+        <span
+          key={s.key}
+          className="relative h-1 w-[9px] overflow-hidden rounded-[2px] bg-[color-mix(in_srgb,var(--ink)_12%,transparent)]"
+        >
+          {i <= done && (
+            <span className="absolute inset-0" style={{ background: paused ? "var(--ink-subtle)" : "var(--ink)" }} />
+          )}
+          {!paused && next && i === done + 1 && (
+            <span className="topic-pulse absolute inset-0" style={{ background: dotColor(topic) }} />
+          )}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+function PanelToggle({
+  on,
+  onClick,
+  label,
+  meta,
+}: {
+  on: boolean;
+  onClick: () => void;
+  label: string;
+  meta?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-expanded={on}
+      className="flex items-center gap-1.5 font-sans text-[12.5px] font-semibold text-ink-soft transition-colors hover:text-ink"
+    >
+      <span aria-hidden className={`text-[9px] transition-transform duration-200 ${on ? "rotate-90" : ""}`}>
+        ▶
+      </span>
+      {label}
+      {meta && <span className="font-mono text-[11px] font-normal text-ink-subtle">{meta}</span>}
+    </button>
+  );
+}
+
+/**
+ * 주제 하나 = 한 줄. 첫 줄은 제목과 상태 칩·지금 누를 버튼 하나, 둘째 줄은
+ * 지금 필요한 정보 하나(작성 중이면 실시간 로그, 내 차례면 남은 일). 제목을
+ * 누르면 진행바·글감·노트·기록·보조 동작이 펼쳐진다.
+ */
+function TopicItem({
   topic,
+  first,
+  last,
   candidates,
   onChange,
   onDelete,
 }: {
-  index: number;
   topic: TopicRow;
+  /** 구역 상자의 첫·끝 행 — 테두리 위·아래와 모서리를 그린다. */
+  first: boolean;
+  last: boolean;
   candidates: QueueRow[];
   onChange: (t: TopicRow) => void;
   onDelete: () => void;
 }) {
+  const [open, setOpen] = useState(false);
+  /** 펼친 칸 안에서는 하나만 연다. */
+  const [panel, setPanel] = useState<null | "notes" | "history" | "ai">(null);
   const [mode, setMode] = useState<"view" | "edit">("view");
   /** 열린 모달. advance = 직접 완료, publish = 발행, drop = 접기. */
   const [dialog, setDialog] = useState<null | "advance" | "publish" | "drop">(null);
   const [note, setNote] = useState("");
   const [slug, setSlug] = useState(topic.postSlug ?? "");
   const [reason, setReason] = useState("");
+  const [until, setUntil] = useState<AiUntil>("review");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const next = nextStage(topic.stage);
   const paused = topic.droppedReason !== null;
-  const lane = laneOf(topic);
-  const c = tone(lane);
-  const urls = new Map(candidates.map((x) => [x.id, x.url]));
+  const { status, message, log, todo } = topic.ai;
+  const running = status === "running";
+  const aiBusy = running || status === "queued";
+  const publishing = next?.key === "published";
   const history = STAGES.filter((s) => topic.checks[s.key]);
   const step = stageIndex(topic.stage) + 1;
-  const publishing = next?.key === "published";
-  const writing = topic.ai.status === "running";
-  const aiBusy = writing || topic.ai.status === "queued";
-  // 처음 그릴 때 한 장씩 차례로 떠오른다. 너무 길어지지 않게 8장에서 끊는다.
-  const rise = { animationDelay: `${Math.min(index, 8) * 55}ms` };
+  const chip = chipOf(topic);
+  const urls = new Map(candidates.map((x) => [x.id, x.url]));
+  // 맡길 수 있는 단계. 고른 단계가 이미 지났으면 맨 끝으로.
+  const left = UNTIL_OPTIONS.filter((o) => stageIndex(o.key) > stageIndex(topic.stage));
+  const pick = left.some((o) => o.key === until) ? until : left[left.length - 1]?.key;
+  const hasAi = !running && (message !== null || log.length > 0);
 
   async function patch(body: Record<string, unknown>) {
     setBusy(true);
@@ -579,9 +623,12 @@ function TopicCard({
     else onDelete();
   }
 
+  const flip = (p: NonNullable<typeof panel>) => setPanel((v) => (v === p ? null : p));
+  const edge = `border-x border-t border-border-token ${first ? "rounded-t-xl" : ""} ${last ? "rounded-b-xl border-b" : ""}`;
+
   if (mode === "edit") {
     return (
-      <li className="topic-rise row-span-8 rounded-xl border border-border-strong bg-surface p-5">
+      <div className={`${edge} bg-surface p-5`}>
         <div className="mb-3 font-sans text-[13px] font-semibold text-ink">주제 편집</div>
         <TopicEditor
           initial={topic}
@@ -597,366 +644,426 @@ function TopicCard({
             return res;
           }}
         />
-      </li>
+      </div>
     );
   }
 
-  return (
-    <li
-      style={rise}
-      className={`topic-rise row-span-8 grid grid-rows-subgrid gap-0 rounded-xl border bg-surface p-5 transition-[transform,box-shadow,border-color] duration-300 ease-out ${
-        paused
-          ? "border-dashed border-border-token"
-          : writing
-            ? "ai-glow border-[color-mix(in_srgb,var(--callout-tip-glyph)_45%,var(--border))]"
-            : "border-border-token hover:-translate-y-0.5 hover:border-border-strong hover:shadow-[0_14px_32px_-18px_rgba(0,0,0,0.28)]"
-      }`}
-    >
-      {/*
-        카드는 여덟 구역(머리·제목·설명·진행바·글감·다음 할 일·기록·동작)으로
-        고정하고 subgrid 로 이웃 카드와 줄을 맞춘다. 설명이 한 줄인 카드와
-        두 줄인 카드가 나란해도 진행바와 NEXT 박스가 같은 높이에서 시작한다.
-        그래서 비어 있는 구역도 자리는 남긴다.
-      */}
-      {/* 1 머리 — 지금 단계 배지와 진척 */}
-      <div className="flex items-center justify-between gap-3">
-        <span
-          className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-sans text-[11.5px] font-semibold transition-colors duration-500"
-          style={
-            paused
-              ? { background: "var(--surface-alt)", color: "var(--ink-muted)" }
-              : { background: c.bg, color: c.ink }
-          }
-        >
-          {!writing && (
-            <span
-              aria-hidden
-              className={`size-1.5 rounded-full bg-current ${paused || !next ? "" : "topic-ring"}`}
-              style={{ color: paused ? "var(--ink-subtle)" : c.fg }}
-            />
-          )}
-          {paused ? (
-            "접음"
-          ) : writing ? (
-            <>
-              <span aria-hidden className="ai-spin -ml-0.5 text-[11px]">✦</span>
-              <span className="ai-shimmer">AI 작성 중 · {next?.label}</span>
-            </>
-          ) : topic.ai.status === "queued" ? (
-            "AI 대기 중"
-          ) : next ? (
-            `${next.label} 차례`
-          ) : (
-            "발행 완료"
-          )}
-        </span>
-        <span className="font-mono text-[11.5px] tabular-nums text-ink-subtle">
-          {step}/{STAGES.length}
-        </span>
-      </div>
-
-      <h3
-        className={`m-0 mt-3.5 font-sans text-[16.5px] font-semibold leading-[1.35] tracking-[-0.015em] ${
-          paused ? "text-ink-muted" : "text-ink"
-        }`}
+  // 지금 누를 것 하나.
+  let action: ReactNode = null;
+  if (paused) {
+    action = (
+      <Btn disabled={busy} onClick={() => patch({ action: "drop", reason: null })}>
+        다시 펼치기
+      </Btn>
+    );
+  } else if (running) {
+    action = (
+      <>
+        {topic.ai.startedAt && <Elapsed since={topic.ai.startedAt} />}
+        <Quiet disabled={busy} onClick={() => patch({ action: "ai_cancel" })}>
+          중지
+        </Quiet>
+      </>
+    );
+  } else if (status === "queued") {
+    action = (
+      <Quiet disabled={busy} onClick={() => patch({ action: "ai_cancel" })}>
+        취소
+      </Quiet>
+    );
+  } else if (!next) {
+    action = topic.postSlug && (
+      <a
+        href={`/posts/${topic.postSlug}`}
+        className="whitespace-nowrap font-sans text-[12px] text-ink-muted no-underline transition-colors hover:text-ink"
       >
-        {topic.title}
-      </h3>
-      <p className="m-0 mt-1.5 text-[13.5px] leading-[1.6] text-ink-muted">{topic.angle}</p>
+        글 보기 →
+      </a>
+    );
+  } else if (publishing) {
+    action = (
+      <>
+        {topic.postSlug && <PreviewLink slug={topic.postSlug} quiet className="whitespace-nowrap" />}
+        <button
+          type="button"
+          onClick={() => {
+            setError(null);
+            setDialog("publish");
+          }}
+          className="whitespace-nowrap rounded-full bg-ink px-3 py-1 font-sans text-[12px] font-medium text-bg transition-[opacity,transform] hover:opacity-90 active:scale-[0.97]"
+        >
+          발행하기
+        </button>
+      </>
+    );
+  } else if (pick) {
+    action = (
+      <AiLaunch
+        options={left}
+        from={stageIndex(topic.stage)}
+        value={pick}
+        onChange={setUntil}
+        retry={status === "failed"}
+        busy={busy}
+        onLaunch={() => patch({ action: "ai", until: pick })}
+      />
+    );
+  }
 
-      <div className="mt-4">
-        <Progress topic={topic} />
-      </div>
+  // 둘째 줄 — 지금 필요한 정보 하나.
+  let sub: ReactNode;
+  if (paused) sub = topic.droppedReason;
+  else if (running) {
+    sub = (
+      <>
+        {log[log.length - 1]?.message ?? message ?? "작업 시작"}
+        <Dots />
+      </>
+    );
+  } else if (status === "queued") {
+    sub = (
+      <>
+        <b className="mr-1 font-semibold text-ink-soft">{untilLabel(topic.ai.until)}</b>
+        <AiMessage text={message ?? "다음 실행 때 시작"} />
+      </>
+    );
+  } else if (!next) sub = <span className="font-mono text-[12px]">/posts/{topic.postSlug}</span>;
+  else if (todo) {
+    sub = (
+      <>
+        <b className="mr-1 font-semibold text-ink-soft">남은 일</b>
+        {todo}
+      </>
+    );
+  } else if (status === "failed" || (publishing && message)) sub = message;
+  else sub = topic.angle;
 
-      {/* 5 글감 — 레포 이름은 한 번만. 태그가 셋이어도 한 줄에 든다. */}
-      <div className="mt-3.5 flex flex-wrap items-center gap-x-3 gap-y-1">
-        {groupByRepo(topic.candidates).map(([repo, items]) => (
-          <span key={repo} className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-            <span className="font-sans text-[11.5px] text-ink-subtle">{repo.split("/")[1]}</span>
-            {items.map((x) => (
-              <a
-                key={x.id}
-                href={urls.get(x.id) ?? `https://github.com/${x.repo}/releases/tag/${x.tag}`}
-                target="_blank"
-                rel="noreferrer"
-                title={x.id}
-                className="rounded-md bg-surface-alt px-1.5 py-[2px] font-mono text-[11px] text-ink-soft no-underline transition-colors hover:text-ink"
-              >
-                {x.tag}
-              </a>
-            ))}
+  return (
+    <div
+      className={`${edge} ${running ? "bg-[color-mix(in_srgb,var(--callout-tip-bg)_45%,var(--surface))]" : "bg-surface"}`}
+    >
+      <div className="grid grid-cols-[14px_minmax(0,1fr)] items-center gap-x-3 gap-y-[3px] py-3 pr-3 pl-4 md:grid-cols-[14px_minmax(0,1fr)_auto]">
+        <span
+          aria-hidden
+          className={`col-start-1 row-start-1 size-[7px] justify-self-center rounded-full ${running ? "topic-pulse" : ""}`}
+          style={{ background: dotColor(topic) }}
+        />
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          className={`col-start-2 row-start-1 justify-self-start text-left font-sans text-[14.5px] font-semibold leading-[1.4] tracking-[-0.01em] decoration-ink-subtle underline-offset-4 hover:underline ${
+            paused ? "text-ink-muted" : "text-ink"
+          }`}
+        >
+          {topic.title}
+        </button>
+        <div className="col-start-2 row-start-2 line-clamp-2 min-w-0 text-[13px] leading-[1.5] text-ink-muted md:line-clamp-1">
+          {sub}
+        </div>
+        <div className="col-start-2 row-start-3 flex flex-wrap items-center gap-2.5 pt-1.5 md:col-start-3 md:row-span-2 md:row-start-1 md:flex-nowrap md:justify-end md:pt-0">
+          <MiniProgress topic={topic} />
+          <span className={`whitespace-nowrap rounded-full py-[3px] font-sans text-[11.5px] ${CHIP[chip.tone]}`}>
+            {chip.label}
           </span>
-        ))}
-      </div>
-
-      {/* 6 다음 할 일 — 카드에서 가장 눈에 띄어야 하는 자리. 이웃 카드가 폼을
-          펼쳐 줄이 길어져도 늘어나지 않게 위에 붙인다. */}
-      <div className="mt-4 self-start">
-      <div className="rounded-lg bg-surface-alt p-3.5">
-        {paused ? (
-          <>
-            <div className="font-sans text-[10.5px] font-bold uppercase tracking-[0.08em] text-ink-muted">
-              접은 이유
-            </div>
-            <p className="m-0 mt-1 text-[13.5px] leading-[1.55] text-ink-soft">
-              {topic.droppedReason}
-            </p>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => patch({ action: "drop", reason: null })}
-              className="mt-3 rounded-full border border-border-token bg-surface px-3 py-1 font-sans text-[12.5px] text-ink-soft transition-colors hover:border-border-strong disabled:opacity-40"
+          {action}
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            aria-expanded={open}
+            aria-label={open ? "접기" : "자세히"}
+            className="flex size-7 shrink-0 items-center justify-center rounded-md text-ink-muted transition-colors hover:bg-hover hover:text-ink"
+          >
+            <svg
+              viewBox="0 0 12 12"
+              aria-hidden
+              className={`size-3.5 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
             >
-              다시 펼치기
-            </button>
-          </>
-        ) : next ? (
-          <>
-            <div
-              className="font-sans text-[10.5px] font-bold uppercase tracking-[0.08em]"
-              style={{ color: c.fg }}
-            >
-              Next · {next.label}
-            </div>
-            <p className="m-0 mt-1 text-[13.5px] leading-[1.55] text-ink-soft">{next.todo}</p>
-
-            {!publishing && <AiPanel topic={topic} onChange={onChange} inline />}
-            {publishing && !aiBusy && (
-              <div className="flex flex-wrap items-center gap-1.5 pt-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setError(null);
-                    setDialog("publish");
-                  }}
-                  className="group inline-flex items-center gap-1.5 rounded-full bg-ink px-3.5 py-1.5 font-sans text-[12.5px] font-medium text-bg transition-[opacity,transform] hover:opacity-90 active:scale-[0.97]"
-                >
-                  발행하기
-                  <span aria-hidden className="transition-transform duration-200 group-hover:translate-x-0.5">
-                    →
-                  </span>
-                </button>
-                {topic.postSlug && <PreviewLink slug={topic.postSlug} />}
-              </div>
-            )}
-            {!publishing && topic.postSlug && (
-              <div className="pt-2">
-                <PreviewLink slug={topic.postSlug} quiet />
-              </div>
-            )}
-          </>
-        ) : (
-          <>
-            <div className="font-sans text-[10.5px] font-bold uppercase tracking-[0.08em] text-ink-muted">
-              발행 완료
-            </div>
-            {topic.postSlug && (
-              <a
-                href={`/posts/${topic.postSlug}`}
-                className="mt-1 inline-block font-mono text-[13px] text-ink no-underline underline-offset-4 hover:underline"
-              >
-                /posts/{topic.postSlug} →
-              </a>
-            )}
-          </>
-        )}
-      </div>
-      <AiPanel topic={topic} onChange={onChange} />
+              <path d="m3 4.5 3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        </div>
       </div>
 
-      {/* 7 작업 노트, 근거 타임라인, 오류 */}
-      <div>
-      {topic.notes && <Notes markdown={topic.notes} />}
-      {history.length > 0 && (
-        <ol className="m-0 ml-[3px] mt-4 list-none space-y-3 border-l border-border-token p-0 pl-4">
-          {history.map((s) => {
-            const check = topic.checks[s.key]!;
-            return (
-              <li key={s.key} className="topic-rise relative">
-                <span
-                  aria-hidden
-                  className="absolute -left-[20.5px] top-[6px] size-[7px] rounded-full ring-2 ring-surface"
-                  style={{ background: tone(s.key).fg }}
-                />
-                <div className="flex items-baseline gap-2">
-                  <span className="font-sans text-[12.5px] font-semibold text-ink-soft">
-                    {s.label}
-                  </span>
-                  <span className="font-mono text-[11px] tabular-nums text-ink-subtle">
-                    {check.at.slice(5, 10).replace("-", ".")}
-                  </span>
-                </div>
-                <p className="m-0 mt-0.5 whitespace-pre-wrap break-words text-[13px] leading-[1.6] text-ink-muted">
-                  {check.note}
-                </p>
-              </li>
-            );
-          })}
-        </ol>
-      )}
-
+      {/* 접혀 있어도 보여야 하는 것 — 맡기기·발행 버튼이 낸 오류. */}
       {error && !dialog && (
-        <p className="topic-rise m-0 mt-3 whitespace-pre-line rounded-lg border border-danger/30 px-3 py-2.5 text-[12.5px] leading-[1.6] text-danger">
+        <p className="topic-rise mx-4 mt-0 mb-3 whitespace-pre-line rounded-lg border border-danger/30 px-3 py-2.5 text-[12.5px] leading-[1.6] text-danger md:ml-[42px]">
           {error}
         </p>
       )}
 
-      </div>
+      <Collapse open={open}>
+        <div className="px-4 pt-0.5 pb-4 md:pl-[42px]">
+          <div className="max-w-[560px]">
+            <Progress topic={topic} />
+          </div>
 
-      {/* 8 보조 동작 — 조용하게 */}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 self-end pt-4">
-        {topic.postSlug && next && (
+          {topic.candidates.length > 0 && (
+            <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
+              {groupByRepo(topic.candidates).map(([repo, items]) => (
+                <span key={repo} className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                  <span className="font-sans text-[11.5px] text-ink-subtle">{repo.split("/")[1]}</span>
+                  {items.map((x) => (
+                    <a
+                      key={x.id}
+                      href={urls.get(x.id) ?? `https://github.com/${x.repo}/releases/tag/${x.tag}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      title={x.id}
+                      className="rounded-md bg-surface-alt px-1.5 py-[2px] font-mono text-[11px] text-ink-soft no-underline transition-colors hover:text-ink"
+                    >
+                      {x.tag}
+                    </a>
+                  ))}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {running && (
+            <div className="mt-3">
+              <div className="font-sans text-[12px] text-ink-muted">{untilLabel(topic.ai.until)} 맡김</div>
+              <AiLog entries={log} live fallback={message} />
+            </div>
+          )}
+
+          {(topic.notes || history.length > 0 || hasAi) && (
+            <div className="mt-3.5 flex flex-wrap gap-x-[18px] gap-y-1.5">
+              {topic.notes && (
+                <PanelToggle
+                  on={panel === "notes"}
+                  onClick={() => flip("notes")}
+                  label="작업 노트"
+                  meta={`${topic.notes.length.toLocaleString()}자`}
+                />
+              )}
+              {history.length > 0 && (
+                <PanelToggle
+                  on={panel === "history"}
+                  onClick={() => flip("history")}
+                  label="진행 기록"
+                  meta={`${history.length}단계 · ${monthDay(topic.checks[history[history.length - 1].key]!.at)}`}
+                />
+              )}
+              {hasAi && (
+                <PanelToggle
+                  on={panel === "ai"}
+                  onClick={() => flip("ai")}
+                  label="AI 기록"
+                  meta={log.length > 0 ? `${log.length}줄 · ${duration(log[0].at, log[log.length - 1].at)}` : undefined}
+                />
+              )}
+            </div>
+          )}
+
+          {panel === "notes" && topic.notes && (
+            <div className="mt-2 max-h-[420px] overflow-y-auto rounded-lg border border-border-token bg-bg px-4 py-3 text-[13.5px] [&_h2]:mt-4 [&_h2]:text-[15px] [&_h3]:text-[14px]">
+              {renderMarkdown(topic.notes)}
+            </div>
+          )}
+
+          {panel === "history" && history.length > 0 && (
+            <ol className="m-0 mt-3 ml-[3px] list-none space-y-3 border-l border-border-token p-0 pl-4">
+              {history.map((s) => {
+                const check = topic.checks[s.key]!;
+                return (
+                  <li key={s.key} className="relative">
+                    <span
+                      aria-hidden
+                      className="absolute top-[6px] -left-[20.5px] size-[7px] rounded-full ring-2 ring-surface"
+                      style={{ background: tone(s.key).fg }}
+                    />
+                    <div className="flex items-baseline gap-2">
+                      <span className="font-sans text-[12.5px] font-semibold text-ink-soft">{s.label}</span>
+                      <span className="font-mono text-[11px] tabular-nums text-ink-subtle">{monthDay(check.at)}</span>
+                    </div>
+                    <p className="m-0 mt-0.5 whitespace-pre-wrap break-words text-[13px] leading-[1.6] text-ink-muted">
+                      {check.note}
+                    </p>
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+
+          {panel === "ai" && hasAi && (
+            <div className="mt-2 rounded-lg border border-dashed border-border-token px-3 py-2.5">
+              {message &&
+                (status === "failed" ? (
+                  <p className="m-0 whitespace-pre-line text-[12.5px] leading-[1.55] text-danger">
+                    <b className="font-semibold">AI 멈춤</b> · {message}
+                  </p>
+                ) : (
+                  <p className="m-0 text-[12.5px] leading-[1.55] text-ink-muted">
+                    <b className="font-semibold text-ink-soft">AI</b> · <AiMessage text={message} />
+                    <span suppressHydrationWarning className="ml-1.5 font-mono text-[11px] text-ink-subtle">
+                      {ago(topic.ai.updatedAt)}
+                    </span>
+                  </p>
+                ))}
+              {log.length > 0 && <AiLog entries={log} />}
+            </div>
+          )}
+
+          {/* 보조 동작 — 조용하게 */}
+          <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1">
+            {topic.postSlug && next && (
+              <a
+                href={`/preview/${topic.postSlug}`}
+                target="_blank"
+                rel="noreferrer"
+                title="발행 전 미리보기"
+                className="mr-auto font-mono text-[11.5px] text-ink-muted no-underline hover:text-ink"
+              >
+                /{topic.postSlug}
+              </a>
+            )}
+            <div className="ml-auto flex flex-wrap items-center gap-x-3 gap-y-1">
+              {!paused && stageIndex(topic.stage) > 0 && (
+                <Quiet disabled={busy} onClick={() => patch({ action: "revert" })}>
+                  ↶ {topic.stage === "published" ? "발행 취소(draft로)" : `${stageLabel(topic.stage)} 취소`}
+                </Quiet>
+              )}
+              {!paused && next && !publishing && !aiBusy && (
+                <Quiet
+                  onClick={() => {
+                    setError(null);
+                    setDialog("advance");
+                  }}
+                  title="AI 없이 이 단계를 직접 했을 때, 근거를 남기고 다음 단계로 넘깁니다"
+                >
+                  {next.label} 직접 완료
+                </Quiet>
+              )}
+              <Quiet onClick={() => setMode("edit")}>편집</Quiet>
+              {!paused && next && (
+                <Quiet
+                  onClick={() => {
+                    setError(null);
+                    setDialog("drop");
+                  }}
+                >
+                  접기
+                </Quiet>
+              )}
+              <Quiet danger disabled={busy} onClick={() => setConfirmDelete(true)}>
+                삭제
+              </Quiet>
+            </div>
+          </div>
+        </div>
+      </Collapse>
+
+      {/* 대화창은 접히는 칸 밖에 둔다 — 닫힌 칸은 inert 라 그 안에서는 뜨지 않는다. */}
+      <ConfirmDialog
+        open={confirmDelete}
+        tone="danger"
+        title={`'${topic.title}' 주제를 지울까요?`}
+        body="진행 기록이 함께 사라집니다. 글감은 남습니다. 멈추려는 것이라면 접기로 두세요."
+        confirmLabel="지우기"
+        onConfirm={remove}
+        onCancel={() => setConfirmDelete(false)}
+      />
+      {next && (
+        <Modal
+          open={dialog === "advance"}
+          eyebrow={`${step}/${STAGES.length} · ${next.label}`}
+          title={`${next.label} 단계를 직접 끝냈나요?`}
+          description={
+            <>
+              AI 없이 이 단계를 직접 했을 때 씁니다. 남긴 근거는 진행 기록에 쌓이고 다음 단계로 넘어갑니다.
+              <span className="mt-1 block text-[12.5px] text-ink-muted">할 일: {next.todo}</span>
+            </>
+          }
+          confirmLabel={`${next.label} 완료`}
+          confirmDisabled={!note.trim() || (next.key === "draft" && !slug.trim())}
+          busy={busy}
+          error={dialog === "advance" ? error : null}
+          onClose={() => setDialog(null)}
+          onConfirm={() =>
+            patch({ action: "advance", note: note.trim(), postSlug: slug.trim() || null }).then((ok) => ok && setNote(""))
+          }
+        >
+          <Field label="근거">
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              rows={4}
+              placeholder={NOTE_HINT[next.key]}
+              className={field}
+            />
+          </Field>
+          {next.key === "draft" && (
+            <Field label="글 slug" hint="영어 소문자·하이픈">
+              <input
+                value={slug}
+                onChange={(e) => setSlug(e.target.value)}
+                placeholder="claude-code-auto-mode"
+                className={`${field} font-mono text-[13px]`}
+              />
+            </Field>
+          )}
+        </Modal>
+      )}
+      <Modal
+        open={dialog === "publish"}
+        tone="accent"
+        eyebrow="발행"
+        title={`'${topic.title}'을 공개할까요?`}
+        description={
+          <>
+            문체·구성 점검을 한 번 더 돌리고, 통과하면 바로 블로그에 올라갑니다. 캡처 자리(todo-)가 남아 있으면 막힙니다.
+            {todo && <span className="mt-1 block text-[12.5px] text-ink-muted">남은 일: {todo}</span>}
+          </>
+        }
+        confirmLabel={busy ? "공개하는 중…" : "공개하기"}
+        busy={busy}
+        error={dialog === "publish" ? error : null}
+        onClose={() => setDialog(null)}
+        onConfirm={() =>
+          patch({ action: "advance", note: note.trim() || "발행", postSlug: topic.postSlug }).then((ok) => ok && setNote(""))
+        }
+      >
+        {topic.postSlug && (
           <a
             href={`/preview/${topic.postSlug}`}
             target="_blank"
             rel="noreferrer"
-            title="발행 전 미리보기"
-            className="mr-auto font-mono text-[11.5px] text-ink-muted no-underline hover:text-ink"
+            className="group flex items-center justify-between gap-3 rounded-lg border border-border-token bg-surface-alt px-3 py-2.5 no-underline transition-colors hover:border-border-strong"
           >
-            /{topic.postSlug}
+            <span className="font-mono text-[12.5px] text-ink-soft">/posts/{topic.postSlug}</span>
+            <span className="inline-flex items-center gap-1 font-sans text-[12px] font-medium text-ink">
+              발행 전 미리보기
+              <span aria-hidden className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5">↗</span>
+            </span>
           </a>
         )}
-        <div className="ml-auto flex items-center gap-3">
-          {!paused && stageIndex(topic.stage) > 0 && (
-            <Quiet disabled={busy} onClick={() => patch({ action: "revert" })}>
-              ↶ {topic.stage === "published" ? "발행 취소(draft로)" : `${stageLabel(topic.stage)} 취소`}
-            </Quiet>
-          )}
-          {!paused && next && !publishing && !aiBusy && (
-            <Quiet
-              onClick={() => {
-                setError(null);
-                setDialog("advance");
-              }}
-              title="AI 없이 이 단계를 직접 했을 때, 근거를 남기고 다음 단계로 넘깁니다"
-            >
-              {next.label} 직접 완료
-            </Quiet>
-          )}
-          <Quiet onClick={() => setMode("edit")}>편집</Quiet>
-          {!paused && next && (
-            <Quiet
-              onClick={() => {
-                setError(null);
-                setDialog("drop");
-              }}
-            >
-              접기
-            </Quiet>
-          )}
-          <Quiet danger disabled={busy} onClick={() => setConfirmDelete(true)}>
-            삭제
-          </Quiet>
-        </div>
-        <ConfirmDialog
-          open={confirmDelete}
-          tone="danger"
-          title={`'${topic.title}' 주제를 지울까요?`}
-          body="진행 기록이 함께 사라집니다. 글감은 남습니다. 멈추려는 것이라면 접기로 두세요."
-          confirmLabel="지우기"
-          onConfirm={remove}
-          onCancel={() => setConfirmDelete(false)}
-        />
-        {next && (
-          <Modal
-            open={dialog === "advance"}
-            eyebrow={`${step}/${STAGES.length} · ${next.label}`}
-            title={`${next.label} 단계를 직접 끝냈나요?`}
-            description={
-              <>
-                AI 없이 이 단계를 직접 했을 때 씁니다. 남긴 근거는 카드 기록에 쌓이고 다음 단계로 넘어갑니다.
-                <span className="mt-1 block text-[12.5px] text-ink-muted">할 일: {next.todo}</span>
-              </>
-            }
-            confirmLabel={`${next.label} 완료`}
-            confirmDisabled={!note.trim() || (next.key === "draft" && !slug.trim())}
-            busy={busy}
-            error={dialog === "advance" ? error : null}
-            onClose={() => setDialog(null)}
-            onConfirm={() =>
-              patch({ action: "advance", note: note.trim(), postSlug: slug.trim() || null }).then((ok) => ok && setNote(""))
-            }
-          >
-            <Field label="근거">
-              <textarea
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                rows={4}
-                placeholder={NOTE_HINT[next.key]}
-                className={field}
-              />
-            </Field>
-            {next.key === "draft" && (
-              <Field label="글 slug" hint="영어 소문자·하이픈">
-                <input
-                  value={slug}
-                  onChange={(e) => setSlug(e.target.value)}
-                  placeholder="claude-code-auto-mode"
-                  className={`${field} font-mono text-[13px]`}
-                />
-              </Field>
-            )}
-          </Modal>
-        )}
-        <Modal
-          open={dialog === "publish"}
-          tone="accent"
-          eyebrow="발행"
-          title={`'${topic.title}'을 공개할까요?`}
-          description={
-            <>
-              문체·구성 점검을 한 번 더 돌리고, 통과하면 바로 블로그에 올라갑니다. 캡처 자리(todo-)가 남아 있으면 막힙니다.
-            </>
-          }
-          confirmLabel={busy ? "공개하는 중…" : "공개하기"}
-          busy={busy}
-          error={dialog === "publish" ? error : null}
-          onClose={() => setDialog(null)}
-          onConfirm={() =>
-            patch({ action: "advance", note: note.trim() || "발행", postSlug: topic.postSlug }).then((ok) => ok && setNote(""))
-          }
-        >
-          {topic.postSlug && (
-            <a
-              href={`/preview/${topic.postSlug}`}
-              target="_blank"
-              rel="noreferrer"
-              className="group flex items-center justify-between gap-3 rounded-lg border border-border-token bg-surface-alt px-3 py-2.5 no-underline transition-colors hover:border-border-strong"
-            >
-              <span className="font-mono text-[12.5px] text-ink-soft">/posts/{topic.postSlug}</span>
-              <span className="inline-flex items-center gap-1 font-sans text-[12px] font-medium text-ink">
-                발행 전 미리보기
-                <span aria-hidden className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5">↗</span>
-              </span>
-            </a>
-          )}
-          <Field label="발행 메모" hint="선택">
-            <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} className={field} />
-          </Field>
-        </Modal>
-        <Modal
-          open={dialog === "drop"}
-          eyebrow="접기"
-          title="이 주제를 접어 둘까요?"
-          description="지우지 않고 목록 아래로 내립니다. 언제든 다시 펼칠 수 있습니다."
-          confirmLabel="접기"
-          confirmDisabled={!reason.trim()}
-          busy={busy}
-          error={dialog === "drop" ? error : null}
-          onClose={() => setDialog(null)}
-          onConfirm={() => patch({ action: "drop", reason }).then((ok) => ok && setReason(""))}
-        >
-          <Field label="접는 이유">
-            <input
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="예: 이미 한국어 글이 충분하다"
-              className={field}
-            />
-          </Field>
-        </Modal>
-      </div>
-    </li>
+        <Field label="발행 메모" hint="선택">
+          <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} className={field} />
+        </Field>
+      </Modal>
+      <Modal
+        open={dialog === "drop"}
+        eyebrow="접기"
+        title="이 주제를 접어 둘까요?"
+        description="지우지 않고 목록 아래로 내립니다. 언제든 다시 펼칠 수 있습니다."
+        confirmLabel="접기"
+        confirmDisabled={!reason.trim()}
+        busy={busy}
+        error={dialog === "drop" ? error : null}
+        onClose={() => setDialog(null)}
+        onConfirm={() => patch({ action: "drop", reason }).then((ok) => ok && setReason(""))}
+      >
+        <Field label="접는 이유">
+          <input
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="예: 이미 한국어 글이 충분하다"
+            className={field}
+          />
+        </Field>
+      </Modal>
+    </div>
   );
 }
 
@@ -981,151 +1088,6 @@ function ago(iso: string | null): string {
   if (m < 60) return `${m}분 전`;
   const h = Math.round(m / 60);
   return h < 24 ? `${h}시간 전` : `${Math.round(h / 24)}일 전`;
-}
-
-/**
- * "AI에게 맡기기". 누르면 요청만 쌓이고, 실행기(루틴·크론)가 다음 실행 때
- * 집어서 실제로 조사·자료·초안·점검을 하고 단계를 넘긴다.
- */
-function AiPanel({
-  topic,
-  onChange,
-  inline = false,
-}: {
-  topic: TopicRow;
-  onChange: (t: TopicRow) => void;
-  /** 다음 할 일 상자 안 — 맡긴 적 없는 주제의 맡기기 버튼만 그린다. */
-  inline?: boolean;
-}) {
-  const left = UNTIL_OPTIONS.filter((o) => stageIndex(o.key) > stageIndex(topic.stage));
-  const [until, setUntil] = useState<AiUntil>("review");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [showLog, setShowLog] = useState(false);
-  const { status, message, updatedAt, startedAt, log } = topic.ai;
-  const running = status === "running";
-
-  // 맡긴 적이 없으면 버튼만 다음 할 일 상자 안에(inline), 그 밖엔 아래 판에.
-  const idle = !status && !message && log.length === 0;
-  if (topic.droppedReason !== null || (left.length === 0 && idle) || inline !== idle) return null;
-
-  async function send(body: Record<string, unknown>) {
-    setBusy(true);
-    setError(null);
-    const res = await call("PATCH", { id: topic.id, ...body });
-    setBusy(false);
-    if ("error" in res) setError(res.error);
-    else if ("topic" in res) onChange(res.topic);
-  }
-
-  const pick = left.some((o) => o.key === until) ? until : left[left.length - 1]?.key;
-  const next = nextStage(topic.stage);
-
-  if (inline) {
-    return pick ? (
-      <div className="pt-3">
-        <AiLaunch
-          options={left}
-          from={stageIndex(topic.stage)}
-          value={pick}
-          onChange={setUntil}
-          retry={false}
-          busy={busy}
-          onLaunch={() => send({ action: "ai", until: pick })}
-        />
-        {error && <p className="m-0 mt-1.5 text-[12px] text-danger">{error}</p>}
-      </div>
-    ) : null;
-  }
-
-  return (
-    <div
-      className={`mt-2 rounded-lg border px-3 py-2.5 transition-colors duration-500 ${
-        running
-          ? "border-[color-mix(in_srgb,var(--callout-tip-glyph)_40%,var(--border))] bg-[color-mix(in_srgb,var(--callout-tip-bg)_55%,transparent)]"
-          : "border-dashed border-border-token"
-      }`}
-    >
-      {running ? (
-        <>
-          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-            <span aria-hidden className="ai-spin text-[13px] text-[color:var(--callout-tip-glyph)]">✦</span>
-            <span className="text-[12.5px] font-semibold">
-              <span className="ai-shimmer">AI 작성 중</span>
-              <span className="font-normal text-ink-muted"> · {next?.label} 단계 · {untilLabel(topic.ai.until)}</span>
-            </span>
-            <span className="ml-auto flex items-center gap-3">
-              {startedAt && <Elapsed since={startedAt} />}
-              <Quiet disabled={busy} onClick={() => send({ action: "ai_cancel" })}>
-                중지
-              </Quiet>
-            </span>
-          </div>
-          <AiLog entries={log} live fallback={message} />
-        </>
-      ) : status === "queued" ? (
-        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
-          <span aria-hidden className="topic-pulse size-2 shrink-0 rounded-full bg-ink-subtle" />
-          <span className="min-w-0 flex-1 text-[12.5px] leading-[1.5] text-ink-soft">
-            <b className="font-semibold text-ink">AI 대기 중</b> · {untilLabel(topic.ai.until)}
-            {" · "}
-            <AiMessage text={message ?? "다음 실행 때 시작"} />
-            <span suppressHydrationWarning className="ml-1.5 font-mono text-[11px] text-ink-subtle">{ago(updatedAt)}</span>
-          </span>
-          <Quiet disabled={busy} onClick={() => send({ action: "ai_cancel" })}>
-            취소
-          </Quiet>
-        </div>
-      ) : (
-        <div className="flex flex-wrap items-center gap-2">
-          {status === "failed" ? (
-            <span className="w-full whitespace-pre-line text-[12.5px] leading-[1.5] text-danger">
-              <b className="font-semibold">AI 멈춤</b> · {message}
-            </span>
-          ) : (
-            message && (
-              <span className="w-full text-[12px] leading-[1.5] text-ink-muted">
-                <b className="font-semibold text-ink-soft">AI</b> · {message}
-                <span suppressHydrationWarning className="ml-1.5 font-mono text-[11px] text-ink-subtle">{ago(updatedAt)}</span>
-              </span>
-            )
-          )}
-          {log.length > 0 && (
-            <div className="w-full">
-              <button
-                type="button"
-                onClick={() => setShowLog((v) => !v)}
-                className="flex items-center gap-1.5 font-sans text-[11.5px] text-ink-muted transition-colors hover:text-ink"
-              >
-                <span aria-hidden className={`text-[8px] transition-transform ${showLog ? "rotate-90" : ""}`}>▶</span>
-                지난 작업 로그 {log.length}줄
-                {startedAt && log.length > 1 && (
-                  <span className="font-mono text-ink-subtle">
-                    · {duration(startedAt, log[log.length - 1].at)}
-                  </span>
-                )}
-              </button>
-              <Collapse open={showLog}>
-                <AiLog entries={log} />
-              </Collapse>
-            </div>
-          )}
-          {left.length > 0 && pick && (
-            <AiLaunch
-              options={left}
-              from={stageIndex(topic.stage)}
-              value={pick}
-              onChange={setUntil}
-              retry={status === "failed"}
-              busy={busy}
-              onLaunch={() => send({ action: "ai", until: pick })}
-            />
-          )}
-        </div>
-      )}
-      {error && <p className="m-0 mt-1.5 text-[12px] text-danger">{error}</p>}
-    </div>
-  );
 }
 
 /**
@@ -1167,6 +1129,7 @@ function AiLaunch({
       <span aria-hidden className="my-1.5 w-px bg-[color-mix(in_oklab,var(--callout-tip-glyph)_35%,transparent)]" />
       <Select
         label="어디까지 맡길까요"
+        align="right-md"
         value={value}
         onChange={onChange}
         disabled={busy}
@@ -1309,34 +1272,6 @@ function AiMessage({ text }: { text: string }) {
         세션 보기 ↗
       </a>
     </>
-  );
-}
-
-/** 작업 노트 — AI 가 조사한 내용·자료가 쌓이는 곳. 블로그 본문과 같은 렌더러. */
-function Notes({ markdown }: { markdown: string }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="mt-4">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        className="flex items-center gap-1.5 font-sans text-[12.5px] font-semibold text-ink-soft transition-colors hover:text-ink"
-      >
-        <span aria-hidden className={`text-[9px] transition-transform duration-200 ${open ? "rotate-90" : ""}`}>
-          ▶
-        </span>
-        작업 노트
-        <span className="font-mono text-[11px] font-normal text-ink-subtle">
-          {markdown.length.toLocaleString()}자
-        </span>
-      </button>
-      <Collapse open={open}>
-        <div className="mt-2 max-h-[420px] overflow-y-auto rounded-lg border border-border-token bg-bg px-4 py-3 text-[13.5px] [&_h2]:mt-4 [&_h2]:text-[15px] [&_h3]:text-[14px]">
-          {open && renderMarkdown(markdown)}
-        </div>
-      </Collapse>
-    </div>
   );
 }
 
