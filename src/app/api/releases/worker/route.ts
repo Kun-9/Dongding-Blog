@@ -21,7 +21,7 @@ import { revalidateContent } from "@/lib/api-shared";
 import { syncLinkMeta } from "@/lib/link-meta";
 import { postExists, toRow, PostBodySchema } from "@/app/api/posts/_shared";
 import { applyReplacements, loadPost, loadTaxonomy } from "@/lib/mcp-blog";
-import { checkVoice, releaseDay } from "@/lib/voice";
+import { checkVoice, guide, releaseDay } from "@/lib/voice";
 import { WORKER_PROMPT } from "@/lib/release-worker";
 import { readPage } from "@/lib/trends";
 import {
@@ -29,6 +29,7 @@ import {
   advanceTopic,
   claimAiWork,
   finishAi,
+  kindOfSlug,
   reportAi,
   saveNotes,
 } from "@/lib/release-topics";
@@ -37,6 +38,7 @@ import type { TopicRow } from "@/lib/release-topics";
 
 const SLUG = z.string().regex(/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/);
 const ID = z.number().int();
+const KIND = z.enum(["release", "concept"]);
 const BUCKET = "post-images";
 
 function authorized(req: Request): boolean {
@@ -126,6 +128,8 @@ const Action = z.discriminatedUnion("action", [
     slug: SLUG.optional(),
     title: z.string().optional(),
     body: z.string().optional(),
+    /** 없으면 slug 가 묶인 주제의 종류, body 만 있으면 릴리스. */
+    kind: KIND.optional(),
   }),
   z.object({
     action: z.literal("image"),
@@ -135,6 +139,7 @@ const Action = z.discriminatedUnion("action", [
     base64: z.string().max(8_000_000).optional(),
   }),
   z.object({ action: z.literal("read"), url: z.string().url() }),
+  z.object({ action: z.literal("guide"), kind: KIND }),
 ]);
 
 export async function GET() {
@@ -216,7 +221,7 @@ export async function POST(req: Request) {
         await syncLinkMeta(input.body).catch(() => {});
         revalidateContent();
         const created = await loadPost(input.slug);
-        return ok({ created: input.slug, voice: created ? checkVoice(created) : null });
+        return ok({ created: input.slug, voice: created ? checkVoice(created, await kindOfSlug(input.slug)) : null });
       }
 
       case "post_update": {
@@ -239,16 +244,16 @@ export async function POST(req: Request) {
         await syncLinkMeta(body).catch(() => {});
         revalidateContent();
         const updated = await loadPost(input.slug);
-        return ok({ updated: input.slug, voice: updated ? checkVoice(updated) : null });
+        return ok({ updated: input.slug, voice: updated ? checkVoice(updated, await kindOfSlug(input.slug)) : null });
       }
 
       case "check": {
         if (input.slug) {
           const post = await loadPost(input.slug);
-          return post ? ok(checkVoice(post)) : bad("없는 글", 404);
+          return post ? ok(checkVoice(post, input.kind ?? (await kindOfSlug(input.slug)))) : bad("없는 글", 404);
         }
         if (!input.body) return bad("slug 나 body 중 하나는 있어야 한다");
-        return ok(checkVoice({ title: input.title ?? "", summary: "", body: input.body }));
+        return ok(checkVoice({ title: input.title ?? "", summary: "", body: input.body }, input.kind));
       }
 
       case "image": {
@@ -272,6 +277,9 @@ export async function POST(req: Request) {
 
       case "read":
         return ok(await readPage(input.url));
+
+      case "guide":
+        return new Response(guide(input.kind), { headers: { "content-type": "text/markdown; charset=utf-8" } });
     }
   } catch (e) {
     if (e instanceof TopicError) return bad(e.message, e.status);

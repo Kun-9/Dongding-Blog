@@ -26,7 +26,7 @@ description: Use when the user asks you directly (not through the admin "AI에�
 | post_update | `update_post` |
 | check | `check_release_voice` |
 | image | `upload_post_image` |
-| (쓰기 기준) | `get_release_writing_guide` — 지시서 안의 기준과 같다 |
+| (쓰기 기준) | `get_release_writing_guide` — 지시서 안의 기준과 같다. 주제 `kind` 가 `concept` 이면 `kind: "concept"` |
 
 ## 단계마다
 
@@ -35,6 +35,7 @@ description: Use when the user asks you directly (not through the admin "AI에�
   - 자세히(칸 아래 `> ` 줄, `data-detail`)는 달지 않는다. 그림 아래 패널이 열리며 글이 들쭉날쭉해지는 지금 방식은 교체 대기 중이다. 지시서의 쓰기 기준에는 아직 달라고 적혀 있지만 이쪽이 우선한다.
   - 글의 핵심 숫자 두세 개는 `stats` 카드로 모은다. 나중에 숫자 굴리기가 붙는 자리이니 다른 그림에 숫자 카드를 흩지 않는다.
 - **초안:**
+  - 개념 글(`kind: concept`, MVC·JWT 같은 개념 하나)은 지시서의 "개념 글일 때"를 따른다. 날짜·버전을 쓰지 않는다. 아래 배포일 규칙은 릴리스 글만.
   - 요약 박스에 버전마다 `v2.1.280(2026년 9월 23일 배포)` 를 붙인다. 날짜는 `released` 를 그대로 쓴다. 공식 발표일(미국 기준)과 하루 다르더라도 배포일 하나만 쓴다. 배포일 값이 없는 버전(글감이 아닌 이전 버전)은 요약 박스에 쓰지 않는다.
   - 제목은 쓰기 기준대로 짓는다. 주제 이름을 그대로 쓰지 않는다.
   - 본문 통째(`body`)는 처음 만들 때와 초안 단계에서 다시 쓸 때만 쓴다. 그 뒤 수정은 `replacements`.

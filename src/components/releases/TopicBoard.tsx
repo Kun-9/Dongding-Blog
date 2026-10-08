@@ -17,6 +17,7 @@ import {
   type StageKey,
 } from "@/lib/release-stages";
 import { AVOID, CLARITY_RULES, OUTLINE, REQUIRED_PARTS, VOICE_RULES } from "@/lib/voice";
+import { CONCEPT_AREAS, type ConceptArea } from "@/lib/concept-areas";
 
 /**
  * 단계 색 — 새 색을 만들지 않고 콜아웃 팔레트를 빌린다. 다크 모드 대응이
@@ -95,6 +96,7 @@ interface Props {
 
 export function TopicBoard({ topics, onTopicsChange, candidates, onQueued, onSkipped }: Props) {
   const [creating, setCreating] = useState(false);
+  const [finding, setFinding] = useState(false);
   /** 펼쳐 둔 접힘 구역 — 발행함, 접은 주제, 버린 주제. */
   const [unfolded, setUnfolded] = useState<Set<string>>(new Set());
 
@@ -217,20 +219,41 @@ export function TopicBoard({ topics, onTopicsChange, candidates, onQueued, onSki
             )}
           </h2>
         </div>
-        <button
-          type="button"
-          onClick={() => setCreating((v) => !v)}
-          className={`rounded-full px-3.5 py-1.5 font-sans text-[13px] font-medium transition-colors ${
-            creating
-              ? "border border-border-token bg-surface text-ink-muted hover:text-ink"
-              : "bg-ink text-bg hover:opacity-90"
-          }`}
-        >
-          {creating ? "닫기" : "+ 새 주제"}
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setFinding((v) => !v);
+              setCreating(false);
+            }}
+            className={`rounded-full border border-border-token bg-surface px-3.5 py-1.5 font-sans text-[13px] font-medium transition-colors ${
+              finding ? "text-ink-muted hover:text-ink" : "text-ink hover:border-border-strong"
+            }`}
+          >
+            {finding ? "닫기" : "개념 글감"}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setCreating((v) => !v);
+              setFinding(false);
+            }}
+            className={`rounded-full px-3.5 py-1.5 font-sans text-[13px] font-medium transition-colors ${
+              creating
+                ? "border border-border-token bg-surface text-ink-muted hover:text-ink"
+                : "bg-ink text-bg hover:opacity-90"
+            }`}
+          >
+            {creating ? "닫기" : "+ 새 주제"}
+          </button>
+        </div>
       </div>
 
       <GuideCard />
+
+      <Collapse open={finding}>
+        <ConceptFinder />
+      </Collapse>
 
       <Collapse open={creating}>
         <div className="mb-3 rounded-xl border border-border-strong bg-surface p-5">
@@ -288,6 +311,89 @@ async function call(
 }
 
 /* ── 글쓰기 기준 ─────────────────────────────────────────────────────── */
+
+/**
+ * 개념 글감 찾기 — 큰 주제를 고르면 실행기 루틴이 그 분야의 Stack Overflow
+ * 자주 묻는 질문과 기본 목록을 보고 헷갈리는 개념을 주제로 올린다.
+ * 루틴이 끝나야 주제가 생기므로 여기서는 깨웠다는 것까지만 보여 준다.
+ */
+function ConceptFinder() {
+  const [area, setArea] = useState<ConceptArea>("backend");
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<{ ok: boolean; text: string; url?: string | null } | null>(null);
+
+  async function find() {
+    setBusy(true);
+    setResult(null);
+    const res = await fetch(API.releaseConcept, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ area }),
+    }).catch(() => null);
+    const body = (await res?.json().catch(() => null)) as
+      | { fired: true; sessionUrl: string | null }
+      | { fired: false; reason: string }
+      | { error: string }
+      | null;
+    setBusy(false);
+    if (body && "fired" in body && body.fired) {
+      setResult({ ok: true, text: "탐색기를 깨웠습니다. 몇 분 뒤 새로 고치면 주제가 보입니다.", url: body.sessionUrl });
+    } else {
+      setResult({
+        ok: false,
+        text: body && "reason" in body ? body.reason : body && "error" in body ? body.error : "호출하지 못했습니다",
+      });
+    }
+  }
+
+  return (
+    <div className="mb-3 rounded-xl border border-border-strong bg-surface p-5">
+      <div className="mb-1 font-sans text-[13px] font-semibold text-ink">개념 글감 찾기</div>
+      <p className="m-0 mb-3.5 text-[13px] leading-[1.55] text-ink-muted">
+        MVC·JWT처럼 자주 쓰지만 헷갈리는 개념을 찾습니다. 고른 분야의 Stack Overflow 자주 묻는 질문과 기본 목록을 보고 주제를 두 개까지 올립니다.
+      </p>
+      <fieldset className="m-0 flex flex-wrap gap-x-5 gap-y-2.5 border-0 p-0">
+        <legend className="sr-only">큰 주제</legend>
+        {CONCEPT_AREAS.map((a) => (
+          <label key={a.key} className="inline-flex cursor-pointer items-center gap-1.5 font-sans text-[13.5px] text-ink">
+            <input
+              type="radio"
+              name="concept-area"
+              value={a.key}
+              checked={area === a.key}
+              onChange={() => setArea(a.key)}
+              className="size-[15px] accent-[color:var(--ink)]"
+            />
+            {a.label}
+          </label>
+        ))}
+      </fieldset>
+      <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2">
+        <button
+          type="button"
+          onClick={find}
+          disabled={busy}
+          className="rounded-full bg-ink px-3.5 py-1.5 font-sans text-[13px] font-medium text-bg transition-opacity hover:opacity-90 disabled:opacity-50"
+        >
+          {busy ? "깨우는 중" : "찾기"}
+        </button>
+        {result && (
+          <span className={`text-[13px] ${result.ok ? "text-ink-muted" : "text-danger"}`}>
+            {result.text}
+            {result.url && (
+              <>
+                {" "}
+                <a href={result.url} target="_blank" rel="noreferrer" className="underline underline-offset-2">
+                  세션 보기
+                </a>
+              </>
+            )}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
 
 /** 점검(review) 단계가 검사하는 기준 그대로. 접혀 있어도 핵심은 한 줄로 보인다. */
 function GuideCard() {
@@ -798,6 +904,11 @@ function TopicItem({
             paused ? "text-ink-muted" : "text-ink"
           }`}
         >
+          {topic.kind === "concept" && (
+            <span className="mr-1.5 inline-block rounded-md bg-surface-alt px-1.5 py-[1px] align-[1px] font-sans text-[11px] font-medium text-ink-muted">
+              개념
+            </span>
+          )}
           {topic.title}
         </button>
         <div className="col-start-2 row-start-2 line-clamp-2 min-w-0 text-[13px] leading-[1.5] text-ink-muted md:line-clamp-1">

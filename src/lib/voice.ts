@@ -51,6 +51,25 @@ export const REQUIRED_PARTS = [
   { key: "source", label: "출처 링크", how: "본문 문장 안 링크로. 끝에 목록으로 몰지 않는다" },
 ] as const;
 
+/** 글 종류. 릴리스 글만 배포일·버전 표기를 요구한다. */
+export type PostKind = "release" | "concept";
+
+/**
+ * 개념 글(MVC, JWT 처럼 헷갈리는 개념 하나)의 필수 구성. 키는 릴리스와 같고
+ * 쓰는 법만 다르다 — 점검기가 같은 판정으로 본다.
+ */
+export const CONCEPT_PARTS = [
+  { key: "summary-box", label: "도입 요약 박스", how: "첫머리 `> [!INFO]` 에 무엇이 헷갈리는지와 한 줄 답을 두세 문장 산문으로. 날짜·버전은 쓰지 않는다(특정 버전의 동작을 말할 때만 본문에 밝힌다)" },
+  { key: "table", label: "비교 표", how: "헷갈리는 두세 개념의 차이 하나. markdown 표나 ```compare·```matrix 블록. 글 전체 두 개까지" },
+  { key: "visual", label: "본문 속 그림", how: "설명하는 문단 바로 아래에 그림 블록(```flow 등 10종)·```figure 또는 단독 줄 `![캡션](경로)`. 흐름·구조·순서를 그림으로" },
+  { key: "source", label: "출처 링크", how: "표준·공식 문서(RFC, MDN, 언어·프레임워크 문서, 원전) 링크를 본문 문장 안에. 끝에 목록으로 몰지 않는다" },
+] as const;
+
+const PARTS: Record<PostKind, readonly { key: (typeof REQUIRED_PARTS)[number]["key"]; label: string; how: string }[]> = {
+  release: REQUIRED_PARTS,
+  concept: CONCEPT_PARTS,
+};
+
 /** 문체 규칙. 화면의 기준 카드와 GUIDE 가 같이 쓴다. */
 export const VOICE_RULES = [
   "본문은 합니다체로 통일. 해요체·서술체와 섞지 않기 (표·코드 안은 예외)",
@@ -224,15 +243,34 @@ export const OUTLINE = [
   ["맺음", "한 문단: 조심할 점이나 남은 의문"],
 ] as const;
 
+/** 개념 글의 권장 흐름. */
+export const CONCEPT_OUTLINE = [
+  ["들어가기", "요약 박스(산문) 뒤에 이 개념이 헷갈리는 실제 장면 하나(면접 질문, 코드 리뷰, 버그)"],
+  ["한 줄 정의", "각 개념을 한 문장으로. 비유는 하나만, 정의 바로 뒤에"],
+  ["갈리는 지점", "무엇이 같고 어디서 갈리는지. 비교 표 하나와 흐름·구조 그림"],
+  ["코드로 보기", "같은 일을 두 방식으로 쓴 짧은 코드. 언어는 독자가 가장 많이 쓰는 것으로(예: Java·Spring, JavaScript)"],
+  ["자주 하는 오해", "Stack Overflow 상위 질문 같은 실제 오해 두세 개와 바로잡는 근거"],
+  ["맺음", "한 문단: 언제 무엇을 고르면 되는지"],
+] as const;
+
 /** 사람과 모델이 같이 읽는 기준 문서. MCP 가 그대로 내보낸다. */
-export const GUIDE = `# 릴리스 글 쓰기 기준
+const TITLE_EXAMPLES: Record<PostKind, string> = {
+  release: `- 나쁨: auto mode 가 기본값이 됐다 / Claude Code Mods 정리: next(e)로 이어지는 미들웨어
+- 좋음: Claude Code가 권한을 묻지 않게 된 이유 / 플러그인이 미들웨어가 된 Claude Code Mods`,
+  concept: `- 나쁨: MVC 패턴 완벽 정리 / JWT란?: 개념부터 활용까지
+- 좋음: MVC와 MVVM은 어디서 갈리나 / JWT를 쓰면 왜 로그아웃이 어려운가`,
+};
+
+/** 사람과 모델이 같이 읽는 기준 문서. 종류마다 제목 예시·구성·흐름만 다르다. */
+export function guide(kind: PostKind = "release"): string {
+  const outline = kind === "concept" ? CONCEPT_OUTLINE : OUTLINE;
+  return `# ${kind === "concept" ? "개념" : "릴리스"} 글 쓰기 기준
 
 ## 문체
 ${VOICE_RULES.map((v) => `- ${v}`).join("\n")}
 
 제목 예시
-- 나쁨: auto mode 가 기본값이 됐다 / Claude Code Mods 정리: next(e)로 이어지는 미들웨어
-- 좋음: Claude Code가 권한을 묻지 않게 된 이유 / 플러그인이 미들웨어가 된 Claude Code Mods
+${TITLE_EXAMPLES[kind]}
 
 ## 설명 (목표: 처음 읽는 사람이 한 번에 이해)
 ${CLARITY_RULES.map((v) => `- ${v}`).join("\n")}
@@ -282,11 +320,14 @@ ${SVG_STYLE}
 ${AVOID.map((a) => `- ${a.label} → ${a.hint}`).join("\n")}
 
 ## 구성 (필수)
-${REQUIRED_PARTS.map((p) => `- ${p.label}: ${p.how}`).join("\n")}
+${PARTS[kind].map((p) => `- ${p.label}: ${p.how}`).join("\n")}
 
 ## 권장 흐름 (소제목 이름이 아니다)
-${OUTLINE.map(([h, d], i) => `${i + 1}. ${h} — ${d}`).join("\n")}
+${outline.map(([h, d], i) => `${i + 1}. ${h} — ${d}`).join("\n")}
 `;
+}
+
+export const GUIDE = guide("release");
 
 /* ── 점검 ─────────────────────────────────────────────────────────────── */
 
@@ -343,7 +384,7 @@ function excerpt(text: string, at = 0): string {
   return s.length < text.length ? `…${s}…` : s;
 }
 
-export function checkVoice(post: VoiceInput): VoiceReport {
+export function checkVoice(post: VoiceInput, kind: PostKind = "release"): VoiceReport {
   const issues: Issue[] = [];
   const lines = proseLines(post.body);
 
@@ -522,9 +563,10 @@ export function checkVoice(post: VoiceInput): VoiceReport {
   }
 
   // 배포일 — 요약 박스의 버전마다 `(YYYY년 M월 D일 배포)`. 버전이 없는 발표면 날짜 하나는 있어야 한다.
+  // 개념 글은 보지 않는다.
   const bodyLines = post.body.split("\n");
   const boxAt = bodyLines.findIndex((l) => /^>\s?\[!(INFO|NOTE|TIP)\]/.test(l));
-  if (boxAt >= 0 && boxAt < 15) {
+  if (kind === "release" && boxAt >= 0 && boxAt < 15) {
     let end = boxAt;
     while (end + 1 < bodyLines.length && /^>/.test(bodyLines[end + 1])) end++;
     const box = bodyLines.slice(boxAt, end + 1).join(" ");
@@ -551,9 +593,13 @@ export function checkVoice(post: VoiceInput): VoiceReport {
     table: /^\s*\|.*\|\s*\n\s*\|\s*:?-{3,}/m.test(post.body) || drawn.some((d) => d.kind === "compare" || d.kind === "matrix"),
     // 캡처 자리(todo-)는 그림으로 치지 않는다.
     visual: drawn.length > 0 || htmlFigures.length > 0 || figures.some((f) => !/\/todo-[^/]*$/.test(f[2])),
-    source: /https?:\/\/(github\.com|docs\.|code\.claude\.com|[^\s)]*anthropic\.com)/.test(post.body),
+    // 개념 글은 표준·공식 문서 주소가 제각각이라 링크가 있으면 된다.
+    source:
+      kind === "concept"
+        ? /(?<!!)\[[^\]]*\]\(https?:\/\//.test(post.body.replace(/^(```|~~~)[\s\S]*?^\1\s*$/gm, ""))
+        : /https?:\/\/(github\.com|docs\.|code\.claude\.com|[^\s)]*anthropic\.com)/.test(post.body),
   };
-  for (const p of REQUIRED_PARTS) {
+  for (const p of PARTS[kind]) {
     if (!parts[p.key]) {
       issues.push({
         rule: `missing-${p.key}`,

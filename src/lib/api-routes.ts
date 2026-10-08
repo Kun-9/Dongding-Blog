@@ -40,6 +40,8 @@ export const API = {
   releaseCollect: "/api/releases/collect/",
   /** 글 주제 — 만들기(POST), 단계 이동·편집·접기·버리기(PATCH). */
   releaseTopics: "/api/releases/topics/",
+  /** 개념 글감 찾기 (POST {area}) — 실행기 루틴을 개념 탐색으로 깨운다. */
+  releaseConcept: "/api/releases/concept/",
 
   stats: {
     summary: "/api/stats/summary",

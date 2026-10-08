@@ -10,7 +10,7 @@ import { revalidatePath } from "next/cache";
 import { dbAdmin } from "@/lib/supabase";
 import { syncLinkMeta } from "@/lib/link-meta";
 import { loadPost } from "@/lib/mcp-blog";
-import { checkVoice } from "@/lib/voice";
+import { checkVoice, type PostKind } from "@/lib/voice";
 import { fireReleaseRoutine } from "@/lib/routine-fire";
 import type { Json } from "@/lib/database.types";
 import {
@@ -29,6 +29,8 @@ export interface TopicCandidate {
 
 export interface TopicRow {
   id: number;
+  /** 릴리스 글인가 개념 글인가. 쓰기 기준과 점검이 갈린다. */
+  kind: PostKind;
   title: string;
   angle: string | null;
   stage: StageKey;
@@ -114,6 +116,7 @@ type DbTopic = {
   ai_local?: boolean;
   ai_prompt?: string | null;
   discarded_at?: string | null;
+  kind?: string;
 };
 
 const BASE_COLUMNS =
@@ -122,16 +125,17 @@ const AI_COLUMNS = `${BASE_COLUMNS}, ai_status, ai_until, ai_message, ai_updated
 const TOPIC_COLUMNS = `${AI_COLUMNS}, ai_log, ai_started_at`;
 const LOCAL_COLUMNS = `${TOPIC_COLUMNS}, ai_local`;
 const PROMPT_COLUMNS = `${LOCAL_COLUMNS}, ai_prompt`;
-const FULL_COLUMNS = `${PROMPT_COLUMNS}, discarded_at`;
+const DISCARD_COLUMNS = `${PROMPT_COLUMNS}, discarded_at`;
+const FULL_COLUMNS = `${DISCARD_COLUMNS}, kind`;
 
 /**
  * 마이그레이션보다 배포가 먼저 나가도 화면은 살아 있어야 한다. 없는
- * 컬럼(42703)이면 한 단계씩 덜 읽는다: 버림 → 고치기 → 예약 → 로그 → AI 상태 → 기본 컬럼.
+ * 컬럼(42703)이면 한 단계씩 덜 읽는다: 종류 → 버림 → 고치기 → 예약 → 로그 → AI 상태 → 기본 컬럼.
  */
 async function selectTopics(
   build: (columns: string) => PromiseLike<{ data: unknown; error: { code?: string; message: string } | null }>,
 ) {
-  for (const cols of [FULL_COLUMNS, PROMPT_COLUMNS, LOCAL_COLUMNS, TOPIC_COLUMNS, AI_COLUMNS]) {
+  for (const cols of [FULL_COLUMNS, DISCARD_COLUMNS, PROMPT_COLUMNS, LOCAL_COLUMNS, TOPIC_COLUMNS, AI_COLUMNS]) {
     const res = await build(cols);
     if (res.error?.code !== "42703") return res;
   }
@@ -146,6 +150,7 @@ function toRow(t: DbTopic, candidateIds: string[]): TopicRow {
   const end = log[log.length - 1];
   return {
     id: t.id,
+    kind: t.kind === "concept" ? "concept" : "release",
     title: t.title,
     angle: t.angle,
     stage: t.stage as StageKey,
@@ -254,15 +259,33 @@ export async function createTopic(input: {
   title: string;
   angle?: string | null;
   candidateIds?: string[];
+  kind?: PostKind;
 }): Promise<TopicRow> {
   const { data, error } = await dbAdmin()
     .from("release_topics")
-    .insert({ title: input.title, angle: input.angle ?? null })
+    // 릴리스가 기본값이라 개념 글일 때만 싣는다. 마이그레이션 전에도 릴리스 주제는 만들어진다.
+    .insert({ title: input.title, angle: input.angle ?? null, ...(input.kind === "concept" ? { kind: "concept" } : {}) })
     .select("id")
     .single();
   if (error) throw new Error(error.message);
   if (input.candidateIds?.length) await setCandidates(data.id, input.candidateIds);
   return getTopic(data.id);
+}
+
+/**
+ * 글 slug 가 묶인 주제의 종류. 접은 주제도 본다(버린 주제만 뺀다). 묶인 주제가
+ * 없으면 릴리스로 본다. 조회가 실패하면 던진다 — 개념 글을 릴리스 기준으로
+ * 잘못 검사하면 AI 가 요약 박스에 날짜를 지어 넣는다.
+ */
+export async function kindOfSlug(slug: string): Promise<PostKind> {
+  const { data, error } = await dbAdmin()
+    .from("release_topics")
+    .select("kind")
+    .eq("post_slug", slug)
+    .is("discarded_at", null)
+    .limit(1);
+  if (error) throw new Error(error.message);
+  return data[0]?.kind === "concept" ? "concept" : "release";
 }
 
 export async function editTopic(
@@ -324,7 +347,7 @@ export async function advanceTopic(
   if (next.key === "review" || next.key === "published") {
     const post = postSlug ? await loadPost(postSlug) : null;
     if (!post) throw new TopicError(`'${postSlug}' 글이 없다. 초안 slug 를 확인할 것`);
-    const report = checkVoice(post);
+    const report = checkVoice(post, topic.kind);
     // 캡처 자리(todo-)는 점검 단계에선 참고지만, 발행 직전에는 막는다.
     const blocking = report.issues.filter(
       (i) => i.severity !== "info" || (next.key === "published" && i.rule === "capture-pending"),

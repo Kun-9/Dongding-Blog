@@ -5,8 +5,9 @@
  * 일은 탐색기 몫으로 좁힌다: 새 글감 읽기, 트렌드 신호 읽기, 주제 만들기,
  * new 글감 건너뛰기. 사람이 정한 글감 상태와 이미 있는 주제는 바꾸지 못한다.
  * 트렌드 탐색기 루틴도 같은 API 를 쓴다(signals·volume·read·topics·topic_create).
+ * 개념 글감 탐색기는 questions·posts·read·topics·topic_create(kind concept).
  *
- * GET  → 지시서(markdown). `?kind=trend` 면 트렌드 탐색기 지시서. 토큰 없이
+ * GET  → 지시서(markdown). `?kind=trend` 면 트렌드, `?kind=concept` 면 개념 글감 탐색기 지시서. 토큰 없이
  *        연다 — 비밀값이 없고, 첫 호출에 토큰이 실리면 루틴의 권한 분류기가
  *        Data Exfiltration 으로 막는 일이 잦았다.
  * POST → { action, ... }
@@ -15,8 +16,9 @@ import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { dbAdmin } from "@/lib/supabase";
-import { SCOUT_PROMPT, TREND_PROMPT } from "@/lib/release-scout";
-import { collectSignals, keywordVolume, readPage } from "@/lib/trends";
+import { CONCEPT_PROMPT, SCOUT_PROMPT, TREND_PROMPT } from "@/lib/release-scout";
+import { collectSignals, conceptQuestions, keywordVolume, readPage } from "@/lib/trends";
+import { CONCEPT_AREA_KEYS } from "@/lib/concept-areas";
 import { TopicError, createTopic, getTopics, saveNotes } from "@/lib/release-topics";
 
 /** 글감 본문은 분류에 이 정도면 족하다. 수십 건을 한 세션에서 읽는다. */
@@ -47,6 +49,7 @@ const Action = z.discriminatedUnion("action", [
     angle: z.string().min(1).max(300),
     candidateIds: IDS.max(50).optional(),
     notes: z.string().min(1).max(20_000),
+    kind: z.enum(["release", "concept"]).optional(),
   }),
   z.object({ action: z.literal("skip"), ids: IDS.max(50), note: z.string().min(1).max(200) }),
   z.object({ action: z.literal("signals") }),
@@ -55,11 +58,13 @@ const Action = z.discriminatedUnion("action", [
     keywords: z.array(z.string().min(1).max(60)).min(1).max(5),
   }),
   z.object({ action: z.literal("read"), url: z.string().url() }),
+  z.object({ action: z.literal("questions"), area: z.enum(CONCEPT_AREA_KEYS) }),
+  z.object({ action: z.literal("posts") }),
 ]);
 
 export async function GET(req: Request) {
-  const trend = new URL(req.url).searchParams.get("kind") === "trend";
-  return new Response(trend ? TREND_PROMPT : SCOUT_PROMPT, {
+  const kind = new URL(req.url).searchParams.get("kind");
+  return new Response(kind === "trend" ? TREND_PROMPT : kind === "concept" ? CONCEPT_PROMPT : SCOUT_PROMPT, {
     headers: { "content-type": "text/markdown; charset=utf-8", "cache-control": "no-store" },
   });
 }
@@ -123,6 +128,7 @@ export async function POST(req: Request) {
             angle: t.angle,
             stage: t.stage,
             droppedReason: t.droppedReason,
+            kind: t.kind,
             discardedAt: t.discardedAt,
             candidateIds: t.candidates.map((c) => c.id),
           })),
@@ -138,7 +144,7 @@ export async function POST(req: Request) {
           const rejected = ids.filter((id) => !fresh.has(id));
           if (rejected.length) return bad(`new 가 아니거나 없는 글감: ${rejected.join(", ")}`);
         }
-        const created = await createTopic({ title: input.title, angle: input.angle, candidateIds: ids });
+        const created = await createTopic({ title: input.title, angle: input.angle, candidateIds: ids, kind: input.kind });
         const t = await saveNotes(created.id, input.notes, "replace");
         return ok({ created: { id: t.id, title: t.title, candidateIds: t.candidates.map((c) => c.id) } });
       }
@@ -163,6 +169,15 @@ export async function POST(req: Request) {
 
       case "read":
         return ok(await readPage(input.url));
+
+      case "questions":
+        return ok(await conceptQuestions(input.area));
+
+      case "posts": {
+        const { data, error } = await db.from("posts").select("slug, title, tags").order("date", { ascending: false });
+        if (error) throw new Error(error.message);
+        return ok({ posts: data });
+      }
     }
   } catch (e) {
     if (e instanceof TopicError) return bad(e.message, e.status);

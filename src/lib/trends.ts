@@ -7,6 +7,8 @@
  */
 import "server-only";
 
+import { CONCEPT_AREAS, type ConceptArea } from "@/lib/concept-areas";
+
 const UA = "Mozilla/5.0 (compatible; dongding-blog-trends/1.0; +https://blog.dongding.dev)";
 const DAY = 86_400;
 /** volume 의 칸 수. 7일씩, 오래된 것부터. */
@@ -191,6 +193,32 @@ export async function keywordVolume(terms: string[]) {
       return { term, hn: c.status === "fulfilled" ? c.value : null };
     }),
     errors: Object.fromEntries(counts.flatMap((c, i) => (c.status === "rejected" ? [[terms[i], reason(c.reason)]] : []))),
+  };
+}
+
+/* ── 개념 질문 ─────────────────────────────────────────────────────────── */
+
+/**
+ * 큰 주제의 태그마다 Stack Overflow 가 꼽은 자주 묻는 질문(FAQ). 오래 많이 읽힌
+ * 질문이 곧 개발자가 헷갈리는 지점이다. 키 없이 IP 당 하루 300회라 넉넉하다.
+ */
+export async function conceptQuestions(area: ConceptArea) {
+  const { tags } = CONCEPT_AREAS.find((a) => a.key === area)!;
+  const settled = await Promise.allSettled(
+    tags.map(async (tag) => {
+      const res = await get(`https://api.stackexchange.com/2.3/tags/${encodeURIComponent(tag)}/faq?site=stackoverflow&pagesize=8`);
+      const { items } = (await res.json()) as {
+        items: { title: string; link: string; score: number; view_count: number; tags: string[] }[];
+      };
+      return items.map((q) => ({ title: decode(q.title), views: q.view_count, score: q.score, url: q.link, tags: q.tags }));
+    }),
+  );
+  return {
+    area,
+    questions: Object.fromEntries(tags.map((t, i) => [t, settled[i].status === "fulfilled" ? settled[i].value : []])),
+    errors: Object.fromEntries(
+      settled.flatMap((r, i) => (r.status === "rejected" ? [[tags[i], reason(r.reason)]] : [])),
+    ),
   };
 }
 

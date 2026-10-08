@@ -41,10 +41,11 @@ import {
   editTopic,
   getTopics,
   revertTopic,
+  kindOfSlug,
   type TopicRow,
 } from "@/lib/release-topics";
 import { STAGES, nextStage } from "@/lib/release-stages";
-import { GUIDE, checkVoice, releaseDay } from "@/lib/voice";
+import { guide, checkVoice, releaseDay } from "@/lib/voice";
 
 const VISIBILITY = z.enum(["published", "private", "draft", "review"]);
 const SEVERITY = z.enum(["error", "warning", "info"]);
@@ -594,10 +595,10 @@ const handler = createMcpHandler(
         title: "릴리스 글 쓰기 기준",
         description:
           "릴리스 노트 카테고리 글의 문체(합니다체)·피할 표현·필수 구성(요약 박스, 비교 표, 시각 자료, 출처)·권장 뼈대를 돌려준다. " +
-          "릴리스 글 초안을 쓰거나 고치기 전에 반드시 먼저 읽을 것.",
-        inputSchema: z.object({}),
+          "릴리스 글 초안을 쓰거나 고치기 전에 반드시 먼저 읽을 것. 주제의 kind 가 concept(MVC·JWT 같은 개념 글)이면 kind 를 concept 로.",
+        inputSchema: z.object({ kind: z.enum(["release", "concept"]).optional() }),
       },
-      async () => ({ content: [{ type: "text" as const, text: GUIDE }] }),
+      async ({ kind }) => ({ content: [{ type: "text" as const, text: guide(kind) }] }),
     );
 
     server.registerTool(
@@ -607,21 +608,23 @@ const handler = createMcpHandler(
         description:
           "글 한 편을 릴리스 글 기준으로 검사한다: 합니다체 이탈(서술체·해요체), 헤드라인형 제목, 상투구, 띄어 쓴 조사, " +
           "줄표 과다, 필수 구성(요약 박스·표·시각 자료·출처) 누락. slug 로 저장된 글을 보거나, body 를 직접 넘겨 저장 전 초안을 본다. " +
-          "passed 가 true 여야 advance_release_topic 의 점검 단계를 넘길 수 있다.",
+          "passed 가 true 여야 advance_release_topic 의 점검 단계를 넘길 수 있다. " +
+          "slug 면 묶인 주제의 종류(release·concept)로 본다. body 만 넘길 때 개념 글이면 kind 를 concept 로.",
         inputSchema: z.object({
           slug: z.string().optional(),
           title: z.string().optional(),
           body: z.string().optional(),
+          kind: z.enum(["release", "concept"]).optional(),
         }),
       },
-      async ({ slug, title, body }) => {
+      async ({ slug, title, body, kind }) => {
         if (slug) {
           const post = await loadPost(slug);
           if (!post) return fail(`'${slug}' 글이 없습니다.`);
-          return json(checkVoice(post));
+          return json(checkVoice(post, kind ?? (await kindOfSlug(slug))));
         }
         if (!body) return fail("slug 나 body 중 하나는 있어야 합니다.");
-        return json(checkVoice({ title: title ?? "", summary: "", body }));
+        return json(checkVoice({ title: title ?? "", summary: "", body }, kind));
       },
     );
 
@@ -636,6 +639,7 @@ const handler = createMcpHandler(
           title: z.string().min(1).max(120),
           angle: z.string().max(300).optional().describe("왜 쓸 만한가, 한 줄"),
           candidateIds: z.array(z.string()).max(50).optional(),
+          kind: z.enum(["release", "concept"]).optional().describe("concept: MVC·JWT 같은 개념 글(날짜·버전 없음)"),
         }),
       },
       async (args) => topicCall(() => createTopic(args)),

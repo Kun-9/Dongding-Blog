@@ -424,6 +424,7 @@ export type Database = {
           discarded_at: string | null
           dropped_reason: string | null
           id: number
+          kind: string
           post_slug: string | null
           stage: string
           title: string
@@ -445,6 +446,7 @@ export type Database = {
           discarded_at?: string | null
           dropped_reason?: string | null
           id?: never
+          kind?: string
           post_slug?: string | null
           stage?: string
           title: string
@@ -466,6 +468,7 @@ export type Database = {
           discarded_at?: string | null
           dropped_reason?: string | null
           id?: never
+          kind?: string
           post_slug?: string | null
           stage?: string
           title?: string
