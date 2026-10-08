@@ -269,7 +269,7 @@ function Row({
       </span>
 
       {/* 데스크톱에선 마우스를 올렸을 때만 보인다. 터치 기기는 늘 보인다. */}
-      <span className="flex shrink-0 gap-1 transition-opacity sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100">
+      <span className="touch-always flex shrink-0 gap-1 transition-opacity sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100">
         {MOVES[r.status].map((m) => (
           <button
             key={m.key}

@@ -328,7 +328,7 @@ function SourceItem({
         type="button"
         onClick={onDelete}
         aria-label={`${s.repo} 삭제`}
-        className="shrink-0 text-[12px] text-ink-subtle transition-[opacity,color] hover:text-danger sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100"
+        className="touch-always shrink-0 text-[12px] text-ink-subtle transition-[opacity,color] hover:text-danger sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100"
       >
         ✕
       </button>

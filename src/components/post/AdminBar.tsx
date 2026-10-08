@@ -134,7 +134,7 @@ export function AdminBar({ slug, title, status = "published" }: Props) {
         </div>
 
         {/* Slug + status */}
-        <div className="inline-flex min-w-0 flex-1 items-center gap-2">
+        <div className="inline-flex flex-1 items-center gap-2">
           <span className="truncate font-mono text-xs text-ink-muted">
             /posts/{slug}
           </span>

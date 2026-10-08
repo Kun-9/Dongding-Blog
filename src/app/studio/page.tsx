@@ -1592,7 +1592,7 @@ function StudioEditor() {
 
           {/* Toolbar */}
           <div className="mb-2 flex items-center gap-1.5">
-            <div className="flex w-fit items-center gap-1 rounded-lg border border-border-token bg-surface-alt p-1.5">
+            <div className="flex w-fit max-w-full flex-wrap items-center gap-1 rounded-lg border border-border-token bg-surface-alt p-1.5">
               {(
                 [
                   ["B", "bold", "sans", "group-format"],
