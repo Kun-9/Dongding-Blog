@@ -74,18 +74,19 @@ export async function POST(req: Request) {
   try {
     switch (input.action) {
       case "inbox": {
-        const [sources, fresh] = await Promise.all([
-          db.from("release_sources").select("repo").eq("enabled", true).order("sort"),
-          db
-            .from("release_candidates")
-            .select("id, repo, tag, name, published_at, url")
-            .eq("status", "new")
-            .order("published_at", { ascending: false })
-            .limit(300),
-        ]);
+        const sources = await db.from("release_sources").select("repo").eq("enabled", true).order("sort");
         if (sources.error) throw new Error(sources.error.message);
+        const repos = sources.data.map((s) => s.repo);
+        // 추적을 끈 레포의 글감은 사람 몫으로 남긴다. 탐색기는 켜 둔 레포만 본다.
+        const fresh = await db
+          .from("release_candidates")
+          .select("id, repo, tag, name, published_at, url")
+          .eq("status", "new")
+          .in("repo", repos)
+          .order("published_at", { ascending: false })
+          .limit(300);
         if (fresh.error) throw new Error(fresh.error.message);
-        return ok({ sources: sources.data.map((s) => s.repo), candidates: fresh.data });
+        return ok({ sources: repos, candidates: fresh.data });
       }
 
       case "candidates": {
