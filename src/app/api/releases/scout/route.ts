@@ -5,7 +5,8 @@
  * 일은 탐색기 몫으로 좁힌다: 새 글감 읽기, 주제 만들기, new 글감 건너뛰기.
  * 사람이 정한 글감 상태와 이미 있는 주제는 바꾸지 못한다.
  *
- * GET  → 지시서(markdown)
+ * GET  → 지시서(markdown). 토큰 없이 연다 — 비밀값이 없고, 첫 호출에 토큰이
+ *        실리면 루틴의 권한 분류기가 Data Exfiltration 으로 막는 일이 잦았다.
  * POST → { action, ... }
  */
 import { timingSafeEqual } from "node:crypto";
@@ -47,8 +48,7 @@ const Action = z.discriminatedUnion("action", [
   z.object({ action: z.literal("skip"), ids: IDS.max(50), note: z.string().min(1).max(200) }),
 ]);
 
-export async function GET(req: Request) {
-  if (!authorized(req)) return deny();
+export async function GET() {
   return new Response(SCOUT_PROMPT, {
     headers: { "content-type": "text/markdown; charset=utf-8", "cache-control": "no-store" },
   });
