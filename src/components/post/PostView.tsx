@@ -5,7 +5,7 @@
  */
 import Link from "next/link";
 
-import { getAdjacentPosts, getPostRefs } from "@/lib/posts";
+import { getAdjacentPosts, getPostRefs, getRelatedPosts } from "@/lib/posts";
 import { extractCardTargets } from "@/lib/link-cards";
 import { getLinkMeta } from "@/lib/link-meta";
 import { getSeriesByIdWithPosts } from "@/lib/series";
@@ -56,6 +56,10 @@ export async function PostView({
     getSite(),
   ]);
   const toc = post.meta.toc ?? [];
+  // 이전·다음에 이미 보이는 글은 관련 글에서 뺀다.
+  const related = preview
+    ? []
+    : await getRelatedPosts(post.meta, [prev?.slug, next?.slug]);
 
   const seriesCtx = await (async () => {
     if (!post.meta.series) return null;
@@ -270,6 +274,40 @@ export async function PostView({
             <div />
           )}
         </div>
+
+        {/* 관련 글 — 상자 없이 윗줄만 그어 이전·다음보다 한 단계 가볍게 둔다. */}
+        {related.length > 0 && (
+          <div className="mt-10">
+            <div className="mb-3 font-sans text-[10.5px] font-bold uppercase tracking-[0.14em] text-ink-muted">
+              관련 글
+            </div>
+            <div
+              className={`grid grid-cols-1 gap-[22px] md:gap-7 ${
+                ["", "md:grid-cols-1", "md:grid-cols-2", "md:grid-cols-3"][
+                  related.length
+                ]
+              }`}
+            >
+              {related.map(({ post: p, why }) => (
+                <Link
+                  key={p.slug}
+                  href={`/posts/${p.slug}`}
+                  className="group block border-t-[1.5px] border-ink pt-3.5 no-underline"
+                >
+                  <div className="truncate font-mono text-[11.5px] tracking-[-0.01em] text-ink-muted">
+                    {why}
+                  </div>
+                  <div className="mb-2.5 mt-2 text-balance font-sans text-base font-semibold leading-[1.4] tracking-[-0.025em] text-ink underline-offset-[3px] group-hover:underline group-hover:decoration-border-strong">
+                    {p.title}
+                  </div>
+                  <div className="font-mono text-xs tabular-nums text-ink-muted">
+                    {fmtDate(p.date)} · {p.readTime}분
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </section>
     </main>
   );

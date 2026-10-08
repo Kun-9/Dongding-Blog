@@ -15,7 +15,7 @@ import { extractTOC } from "@/lib/markdown";
 import type { PostRefMeta } from "@/lib/link-cards";
 import { db, dbAdmin, type BlogClient } from "@/lib/supabase";
 import { categoryIds, getCategories } from "@/lib/categories";
-import { categoryLabelIn } from "@/lib/category-utils";
+import { categoryLabelIn, resolveCategoryIn } from "@/lib/category-utils";
 
 export const TocItemSchema = z.object({
   id: z.string(),
@@ -170,6 +170,59 @@ export async function getAdjacentPosts(
   const idx = all.findIndex((p) => p.slug === slug);
   if (idx === -1) return {};
   return { prev: all[idx + 1], next: all[idx - 1] };
+}
+
+/**
+ * 글 하단 관련 글. 겹치는 태그 1개당 2점, 같은 카테고리 1점, 상위 카테고리만
+ * 같으면 0.5점. 이미 화면에 있는 글(`exclude` 로 받는 이전·다음, 같은 시리즈)은
+ * 빼고 다른 시리즈는 1편만 넣는다. 동점이면 발행일이 가까운 글 먼저 — 최신순으로
+ * 하면 같은 카테고리 글마다 늘 같은 세 편이 뜬다.
+ *
+ * `why` 는 화면에 그대로 찍는 추천 근거다.
+ */
+export async function getRelatedPosts(
+  meta: PostMeta,
+  exclude: (string | undefined)[],
+  limit = 3,
+): Promise<{ post: PostMeta; why: string }[]> {
+  const [all, categories] = await Promise.all([getAllPosts(), getCategories()]);
+  const skip = new Set([meta.slug, ...exclude]);
+  const mine = resolveCategoryIn(categories, meta.category);
+  const at = Date.parse(meta.date);
+
+  const scored = all
+    .filter((p) => !skip.has(p.slug) && !(meta.series && p.series === meta.series))
+    .map((p) => {
+      const tags = p.tags.filter((t) => meta.tags.includes(t));
+      const sameCat = p.category === meta.category;
+      const sameParent =
+        !sameCat &&
+        !!mine &&
+        resolveCategoryIn(categories, p.category)?.parent.id === mine.parent.id;
+      const why = tags.length
+        ? `같은 태그 ${tags.map((t) => `#${t}`).join(" ")}`
+        : `같은 카테고리 · ${(sameCat ? mine?.sub?.name : undefined) ?? mine?.parent.name ?? p.category}`;
+      return {
+        post: p,
+        why,
+        score: tags.length * 2 + (sameCat ? 1 : sameParent ? 0.5 : 0),
+        gap: Math.abs(Date.parse(p.date) - at),
+      };
+    })
+    .filter((x) => x.score > 0)
+    .sort((a, b) => b.score - a.score || a.gap - b.gap);
+
+  const out: { post: PostMeta; why: string }[] = [];
+  const seenSeries = new Set<string>();
+  for (const { post, why } of scored) {
+    if (post.series) {
+      if (seenSeries.has(post.series)) continue;
+      seenSeries.add(post.series);
+    }
+    out.push({ post, why });
+    if (out.length === limit) break;
+  }
+  return out;
 }
 
 export async function getFeaturedPost(): Promise<PostMeta | undefined> {
