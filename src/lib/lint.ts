@@ -12,7 +12,6 @@
  * (상투구, 후속편 도입, lib/phrases)뿐이고 info 로만 알린다.
  */
 import BananaSlug from "github-slugger";
-import readingTime from "reading-time";
 // `node scripts/check-lint-rules.mjs` 가 이 파일을 직접 로드한다 — 번들러를 안
 // 거치므로 `@/` alias 가 풀리지 않는다. 이 모듈만 상대 경로 + 확장자로 쓴다.
 import { CARD_LINE_RE, cardSlug } from "./link-cards.ts";
@@ -195,9 +194,22 @@ function headingIds(lines: ScannedLine[]): Set<string> {
   return ids;
 }
 
-/** 사이트가 보여주는 값과 같아야 하므로 `lib/posts` 의 계산을 그대로 쓴다. */
-function estimateReadTime(body: string): number {
-  return Math.max(1, Math.round(readingTime(body).minutes));
+/** 한글 묵독 속도(음절/분)와 영문·코드 단어 속도. 쓰기 기준의 "산문 3,000자 = 읽기 5~6분"과 같은 눈금이다. */
+const HANGUL_PER_MIN = 500;
+const WORDS_PER_MIN = 200;
+
+/**
+ * 사이트가 보여 주는 읽기 시간. `lib/posts` 도 이 함수를 쓴다.
+ * reading-time 은 한글 한 자를 한 단어로 세어 분당 200자가 되고, 실제보다 두세 배 길게 나왔다.
+ * figure·svg 블록은 태그를 빼고 화면에 보이는 글자만 센다.
+ */
+export function estimateReadTime(body: string): number {
+  const visible = body.replace(/^(```|~~~)(?:figure|svg)[^\n]*\n([\s\S]*?)^\1\s*$/gm, (_m, _f, src: string) =>
+    src.replace(/<[^>]*>/g, " "),
+  );
+  const hangul = (visible.match(/[\uac00-\ud7a3]/g) ?? []).length;
+  const words = (visible.match(/[A-Za-z0-9_]+/g) ?? []).length;
+  return Math.max(1, Math.round(hangul / HANGUL_PER_MIN + words / WORDS_PER_MIN));
 }
 
 function bodyStats(post: LintablePost, s: Scan): PostStats {

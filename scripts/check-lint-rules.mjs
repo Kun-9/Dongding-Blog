@@ -168,6 +168,16 @@ assert.equal(stats.h3, 1);
 assert.equal(stats.codeBlocks, 1);
 assert.equal(stats.images, 1);
 
+// ── 읽기 시간 — figure 태그는 세지 않는다 ─────────────────────────────────
+{
+  const tags = '<div class="fig-box" data-text="1:가|2:나"><span class="fig-arrow"></span></div>\n'.repeat(300);
+  const rt = lintPost({ ...base, body: "본문 한 줄.\n\n```figure\ncaption: 그림\n" + tags + "```\n" }).stats.readTime;
+  assert.equal(rt, 1, "figure 블록의 태그는 읽기 시간에 넣지 않는다");
+  const ko = (n) => lintPost({ ...base, body: "가나다라마 ".repeat(n / 5) }).stats.readTime;
+  assert.equal(ko(1500), 3, "한글 1,500자는 3분");
+  assert.equal(ko(3000), 6, "한글 3,000자는 6분");
+}
+
 // ── 링크 카드 추출 (파서·점검·OG 수집이 공유하는 판정) ────────────────────
 {
   const t = extractCardTargets(
@@ -197,6 +207,11 @@ assert.equal(stats.images, 1);
   assert.ok(has("요청은 프록시에 의해 막힌다.\n", "stock-phrase"), "에 의해");
   assert.ok(has("권한은 정책에 의해서는 안 바뀐다\n", "stock-phrase"), "에 의해서는·줄 끝");
   assert.ok(!has("```js\n// 결론적으로\n```\n", "stock-phrase"), "펜스 안은 제외");
+  assert.ok(has("장면의 화면은 직접 띄운 것을 줄여 옮겼습니다.\n", "stock-phrase"), "그림 제작 경위");
+  assert.ok(has("token-weather의 띠는 README에 실린 예시를 옮겼습니다.\n", "stock-phrase"), "예시를 옮겼다");
+  assert.ok(has("실제 화면을 줄여 다시 그렸습니다.\n", "stock-phrase"), "화면을 다시 그렸다");
+  assert.ok(!has("설정을 새 파일로 옮겼습니다. 직접 v2.1.292에서 열어 보니 첫 행이 바뀌었습니다.\n", "stock-phrase"), "옮김·직접 해 본 사실은 통과");
+  assert.ok(!has("로고를 다시 그렸습니다. 설정 화면을 옮겼습니다.\n", "stock-phrase"), "디자인·UI 작업 서술은 통과");
 
   assert.ok(has("지난 글에서 만든 테이블에 열을 더한다.\n\n## 가\n", "sequel-intro"), "링크 없는 지난 글에서");
   assert.ok(has("> [!INFO]\n> 이전 편에 이어 RLS를 다룬다.\n", "sequel-intro"), "요약 박스 안");

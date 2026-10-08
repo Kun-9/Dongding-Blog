@@ -8,10 +8,10 @@
 import "server-only";
 
 import { cache } from "react";
-import readingTime from "reading-time";
 import { z } from "zod";
 import type { PostMeta } from "@/lib/types";
 import { extractTOC } from "@/lib/markdown";
+import { estimateReadTime } from "@/lib/lint";
 import type { PostRefMeta } from "@/lib/link-cards";
 import { db, dbAdmin, type BlogClient } from "@/lib/supabase";
 import { categoryIds, getCategories } from "@/lib/categories";
@@ -69,7 +69,7 @@ function toPost(row: Row): { meta: PostMeta; body: string } {
       date: row.date,
       updated: row.updated_at,
       readTime:
-        row.read_time ?? Math.max(1, Math.round(readingTime(row.body).minutes)),
+        row.read_time ?? estimateReadTime(row.body),
       featured: row.featured || undefined,
       visibility,
       draft: visibility === "draft",

@@ -39,6 +39,7 @@ type StudioSeriesPost = {
 };
 type StudioSeries = Series & { posts: StudioSeriesPost[] };
 import { renderMarkdown } from "@/lib/markdown";
+import { estimateReadTime } from "@/lib/lint";
 import type { ImageSize } from "@/components/prose/Figure";
 import { safeReadJSON, safeRemove, safeWriteJSON } from "@/lib/storage";
 import { CTA } from "@/components/ui/CTA";
@@ -979,7 +980,7 @@ function StudioEditor() {
   ]);
 
   const wordCount = body.replace(/\s+/g, "").length;
-  const readTime = Math.max(1, Math.round(wordCount / 500));
+  const readTime = estimateReadTime(body);
 
   /**
    * 링크 카드 재료. 브라우저는 DB 도 남의 사이트도 못 보므로 서버에 카드 대상만
