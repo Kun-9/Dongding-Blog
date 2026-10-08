@@ -5,15 +5,17 @@ import { Fragment } from "react";
 import type { Item } from "@/lib/diagram";
 import { Badge, Chevron, Label, cx, step, tone } from "./parts";
 
-/** 단계 사이 연결선. 좁은 화면에선 세로, wide 면 넓은 화면에서 가로. */
+/** 단계 사이 연결선. 좁은 화면에선 세로, wide 면 넓은 화면에서 가로. 앞 칸 다음, 다음 칸 전에 그려진다. */
 function Connector({ wide, muted, i }: { wide: boolean; muted: boolean; i: number }) {
   return (
     <li
       aria-hidden
-      className={cx("dg-step flex shrink-0 flex-col items-center py-1", wide && "sm:flex-row sm:px-1 sm:py-0")}
-      style={step(i)}
+      data-anim="fade"
+      className={cx("flex shrink-0 flex-col items-center py-1", wide && "sm:flex-row sm:px-1 sm:py-0")}
+      style={step(i - 0.5)}
     >
       <span
+        data-anim="draw"
         className={cx(
           "block h-4 w-0 border-l-[1.5px]",
           wide && "sm:h-0 sm:w-5 sm:border-t-[1.5px] sm:border-l-0",
@@ -34,7 +36,8 @@ export function Flow({ nodes }: { nodes: Item[] }) {
         <Fragment key={i}>
           {i > 0 && <Connector wide={wide} muted={n.muted} i={i} />}
           <li
-            className={cx("dg-step flex gap-3 rounded-xl border px-4 py-3.5", tone(n), wide && "sm:min-w-0 sm:flex-1 sm:flex-col sm:gap-2.5")}
+            data-anim="rise"
+            className={cx("flex gap-3 rounded-xl border px-4 py-3.5", tone(n), wide && "sm:min-w-0 sm:flex-1 sm:flex-col sm:gap-2.5")}
             style={step(i)}
           >
             <Badge m={n} n={i + 1} />
@@ -64,8 +67,10 @@ export function Cycle({ nodes, center }: { nodes: Item[]; center?: string }) {
     <>
       {/* 넓은 화면: 타원 고리 */}
       <div aria-hidden className="relative mx-auto hidden aspect-[16/9] w-full max-w-[620px] sm:block">
-        <svg viewBox="0 0 100 56.25" preserveAspectRatio="none" className="dg-step absolute inset-0 size-full overflow-visible">
+        <svg viewBox="0 0 100 56.25" preserveAspectRatio="none" data-anim="fade" style={step(-1)} className="absolute inset-0 size-full overflow-visible">
+          {/* 고리가 내용이라 점선이 시계 방향으로 천천히 흐른다(data-loop). */}
           <ellipse
+            data-loop="orbit"
             cx="50"
             cy="28.125"
             rx={RX}
@@ -85,8 +90,9 @@ export function Cycle({ nodes, center }: { nodes: Item[]; center?: string }) {
           return (
             <span
               key={`c${i}`}
+              data-anim="pop"
               className="absolute grid size-5 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-surface-alt text-ink-muted"
-              style={{ left: `${p.x}%`, top: `${p.y}%` }}
+              style={{ left: `${p.x}%`, top: `${p.y}%`, ...step(i + 0.5) }}
             >
               <span className="grid place-items-center" style={{ transform: `rotate(${deg}deg)` }}>
                 <Chevron className="size-[10px]" />
@@ -99,8 +105,9 @@ export function Cycle({ nodes, center }: { nodes: Item[]; center?: string }) {
           return (
             <div
               key={i}
+              data-anim="rise"
               className={cx(
-                "dg-step absolute flex w-max max-w-[34%] -translate-x-1/2 -translate-y-1/2 items-center gap-2.5 rounded-xl border px-3.5 py-2.5",
+                "absolute flex w-max max-w-[34%] -translate-x-1/2 -translate-y-1/2 items-center gap-2.5 rounded-xl border px-3.5 py-2.5",
                 tone(node),
               )}
               style={{ left: `${p.x}%`, top: `${p.y}%`, ...step(i) }}
@@ -125,7 +132,7 @@ export function Cycle({ nodes, center }: { nodes: Item[]; center?: string }) {
           <li className="mb-1 font-mono text-[11px] tracking-[0.03em] text-ink-muted uppercase">{center}</li>
         ) : null}
         {nodes.map((node, i) => (
-          <li key={i} className={cx("dg-step flex items-center gap-3 rounded-xl border px-3.5 py-3", tone(node))} style={step(i)}>
+          <li key={i} data-anim="rise" className={cx("flex items-center gap-3 rounded-xl border px-3.5 py-3", tone(node))} style={step(i)}>
             <Badge m={node} n={i + 1} />
             <Label label={node.label} sub={node.sub} m={node} size="sm" />
           </li>

@@ -7,12 +7,13 @@
  */
 import type { CSSProperties, ReactNode } from "react";
 import type { Mark } from "@/lib/diagram";
+import { MotionFigure } from "./Motion";
 
 export function cx(...parts: (string | false | null | undefined)[]): string {
   return parts.filter(Boolean).join(" ");
 }
 
-/** 스크롤 등장 순서. `.dg-step` 이 --i 로 시차를 둔다. */
+/** 등장 순서. `data-anim` 칸을 --i 순서로 스크롤에 묶는다(lib/figure-motion). */
 export const step = (i: number) => ({ "--i": i }) as CSSProperties;
 
 export const ACCENT_INK = "text-[var(--callout-tip-ink)]";
@@ -29,14 +30,17 @@ export function Shell({
   caption,
   children,
   bare,
+  sig,
 }: {
   caption?: string;
   children: ReactNode;
   /** 판 없이(표처럼 자체 테두리가 있는 그림). */
   bare?: boolean;
+  /** 그림 내용의 지문 — 바뀌면 판을 새로 그려 모션을 다시 붙인다. */
+  sig: string;
 }) {
   return (
-    <figure className="my-9">
+    <MotionFigure key={sig} className="my-9">
       <div className={bare ? "" : "dg-panel rounded-2xl border border-border-token px-4 py-5 sm:px-7 sm:py-7"}>
         {children}
       </div>
@@ -45,13 +49,14 @@ export function Shell({
           {caption}
         </figcaption>
       ) : null}
-    </figure>
+    </MotionFigure>
   );
 }
 
 export function Badge({ m, n }: { m: Mark; n: number | string }) {
   return (
     <span
+      data-anim="pop"
       className={cx(
         "grid size-[22px] shrink-0 place-items-center rounded-full font-mono text-[11px] font-semibold tabular-nums",
         m.accent

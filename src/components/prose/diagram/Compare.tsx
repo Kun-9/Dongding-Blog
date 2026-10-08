@@ -25,7 +25,8 @@ export function Compare({ columns, rows }: { columns: [string, string]; rows: Co
           return (
             <li
               key={i}
-              className={cx("dg-step grid grid-cols-1 gap-x-4 gap-y-1 border-t border-border-token px-4 py-3 first:border-t-0 sm:items-center", COLS)}
+              data-anim="rise"
+              className={cx("grid grid-cols-1 gap-x-4 gap-y-1 border-t border-border-token px-4 py-3 first:border-t-0 sm:items-center", COLS)}
               style={step(i)}
             >
               <span className={cx("font-medium break-keep", r.muted ? "text-ink-muted" : "text-ink")}>{r.item}</span>
@@ -34,6 +35,7 @@ export function Compare({ columns, rows }: { columns: [string, string]; rows: Co
                 <span className="text-ink-muted break-keep">{r.before || "—"}</span>
                 <Chevron className={cx("size-[10px]", r.accent ? ACCENT_GLYPH : "text-ink-subtle")} />
                 <span
+                  data-anim={r.accent ? "pop" : undefined}
                   className={cx(
                     "justify-self-start break-keep",
                     r.accent
@@ -59,7 +61,7 @@ export function Compare({ columns, rows }: { columns: [string, string]; rows: Co
 function Cell({ c }: { c: MatrixCell }) {
   if (c.kind === "yes") {
     return (
-      <span className="inline-grid size-[22px] place-items-center rounded-full bg-[var(--callout-tip-bg)] text-[var(--callout-tip-glyph)] ring-1 ring-[var(--callout-tip-glyph)]/35">
+      <span data-anim="pop" className="inline-grid size-[22px] place-items-center rounded-full bg-[var(--callout-tip-bg)] text-[var(--callout-tip-glyph)] ring-1 ring-[var(--callout-tip-glyph)]/35">
         <Check />
         <span className="sr-only">지원</span>
       </span>
@@ -74,7 +76,7 @@ function Cell({ c }: { c: MatrixCell }) {
   }
   if (c.kind === "part") {
     return (
-      <span className="inline-grid size-[22px] place-items-center rounded-full bg-[var(--callout-warning-bg)] text-[var(--callout-warning-glyph)] ring-1 ring-[var(--callout-warning-glyph)]/35">
+      <span data-anim="pop" className="inline-grid size-[22px] place-items-center rounded-full bg-[var(--callout-warning-bg)] text-[var(--callout-warning-glyph)] ring-1 ring-[var(--callout-warning-glyph)]/35">
         <svg viewBox="0 0 16 16" aria-hidden className="size-3">
           <circle cx="8" cy="8" r="5.5" fill="none" stroke="currentColor" strokeWidth="1.6" />
           <path d="M8 2.5a5.5 5.5 0 0 1 0 11z" fill="currentColor" />
@@ -104,8 +106,9 @@ export function Matrix({ columns, rows }: { columns: string[]; rows: MatrixRow[]
           {rows.map((r, i) => (
             <tr
               key={i}
+              data-anim="rise"
               className={cx(
-                "dg-step border-t border-border-token first:border-t-0",
+                "border-t border-border-token first:border-t-0",
                 r.accent && "bg-[var(--callout-tip-bg)]/55",
                 r.muted && "text-ink-muted",
               )}

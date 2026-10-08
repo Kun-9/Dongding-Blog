@@ -13,8 +13,9 @@ function Nest({ items, i }: { items: Item[]; i: number }) {
   const plain = !it.accent && !it.muted;
   return (
     <div
+      data-anim="fade"
       className={cx(
-        "dg-step rounded-xl border px-3.5 pt-3 sm:px-4",
+        "rounded-xl border px-3.5 pt-3 sm:px-4",
         inner ? "pb-3.5" : "pb-3.5 sm:pb-4",
         tone(it),
         plain && i % 2 === 1 && "bg-surface-alt",
@@ -43,7 +44,8 @@ function Stack({ items }: { items: Item[] }) {
         {items.map((it, i) => (
           <li
             key={i}
-            className={cx("dg-step flex items-center gap-3 rounded-lg border px-3.5 py-2.5", tone(it))}
+            data-anim="rise"
+            className={cx("flex items-center gap-3 rounded-lg border px-3.5 py-2.5", tone(it))}
             style={step(i)}
           >
             <span className="w-5 shrink-0 font-mono text-[11px] tabular-nums text-ink-muted">{String(i + 1).padStart(2, "0")}</span>
@@ -105,7 +107,7 @@ function Branch({ nodes, depth, order }: { nodes: TreeNode[]; depth: number; ord
               n.muted && depth > 0 && "before:border-dashed after:border-dashed",
             )}
           >
-            <div className="dg-step flex flex-wrap items-center gap-x-2.5 gap-y-0.5 py-[3px]" style={step(order.get(n) ?? 0)}>
+            <div data-anim="rise" className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 py-[3px]" style={step(order.get(n) ?? 0)}>
               <span
                 className={cx(
                   "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-[5px] text-[13.5px] leading-[1.45]",

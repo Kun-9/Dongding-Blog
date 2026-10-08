@@ -2326,6 +2326,10 @@ function MarkdownCheatsheet() {
                 label="figure — fig-* 디자인 키트 HTML(그림 블록으로 안 될 때)"
               />
               <CheatsheetRow
+                syntax={'<div class="fig-box" data-anim="pop" style="--i: 2">\n<path data-anim="draw" data-loop="orbit" …/>'}
+                label="그림 모션(figure·SVG) — data-anim rise·fade·pop·draw·draw-back·grow·count·none / data-loop orbit·pulse / 순서 --i"
+              />
+              <CheatsheetRow
                 syntax={"> [!INFO] 제목\n> 본문 줄들\n> 계속"}
                 label="Callout — INFO / WARNING / TIP / NOTE"
               />

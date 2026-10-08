@@ -7,6 +7,7 @@ import { ACCENT_GLYPH, Badge, cx, step } from "./parts";
 function Dot({ p }: { p: TimelinePoint }) {
   return (
     <span
+      data-anim="pop"
       className={cx(
         "relative z-[1] block rounded-full",
         p.accent
@@ -29,8 +30,9 @@ export function Timeline({ points }: { points: TimelinePoint[] }) {
         return (
           <li
             key={i}
+            data-anim="rise"
             className={cx(
-              "dg-step relative grid grid-cols-[18px_1fr] gap-x-3.5 pb-5 last:pb-0",
+              "relative grid grid-cols-[18px_1fr] gap-x-3.5 pb-5 last:pb-0",
               wide && "sm:flex sm:min-w-0 sm:flex-1 sm:flex-col sm:items-center sm:px-2 sm:pb-0 sm:text-center",
             )}
             style={step(i)}
@@ -38,6 +40,8 @@ export function Timeline({ points }: { points: TimelinePoint[] }) {
             {next && (
               <span
                 aria-hidden
+                data-anim="draw"
+                style={step(i + 0.5)}
                 className={cx(
                   "absolute top-[20px] bottom-0 left-[8.5px] w-0 border-l-[1.5px]",
                   wide && "sm:top-[8.5px] sm:right-[calc(-50%+12px)] sm:bottom-auto sm:left-[calc(50%+12px)] sm:w-auto sm:border-t-[1.5px] sm:border-l-0",
@@ -80,6 +84,7 @@ function ArrowHead({ left, className }: { left: boolean; className: string }) {
     <svg
       viewBox="0 0 8 10"
       aria-hidden
+      data-anim="pop"
       className={cx("absolute top-1/2 size-[9px] -translate-y-1/2", left ? "-left-[1px] rotate-180" : "-right-[1px]", className)}
     >
       <path d="M0 0 8 5 0 10z" fill="currentColor" />
@@ -94,7 +99,7 @@ function Lanes({ actors, messages }: { actors: string[]; messages: Message[] }) 
     <div>
       <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${n}, minmax(0, 1fr))` }}>
         {actors.map((a, i) => (
-          <span key={i} className="dg-lift justify-self-center rounded-lg border border-border-token bg-surface px-3 py-1.5 text-center text-[13px] font-semibold break-keep text-ink">
+          <span key={i} data-anim="rise" style={step(-1)} className="dg-lift justify-self-center rounded-lg border border-border-token bg-surface px-3 py-1.5 text-center text-[13px] font-semibold break-keep text-ink">
             {a}
           </span>
         ))}
@@ -116,9 +121,10 @@ function Lanes({ actors, messages }: { actors: string[]; messages: Message[] }) 
           const width = center(hi) - left;
           const color = m.accent ? "text-[var(--callout-tip-glyph)]" : m.muted ? "text-ink-subtle" : "text-ink-muted";
           return (
-            <div key={k} className="dg-step relative h-[60px]" style={step(k)}>
+            <div key={k} data-anim="fade" className="relative h-[60px]" style={step(k)}>
               {self ? (
                 <span
+                  data-anim="pop"
                   className={cx(
                     "absolute top-1/2 z-[1] max-w-[46%] -translate-x-1/2 -translate-y-1/2 rounded-lg border px-2.5 py-1.5 text-center text-[12.5px] leading-[1.35] break-keep",
                     m.accent
@@ -144,6 +150,7 @@ function Lanes({ actors, messages }: { actors: string[]; messages: Message[] }) 
                   </span>
                   <span className={cx("absolute bottom-[14px] h-0", color)} style={{ left: `${left}%`, width: `${width}%` }}>
                     <span
+                      data-anim={m.to < m.from ? "draw-back" : "draw"}
                       className={cx(
                         "absolute inset-x-[3px] top-0 border-t-[1.5px] border-current",
                         m.reply && "border-dashed",
@@ -173,7 +180,7 @@ export function Sequence({ actors, messages }: { actors: string[]; messages: Mes
       {fold && (
         <ol className="flex flex-col gap-2 sm:hidden">
           {messages.map((m, k) => (
-            <li key={k} className="dg-step flex items-start gap-3" style={step(k)}>
+            <li key={k} data-anim="rise" className="flex items-start gap-3" style={step(k)}>
               <Badge m={m} n={k + 1} />
               <span className="min-w-0 text-[13.5px] leading-[1.5]">
                 <span className="font-semibold text-ink">{actors[m.from]}</span>

@@ -3,10 +3,10 @@
  * ```figure 면 디자인 키트 HTML(lib/html-figure.ts)로 그린다.
  *
  * 좌표 대신 HTML 로 그려서 글자가 넘치지 않고, 좁은 화면에서는 접히고,
- * 색은 블로그 테마 변수를 따라간다. 등장 애니메이션은 스크롤 타임라인을
- * 지원하는 브라우저에서만(`.dg-step`, globals.css) — 아니면 그냥 보인다.
+ * 색은 블로그 테마 변수를 따라간다. 칸마다 `data-anim` 을 달아 두면 판
+ * (Shell)이 스크롤에 맞춰 움직인다(lib/figure-motion). JS 가 없으면 그냥 보인다.
  *
- * 훅이 없어서 서버·클라이언트(스튜디오 미리보기) 어디서나 그려진다.
+ * 그림 자체에는 훅이 없어서 서버·클라이언트(스튜디오 미리보기) 어디서나 그려진다.
  */
 import type { Diagram as DiagramData } from "@/lib/diagram";
 import type { FigureHtml } from "@/lib/html-figure";
@@ -42,12 +42,19 @@ function Body({ d }: { d: DiagramData }) {
   }
 }
 
+/** 그림 내용의 짧은 지문. 내용을 통째로 넘기면 페이지 데이터에 한 번 더 실린다. */
+function sigOf(s: string): string {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return h.toString(36);
+}
+
 /** 자체 테두리가 있는 표 모양은 판 없이 둔다 — 상자 안의 상자가 된다. */
 const BARE = new Set<DiagramData["kind"]>(["compare", "matrix"]);
 
 export function Diagram({ diagram }: { diagram: DiagramData }) {
   return (
-    <Shell caption={diagram.caption} bare={BARE.has(diagram.kind)}>
+    <Shell caption={diagram.caption} bare={BARE.has(diagram.kind)} sig={sigOf(JSON.stringify(diagram))}>
       <Body d={diagram} />
     </Shell>
   );
@@ -56,7 +63,7 @@ export function Diagram({ diagram }: { diagram: DiagramData }) {
 /** ```figure — 이미 거른 HTML 이다(parseFigureHtml). */
 export function HtmlFigure({ figure }: { figure: FigureHtml }) {
   return (
-    <Shell caption={figure.caption}>
+    <Shell caption={figure.caption} sig={sigOf(figure.html)}>
       <div className="fig-html" dangerouslySetInnerHTML={{ __html: figure.html }} />
     </Shell>
   );

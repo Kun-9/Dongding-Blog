@@ -84,6 +84,7 @@ export const VISUAL_RULES = [
   "그림 하나에 생각 하나. 칸의 글자는 짧게(제목 몇 단어 + 짧은 설명). 문장은 본문이 한다",
   "강조(`*`)는 그림마다 지금 이야기하는 한두 곳만. 다 강조하면 아무것도 안 보인다",
   "그림 블록·figure 의 캡션은 첫 줄 `caption: …`, 이미지는 alt 자리에. 그림이 보여 주는 것을 40자 안팎 명사구로",
+  "모션은 블로그가 정한다. 그림 블록은 아무것도 안 써도 스크롤에 맞춰 조립되고, figure 는 키트 기본 모션이 있다. figure·SVG 에서 바꾸거나 더할 때만 `data-anim`·`data-loop` 을 의미가 있는 곳에 단다. 모션이 없어도 읽히게 그린다",
   "캡처가 필요한 자리는 그 자리에 `![캡션](/posts/<slug>/todo-<이름>.png)` 를 넣는다. 본문에 '캡처 필요' 자리로 보이고, 남아 있으면 발행이 막힌다. 같은 경로로 실제 캡처를 올리면 채워진다",
 ] as const;
 
@@ -103,6 +104,7 @@ export const SVG_STYLE = `- 캔버스: \`viewBox="0 0 720 H"\` (H 는 내용만�
 - 종류: 흐름(왼→오, 번호 배지), 전/후 비교(두 열, 바뀐 칸만 강조색), 버전 타임라인(가로선 위 점), 겹친 상자(계층)
 - 그림 하나에 생각 하나. 설명은 캡션과 본문이 한다 — 그림 안에 문장을 쓰지 않는다
 - \`<script>\`, \`on*\` 속성, \`<foreignObject>\`, 외부 링크는 넣지 않는다(올릴 때 거절된다)
+- 모션: 표기한 것만 움직인다. 묶음 \`<g data-anim="rise">\`, 선 \`data-anim="draw"\`, 점 \`pop\`, 큰 숫자 \`<text>\`(tspan 없이) \`count\`. 순서는 \`style="--i: 1"\`(없으면 문서 순서). 되풀이 경로(점선)는 \`data-loop="orbit"\`, 지금 이야기하는 도형 하나는 \`data-loop="pulse"\`. \`transform\` 속성이 있는 요소는 rise·pop 대신 나타나기만 하므로 움직일 묶음은 좌표로 놓는다
 
 \`\`\`svg
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 200" font-family="inherit">
@@ -111,11 +113,15 @@ export const SVG_STYLE = `- 캔버스: \`viewBox="0 0 720 H"\` (H 는 내용만�
       <path d="M0,0 L10,5 L0,10 z" fill="var(--ink-muted, #5f5f5d)"/>
     </marker>
   </defs>
-  <rect x="24" y="70" width="180" height="60" rx="10" fill="var(--surface-alt, #f1ede2)" stroke="var(--border-strong, rgba(28,28,28,.4))" stroke-width="1.5"/>
-  <text x="114" y="105" text-anchor="middle" font-size="14" font-weight="500" fill="var(--ink, #1c1c1c)">tool.call</text>
-  <line x1="204" y1="100" x2="270" y2="100" stroke="var(--ink-muted, #5f5f5d)" stroke-width="1.5" marker-end="url(#arrow)"/>
-  <rect x="272" y="70" width="180" height="60" rx="10" fill="var(--callout-tip-bg, #ecf1e8)" stroke="var(--callout-tip-glyph, #5d7a46)" stroke-width="1.5"/>
-  <text x="362" y="105" text-anchor="middle" font-size="14" font-weight="600" fill="var(--ink, #1c1c1c)">사용자 mod</text>
+  <g data-anim="rise">
+    <rect x="24" y="70" width="180" height="60" rx="10" fill="var(--surface-alt, #f1ede2)" stroke="var(--border-strong, rgba(28,28,28,.4))" stroke-width="1.5"/>
+    <text x="114" y="105" text-anchor="middle" font-size="14" font-weight="500" fill="var(--ink, #1c1c1c)">tool.call</text>
+  </g>
+  <line data-anim="draw" x1="204" y1="100" x2="270" y2="100" stroke="var(--ink-muted, #5f5f5d)" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <g data-anim="rise">
+    <rect data-loop="pulse" x="272" y="70" width="180" height="60" rx="10" fill="var(--callout-tip-bg, #ecf1e8)" stroke="var(--callout-tip-glyph, #5d7a46)" stroke-width="1.5"/>
+    <text x="362" y="105" text-anchor="middle" font-size="14" font-weight="600" fill="var(--ink, #1c1c1c)">사용자 mod</text>
+  </g>
 </svg>
 \`\`\``;
 
@@ -175,6 +181,7 @@ export const FIGURE_KIT = String.raw`그림 블록으로 안 되는 구성(두 �
 - 상자: ${"`fig-box`"} + ${"`fig-accent`"}(강조) ${"`fig-muted`"}(점선) ${"`fig-info`"} ${"`fig-warn`"}
 - 글자: ${"`fig-label`"}(작은 머리말) ${"`fig-title`"} ${"`fig-sub`"} ${"`fig-big`"}(큰 숫자) ${"`fig-mono`"}
 - 조각: ${"`fig-arrow`"}(→, ${"`fig-down`"} 이면 ↓) ${"`fig-num`"}(번호) ${"`fig-chip`"} ${"`fig-dot`"} ${"`fig-ok`"} ${"`fig-no`"} ${"`fig-part`"} ${"`fig-bar`"}(style ${"`--v: 70%`"})
+- 모션: 키트가 기본을 갖는다(상자·행 올라오기, 화살표 그려지기, 막대 자라기, 배지·체크 튀어나오기, ${"`fig-big`"} 숫자 세기, 강조 상자 숨쉬기). 바꿀 때만 ${"`data-anim=\"rise|fade|pop|draw|draw-back|grow|count|none\"`"}, 반복은 ${"`data-loop=\"pulse|orbit\"`"}, 순서는 style ${"`--i: 2`"}, 세기 시작 값은 ${"`data-from=\"14\"`"}. 다른 값은 지워진다
 
 ${"````"}
 ${"```"}figure

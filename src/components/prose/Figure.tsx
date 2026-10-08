@@ -19,6 +19,7 @@ import {
   type ImageSize,
 } from "@/lib/image-blocks";
 import { prepareSvg, scopeIds } from "@/lib/svg-theme";
+import { useFigureMotion } from "./diagram/Motion";
 
 export type { ImageItem, ImageSize };
 
@@ -136,11 +137,14 @@ export function Figure({
 
 /**
  * SVG 는 본문에 직접 그린다 — 그래야 그림이 블로그 테마 색 변수를 쓴다.
- * 받아오기 전이나 처리에 실패하면 <img> 로 보여 준다.
+ * 받아오기 전이나 처리에 실패하면 <img> 로 보여 준다. 안의 `data-anim`·
+ * `data-loop` 은 그림 블록과 같은 모션으로 움직인다.
  */
 function InlineSvg({ src, alt }: { src: string; alt: string }) {
   const [markup, setMarkup] = useState<string | null>(null);
   const prefix = `f${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
+  const ref = useRef<HTMLSpanElement>(null);
+  useFigureMotion(ref, markup);
 
   useEffect(() => {
     let alive = true;
@@ -159,6 +163,7 @@ function InlineSvg({ src, alt }: { src: string; alt: string }) {
   if (!markup) return <ImgSlot src={src} alt={alt} />;
   return (
     <span
+      ref={ref}
       role="img"
       aria-label={alt}
       className="block w-full [&>svg]:block [&>svg]:h-auto [&>svg]:w-full"

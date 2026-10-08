@@ -8,6 +8,7 @@
  * - 태그는 글 구조용만(div·span·ul·table…). 링크·이미지·스크립트·SVG 없음
  * - class 는 `fig-` 로 시작하는 것만
  * - style 은 배치 속성(grid·flex·gap·폭·정렬)만. 색·글꼴·위치는 지운다
+ * - 모션은 `data-anim`·`data-loop` 의 정해진 값과 숫자 `data-from` 만
  *
  * 받은 문자열을 거르는 대신 토큰을 읽어 허용된 것만 새로 쓴다. 지운 것은
  * `dropped` 로 돌려줘 점검기가 알린다.
@@ -35,6 +36,14 @@ const STYLE_PROPS = new Set([
   "text-align", "width", "min-width", "max-width", "height", "min-height",
   "margin-top", "margin-bottom", "margin-inline", "padding", "--v", "--i",
 ]);
+/**
+ * 그림 모션 표기(lib/figure-motion). `data-anim` 은 스크롤에 맞춘 등장,
+ * `data-loop` 는 그림이 화면에 있을 때만 도는 반복이다. 그림 블록·figure·SVG 공통.
+ */
+export const ANIMS = ["rise", "fade", "pop", "draw", "draw-back", "grow", "count", "none"] as const;
+export const LOOPS = ["orbit", "pulse"] as const;
+export type Anim = (typeof ANIMS)[number];
+
 const STYLE_VALUE = /^[a-zA-Z0-9\s.,%()#+\-*/]{1,80}$/;
 const STYLE_BANNED = /url|expression|image|attr|javascript/i;
 
@@ -91,12 +100,20 @@ function cleanAttrs(tag: string, source: string, dropped: Set<string>): string {
       out.push(`scope="${value}"`);
     } else if ((name === "title" || name === "aria-label") && value.length <= 120) {
       out.push(`${name}="${escAttr(value)}"`);
+    } else if (
+      (name === "data-anim" && (ANIMS as readonly string[]).includes(value)) ||
+      (name === "data-loop" && (LOOPS as readonly string[]).includes(value))
+    ) {
+      out.push(`${name}="${value}"`);
+    } else if (name === "data-from" && /^-?\d+(\.\d+)?$/.test(value)) {
+      out.push(`data-from="${value}"`);
     } else if (name === "aria-hidden" && value === "true") {
       out.push(`aria-hidden="true"`);
     } else if (name === "open" && tag === "details") {
       out.push("open");
     } else {
-      dropped.add(`${name}=`);
+      // 모션 표기는 값이 틀린 것이라 값까지 보여 준다.
+      dropped.add(name === "data-anim" || name === "data-loop" ? `${name}="${value}"` : `${name}=`);
     }
   }
   return out.length ? ` ${out.join(" ")}` : "";
