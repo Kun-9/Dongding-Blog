@@ -914,8 +914,9 @@ function TopicItem({
         <div className="col-start-2 row-start-2 line-clamp-2 min-w-0 text-[13px] leading-[1.5] text-ink-muted md:line-clamp-1">
           {sub}
         </div>
-        {/* 좁은 화면에선 셋째 줄에 한 줄로, md 부터는 각자 판의 칸(3~6열)에 선다. */}
-        <div className="col-start-2 row-start-3 flex flex-wrap items-center gap-2.5 pt-1.5 md:contents">
+        {/* 좁은 화면에선 셋째 줄에 한 줄로, md 부터는 각자 판의 칸(3~6열)에 선다.
+            좁은 화면의 맡기기 메뉴는 이 줄 왼쪽 끝에 붙는다. 버튼에 붙이면 버튼이 줄 오른쪽에 올 때 화면 밖으로 나간다. */}
+        <div className="relative col-start-2 row-start-3 flex flex-wrap items-center gap-2.5 pt-1.5 md:contents">
           <span className={`flex ${SIDE} md:col-start-3`}>
             <MiniProgress topic={topic} />
           </span>
@@ -1344,7 +1345,7 @@ function AiLaunch({
     "transition-colors hover:bg-[color-mix(in_oklab,var(--callout-tip-glyph)_14%,transparent)] disabled:opacity-40";
   const verb = local ? (retry ? "다시 예약" : "예약") : retry ? "다시 맡기기" : "맡기기";
   return (
-    <div className="relative inline-flex items-stretch rounded-full border border-[color-mix(in_oklab,var(--callout-tip-glyph)_45%,var(--border))] bg-[color-mix(in_oklab,var(--callout-tip-bg)_70%,var(--surface))] text-[var(--callout-tip-ink)] md:flex-1">
+    <div className="inline-flex items-stretch rounded-full border border-[color-mix(in_oklab,var(--callout-tip-glyph)_45%,var(--border))] bg-[color-mix(in_oklab,var(--callout-tip-bg)_70%,var(--surface))] text-[var(--callout-tip-ink)] md:flex-1">
       <button
         type="button"
         disabled={busy}
