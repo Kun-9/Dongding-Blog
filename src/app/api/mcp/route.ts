@@ -245,7 +245,7 @@ const handler = createMcpHandler(
         description:
           "쓸 수 있는 카테고리 id 와 시리즈 id 를 돌려준다. " +
           "글을 만들거나 카테고리·시리즈를 바꾸기 전에 반드시 먼저 부를 것 — " +
-          "표시명(예: 'AI')과 id(예: 'cat-new-2')가 다르고, 없는 id 는 DB 가 거부한다.",
+          "표시명(예: '알고리즘 풀이')과 id(예: 'algorithm-solve')가 다르고, 없는 id 는 DB 가 거부한다.",
         inputSchema: z.object({}),
       },
       async () => {
