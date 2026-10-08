@@ -109,7 +109,7 @@ function Lanes({ actors, messages }: { actors: string[]; messages: Message[] }) 
           <span
             key={i}
             aria-hidden
-            className="absolute top-0 bottom-0 w-0 border-l-[1.5px] border-dashed border-border-strong/70"
+            className="absolute top-0 bottom-0 w-0 border-l-[1.5px] border-dashed border-ink-subtle"
             style={{ left: `${center(i)}%` }}
           />
         ))}
@@ -131,7 +131,8 @@ function Lanes({ actors, messages }: { actors: string[]; messages: Message[] }) 
                       ? "border-[var(--callout-tip-glyph)] bg-[var(--callout-tip-bg)] font-semibold text-[var(--callout-tip-ink)]"
                       : "border-border-token bg-surface text-ink-soft",
                   )}
-                  style={{ left: `${center(m.from)}%` }}
+                  // 상자는 최대 46% 폭이라 가운데를 23~77% 안에 두면 판 밖으로 나가지 않는다(양 끝 참여자).
+                  style={{ left: `clamp(23%, ${center(m.from)}%, 77%)` }}
                 >
                   <span className="mr-1.5 font-mono text-[10.5px] text-ink-muted">{k + 1}</span>
                   {m.label}
