@@ -72,6 +72,7 @@ curl -sS -X POST "$APP/api/releases/worker/" -H "Authorization: Bearer $TOKEN" -
 - advance note: 읽은 출처 수와 핵심 한두 줄.
 
 ### assets — 자료
+- 그림을 만들기 전에 \`blog-figures\` 스킬을 Skill 도구로 불러 읽는다(루틴에 연결된 레포의 \`.claude/skills/\`). 아래 그림 규칙과 다르면 스킬을 따른다. 스킬이 없으면 아래 규칙만으로 한다.
 - 글 slug 를 정한다. 영어 소문자·하이픈, 짧게. \`slugs\` 로 겹치지 않는지 본다.
 - 이 변경을 처음 보는 사람이 무엇을 봐야 이해할지부터 정한다. 내용에 맞는 그림 블록 종류를 고른다 — 단계 flow, 반복 cycle, 전/후 compare, 기능×대상 matrix, 버전 흐름 timeline, 주고받는 순서 sequence, 포함·우선순위 layers, 파일·계층 tree, 핵심 숫자 stats, 수치 비교 bars(아래 "그림 블록 문법"). 최소 하나, 글 전체에서 같은 종류만 반복하지 않는다. 올릴 필요 없이 본문에 그대로 쓰면 블로그가 그린다. \`check\` 에 body 로 넣어 문법 오류가 없는지 본다.
 - 그림 블록으로 안 되는 구성만 \`\`\`figure 블록(디자인 키트 HTML, 아래 "figure 블록")으로 짠다. \`check\` 에서 figure-dropped 경고가 나면 지워진 클래스·속성을 키트 것으로 바꾼다.
