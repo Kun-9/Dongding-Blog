@@ -123,6 +123,7 @@ export async function POST(req: Request) {
             angle: t.angle,
             stage: t.stage,
             droppedReason: t.droppedReason,
+            discardedAt: t.discardedAt,
             candidateIds: t.candidates.map((c) => c.id),
           })),
         });

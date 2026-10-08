@@ -5,7 +5,6 @@ import { API } from "@/lib/api-routes";
 import { Collapse } from "@/components/releases/Collapse";
 import { useMounted } from "@/lib/hooks";
 import { renderMarkdown } from "@/lib/markdown";
-import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Field, Modal } from "@/components/ui/Modal";
 import { ChoiceMenu } from "@/components/ui/Select";
 import type { QueueRow } from "@/lib/release-queue";
@@ -18,15 +17,6 @@ import {
   type StageKey,
 } from "@/lib/release-stages";
 import { AVOID, CLARITY_RULES, OUTLINE, REQUIRED_PARTS, VOICE_RULES } from "@/lib/voice";
-
-/** 단계마다 근거 칸에 무엇을 적을지. */
-const NOTE_HINT: Partial<Record<StageKey, string>> = {
-  sources: "읽은 문서·PR·이슈 링크, 직접 실행해 본 결과, 릴리스 노트에 없던 맥락",
-  assets: "만든 자료 목록. 예: 버전별 동작 비교 표, 설정 화면 스크린샷 2장, 흐름 그림 1개",
-  draft: "초안에서 잡은 구성, 남은 빈칸",
-  review: "점검하면서 고친 것. 문체·구성 검사는 서버가 본문으로 직접 돌립니다",
-  published: "발행 메모",
-};
 
 /**
  * 단계 색 — 새 색을 만들지 않고 콜아웃 팔레트를 빌린다. 다크 모드 대응이
@@ -99,11 +89,13 @@ interface Props {
   candidates: QueueRow[];
   /** 주제에 들어간 글감은 서버가 new → queued 로 올린다. 목록도 맞춘다. */
   onQueued: (ids: string[]) => void;
+  /** 주제를 버리면 서버가 혼자 묶였던 쓸래 글감을 무시로 옮긴다. 목록도 맞춘다. */
+  onSkipped: (ids: string[], note: string) => void;
 }
 
-export function TopicBoard({ topics, onTopicsChange, candidates, onQueued }: Props) {
+export function TopicBoard({ topics, onTopicsChange, candidates, onQueued, onSkipped }: Props) {
   const [creating, setCreating] = useState(false);
-  /** 펼쳐 둔 접힘 구역 — 발행함, 접은 주제. */
+  /** 펼쳐 둔 접힘 구역 — 발행함, 접은 주제, 버린 주제. */
   const [unfolded, setUnfolded] = useState<Set<string>>(new Set());
 
   const active = topics.filter((t) => t.droppedReason === null);
@@ -127,20 +119,28 @@ export function TopicBoard({ topics, onTopicsChange, candidates, onQueued }: Pro
       hint: "",
       color: "var(--ink-muted)",
       fold: true,
-      items: topics.filter((t) => t.droppedReason !== null),
+      items: topics.filter((t) => t.droppedReason !== null && !t.discardedAt),
+    },
+    {
+      key: "discarded",
+      label: "버린 주제",
+      hint: "",
+      color: "var(--ink-muted)",
+      fold: true,
+      items: topics.filter((t) => t.discardedAt),
     },
   ].filter((g) => g.items.length > 0);
 
-  function replace(topic: TopicRow) {
+  function replace(topic: TopicRow, skipped?: string[]) {
     onTopicsChange(
       topics.some((t) => t.id === topic.id)
         ? topics.map((t) => (t.id === topic.id ? topic : t))
         : [...topics, topic],
     );
     onQueued(topic.candidates.map((c) => c.id));
+    // 메모는 서버(discardTopic)가 붙인 것과 같은 꼴.
+    if (skipped?.length) onSkipped(skipped, `버린 주제 '${topic.title}': ${topic.droppedReason}`);
   }
-
-  const remove = (id: number) => onTopicsChange(topics.filter((x) => x.id !== id));
 
   const toggleFold = (key: string) =>
     setUnfolded((prev) => {
@@ -195,7 +195,6 @@ export function TopicBoard({ topics, onTopicsChange, candidates, onQueued }: Pro
           last={i === g.items.length - 1}
           candidates={candidates}
           onChange={replace}
-          onDelete={() => remove(t.id)}
         />,
       ),
     );
@@ -268,10 +267,10 @@ export function TopicBoard({ topics, onTopicsChange, candidates, onQueued }: Pro
   );
 }
 
-type CallResult = { topic: TopicRow } | { ok: true } | { error: string };
+type CallResult = { topic: TopicRow; skipped?: string[] } | { ok: true } | { error: string };
 
 async function call(
-  method: "POST" | "PATCH" | "DELETE",
+  method: "POST" | "PATCH",
   body: unknown,
 ): Promise<CallResult> {
   try {
@@ -497,6 +496,7 @@ const monthDay = (iso: string) => iso.slice(5, 10).replace("-", ".");
 /** 상태는 이 칩 하나로만 말한다. */
 function chipOf(t: TopicRow): { label: string; tone: ChipTone } {
   const next = nextStage(t.stage);
+  if (t.discardedAt) return { label: `${monthDay(t.discardedAt)} 버림`, tone: "muted" };
   if (t.droppedReason !== null) return { label: "접음", tone: "muted" };
   if (t.ai.status === "running") return { label: t.ai.prompt ? "고치는 중" : `${next?.label ?? ""} 쓰는 중`, tone: "tip" };
   if (t.ai.status === "queued") {
@@ -575,25 +575,22 @@ function TopicItem({
   last,
   candidates,
   onChange,
-  onDelete,
 }: {
   topic: TopicRow;
   /** 구역 상자의 첫·끝 행 — 테두리 위·아래와 모서리를 그린다. */
   first: boolean;
   last: boolean;
   candidates: QueueRow[];
-  onChange: (t: TopicRow) => void;
-  onDelete: () => void;
+  onChange: (t: TopicRow, skipped?: string[]) => void;
 }) {
   const [open, setOpen] = useState(false);
   /** 펼친 칸 안에서는 하나만 연다. */
   const [panel, setPanel] = useState<null | "notes" | "history" | "ai">(null);
   const [mode, setMode] = useState<"view" | "edit">("view");
-  /** 열린 모달. advance = 직접 완료, publish = 발행, drop = 접기, revise = AI 고치기. */
-  const [dialog, setDialog] = useState<null | "advance" | "publish" | "drop" | "revise">(null);
+  /** 열린 모달. publish = 발행, drop = 접기, discard = 버리기, revise = AI 고치기. */
+  const [dialog, setDialog] = useState<null | "publish" | "drop" | "discard" | "revise">(null);
   const [note, setNote] = useState("");
   const [prompt, setPrompt] = useState("");
-  const [slug, setSlug] = useState(topic.postSlug ?? "");
   const [reason, setReason] = useState("");
   const [until, setUntil] = useState<AiUntil>("review");
   /** 예약으로 맡길지. 고르기 전에는 지난번 방식(폴링으로 바뀌어도 따라간다). */
@@ -601,16 +598,15 @@ function TopicItem({
   const local = pickLocal ?? topic.ai.local;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const next = nextStage(topic.stage);
   const paused = topic.droppedReason !== null;
+  /** 버린 주제 — 기록으로만 남는다. 누를 것이 없다. */
+  const discarded = topic.discardedAt !== null;
   const { status, message, log, todo } = topic.ai;
   const running = status === "running";
-  const aiBusy = running || status === "queued";
   const publishing = next?.key === "published";
   const history = STAGES.filter((s) => topic.checks[s.key]);
-  const step = stageIndex(topic.stage) + 1;
   const chip = chipOf(topic);
   const urls = new Map(candidates.map((x) => [x.id, x.url]));
   // 맡길 수 있는 단계. 고른 단계가 이미 지났으면 맨 끝으로.
@@ -627,19 +623,10 @@ function TopicItem({
       setError(res.error);
       return false;
     }
-    if ("topic" in res) onChange(res.topic);
+    if ("topic" in res) onChange(res.topic, res.skipped);
     setMode("view");
     setDialog(null);
     return true;
-  }
-
-  async function remove() {
-    setConfirmDelete(false);
-    setBusy(true);
-    const res = await call("DELETE", { id: topic.id });
-    setBusy(false);
-    if ("error" in res) setError(res.error);
-    else onDelete();
   }
 
   const flip = (p: NonNullable<typeof panel>) => setPanel((v) => (v === p ? null : p));
@@ -670,7 +657,9 @@ function TopicItem({
   // 지금 누를 것 하나. 알약 버튼(맡기기·발행)은 칸 폭까지 늘려 양 끝을 맞춘다.
   let action: ReactNode = null;
   let fill = false;
-  if (paused) {
+  if (discarded) {
+    action = null;
+  } else if (paused) {
     action = (
       <Btn disabled={busy} onClick={() => patch({ action: "drop", reason: null })}>
         다시 펼치기
@@ -967,106 +956,114 @@ function TopicItem({
             </div>
           )}
 
-          {/* 보조 동작 — 조용하게 */}
-          <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1">
-            {topic.postSlug && next && (
-              <a
-                href={`/preview/${topic.postSlug}`}
-                target="_blank"
-                rel="noreferrer"
-                title="발행 전 미리보기"
-                className="mr-auto font-mono text-[11.5px] text-ink-muted no-underline hover:text-ink"
-              >
-                /{topic.postSlug}
-              </a>
-            )}
-            <div className="ml-auto flex flex-wrap items-center gap-x-3 gap-y-1">
-              {!paused && stageIndex(topic.stage) > 0 && (
-                <Quiet disabled={busy} onClick={() => patch({ action: "revert" })}>
-                  ↶ {topic.stage === "published" ? "발행 취소(draft로)" : `${stageLabel(topic.stage)} 취소`}
-                </Quiet>
-              )}
-              {!paused && next && !publishing && !aiBusy && (
-                <Quiet
-                  onClick={() => {
-                    setError(null);
-                    setDialog("advance");
-                  }}
-                  title="AI 없이 이 단계를 직접 했을 때, 근거를 남기고 다음 단계로 넘깁니다"
+          {/* 보조 동작 — 조용하게. 버린 주제는 기록이라 누를 것이 없다. 단계는
+              AI(또는 Claude 세션의 MCP)가 근거와 함께 넘기므로 여기서 손으로
+              넘기거나 되돌리지 않는다. 발행 취소만 예외 — 공개 글을 내리면서
+              단계도 같이 맞추는 길이 여기뿐이다. */}
+          {!discarded && (
+            <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1">
+              {topic.postSlug && next && (
+                <a
+                  href={`/preview/${topic.postSlug}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  title="발행 전 미리보기"
+                  className="mr-auto font-mono text-[11.5px] text-ink-muted no-underline hover:text-ink"
                 >
-                  {next.label} 직접 완료
-                </Quiet>
+                  /{topic.postSlug}
+                </a>
               )}
-              <Quiet onClick={() => setMode("edit")}>편집</Quiet>
-              {!paused && next && (
-                <Quiet
-                  onClick={() => {
-                    setError(null);
-                    setDialog("drop");
-                  }}
-                >
-                  접기
-                </Quiet>
-              )}
-              <Quiet danger disabled={busy} onClick={() => setConfirmDelete(true)}>
-                삭제
-              </Quiet>
+              <div className="-mr-2 ml-auto flex flex-wrap items-center [&>button]:rounded-md [&>button]:px-2 [&>button]:py-1 [&>button:hover]:bg-hover">
+                {!next && (
+                  <Quiet disabled={busy} onClick={() => patch({ action: "revert" })}>
+                    발행 취소(draft로)
+                  </Quiet>
+                )}
+                <Quiet onClick={() => setMode("edit")}>편집</Quiet>
+                {!paused && next && (
+                  <Quiet
+                    onClick={() => {
+                      setError(null);
+                      setDialog("drop");
+                    }}
+                  >
+                    접기
+                  </Quiet>
+                )}
+                {next && !running && (
+                  <>
+                    <span aria-hidden className="mx-1.5 h-4 w-px bg-border-strong" />
+                    <Quiet
+                      danger
+                      onClick={() => {
+                        setError(null);
+                        setDialog("discard");
+                      }}
+                    >
+                      버리기
+                    </Quiet>
+                  </>
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </Collapse>
 
       {/* 대화창은 접히는 칸 밖에 둔다 — 닫힌 칸은 inert 라 그 안에서는 뜨지 않는다. */}
-      <ConfirmDialog
-        open={confirmDelete}
+      <Modal
+        open={dialog === "discard"}
         tone="danger"
-        title={`'${topic.title}' 주제를 지울까요?`}
-        body="진행 기록이 함께 사라집니다. 글감은 남습니다. 멈추려는 것이라면 접기로 두세요."
-        confirmLabel="지우기"
-        onConfirm={remove}
-        onCancel={() => setConfirmDelete(false)}
-      />
-      {next && (
-        <Modal
-          open={dialog === "advance"}
-          eyebrow={`${step}/${STAGES.length} · ${next.label}`}
-          title={`${next.label} 단계를 직접 끝냈나요?`}
-          description={
-            <>
-              AI 없이 이 단계를 직접 했을 때 씁니다. 남긴 근거는 진행 기록에 쌓이고 다음 단계로 넘어갑니다.
-              <span className="mt-1 block text-[12.5px] text-ink-muted">할 일: {next.todo}</span>
-            </>
-          }
-          confirmLabel={`${next.label} 완료`}
-          confirmDisabled={!note.trim() || (next.key === "draft" && !slug.trim())}
-          busy={busy}
-          error={dialog === "advance" ? error : null}
-          onClose={() => setDialog(null)}
-          onConfirm={() =>
-            patch({ action: "advance", note: note.trim(), postSlug: slug.trim() || null }).then((ok) => ok && setNote(""))
-          }
-        >
-          <Field label="근거">
-            <textarea
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              rows={4}
-              placeholder={NOTE_HINT[next.key]}
-              className={field}
-            />
-          </Field>
-          {next.key === "draft" && (
-            <Field label="글 slug" hint="영어 소문자·하이픈">
-              <input
-                value={slug}
-                onChange={(e) => setSlug(e.target.value)}
-                placeholder="claude-code-auto-mode"
-                className={`${field} font-mono text-[13px]`}
-              />
-            </Field>
-          )}
-        </Modal>
-      )}
+        eyebrow="버리기"
+        title={`'${topic.title}' 주제를 버릴까요?`}
+        description="되돌릴 수 없습니다. 잠시 멈추려는 것이라면 접기를 쓰세요."
+        confirmLabel="버리기"
+        confirmDisabled={!reason.trim()}
+        busy={busy}
+        error={dialog === "discard" ? error : null}
+        onClose={() => setDialog(null)}
+        onConfirm={() => patch({ action: "discard", reason: reason.trim() }).then((ok) => ok && setReason(""))}
+      >
+        <div className="grid gap-2.5 sm:grid-cols-2">
+          <div className="rounded-lg bg-[color-mix(in_srgb,var(--danger)_10%,var(--surface))] px-3 py-2.5">
+            <div className="mb-1 font-sans text-[11.5px] font-bold text-danger">지워지는 것</div>
+            <ul className="m-0 list-disc space-y-0.5 pl-4 text-[12.5px] leading-[1.55] text-ink-soft">
+              {topic.postSlug && (
+                <li>
+                  초안 글과 이미지 <code className="font-mono text-[11.5px]">/{topic.postSlug}</code>
+                </li>
+              )}
+              {topic.notes && <li>작업 노트 {topic.notes.length.toLocaleString()}자</li>}
+              {log.length > 0 && <li>AI 기록 {log.length}줄</li>}
+              {!topic.postSlug && !topic.notes && log.length === 0 && <li>지울 자료가 없습니다</li>}
+            </ul>
+          </div>
+          <div className="rounded-lg bg-surface-alt px-3 py-2.5">
+            <div className="mb-1 font-sans text-[11.5px] font-bold text-ink-soft">남는 것</div>
+            <ul className="m-0 list-disc space-y-0.5 pl-4 text-[12.5px] leading-[1.55] text-ink-soft">
+              <li>제목과 한 줄 설명</li>
+              {history.length > 0 && <li>진행 기록 {history.length}단계</li>}
+              <li>버린 이유와 날짜</li>
+            </ul>
+          </div>
+        </div>
+        {topic.candidates.length > 0 && (
+          <p className="m-0 text-[12.5px] leading-[1.6] text-ink-muted">
+            묶인 글감({topic.candidates.map((c) => c.tag).join(", ")}) 중 쓸래 상태인 것은 무시로 옮기고 이유를 메모로
+            붙입니다. 다른 주제에도 묶인 글감은 그대로 둡니다.
+          </p>
+        )}
+        <Field label="버리는 이유">
+          <textarea
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            rows={2}
+            maxLength={300}
+            placeholder="예: 공식 블로그에 같은 내용의 글이 먼저 나왔다"
+            className={field}
+          />
+        </Field>
+      </Modal>
       <Modal
         open={dialog === "publish"}
         tone="accent"
@@ -1436,7 +1433,7 @@ function Quiet({
       type="button"
       {...props}
       className={`font-sans text-[12px] text-ink-muted transition-colors disabled:opacity-40 ${
-        danger ? "hover:text-danger" : "hover:text-ink"
+        danger ? "text-danger hover:opacity-80" : "hover:text-ink"
       }`}
     />
   );

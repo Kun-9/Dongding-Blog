@@ -421,6 +421,7 @@ export type Database = {
           angle: string | null
           checks: Json
           created_at: string
+          discarded_at: string | null
           dropped_reason: string | null
           id: number
           post_slug: string | null
@@ -441,6 +442,7 @@ export type Database = {
           angle?: string | null
           checks?: Json
           created_at?: string
+          discarded_at?: string | null
           dropped_reason?: string | null
           id?: never
           post_slug?: string | null
@@ -461,6 +463,7 @@ export type Database = {
           angle?: string | null
           checks?: Json
           created_at?: string
+          discarded_at?: string | null
           dropped_reason?: string | null
           id?: never
           post_slug?: string | null

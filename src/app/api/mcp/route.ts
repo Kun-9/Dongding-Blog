@@ -37,6 +37,7 @@ import {
   reportAi,
   saveNotes,
   dropTopic,
+  slugDiscarded,
   editTopic,
   getTopics,
   revertTopic,
@@ -289,6 +290,9 @@ const handler = createMcpHandler(
         if (await postExists(args.slug)) {
           return fail(`'${args.slug}' 는 이미 있는 slug 입니다.`);
         }
+        if (await slugDiscarded(args.slug)) {
+          return fail(`'${args.slug}' 는 버린 릴리스 주제의 slug 입니다. 작업을 멈출 것.`);
+        }
 
         const { error } = await dbAdmin()
           .from("posts")
@@ -452,7 +456,7 @@ const handler = createMcpHandler(
           `단계 순서: ${STAGES.map((s) => `${s.key}(${s.label})`).join(" → ")}. ` +
           "릴리스 글을 쓰기 전에 먼저 불러 어디까지 진행됐는지 확인할 것. 글감 본문은 주지 않는다.",
         inputSchema: z.object({
-          includeDropped: z.boolean().optional().describe("접은 주제도 포함"),
+          includeDropped: z.boolean().optional().describe("접거나 버린 주제도 포함. 버린 주제는 discardedAt 이 있다"),
         }),
       },
       async ({ includeDropped }) => {
@@ -567,6 +571,7 @@ const handler = createMcpHandler(
       },
       async ({ slug, name, svg, base64 }) => {
         if (!svg && !base64) return fail("svg 나 base64 중 하나는 있어야 합니다.");
+        if (await slugDiscarded(slug)) return fail(`'${slug}' 는 버린 릴리스 주제의 slug 입니다. 작업을 멈출 것.`);
         const ext = name.split(".").pop()!;
         const type =
           ext === "svg" ? "image/svg+xml" : ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "image/jpeg";

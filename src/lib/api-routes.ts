@@ -38,7 +38,7 @@ export const API = {
   releases: "/api/releases/",
   releaseSources: "/api/releases/sources/",
   releaseCollect: "/api/releases/collect/",
-  /** 글 주제 — 만들기(POST), 단계 이동·편집(PATCH), 삭제(DELETE). */
+  /** 글 주제 — 만들기(POST), 단계 이동·편집·접기·버리기(PATCH). */
   releaseTopics: "/api/releases/topics/",
 
   stats: {

@@ -60,12 +60,13 @@ function withNext(t: TopicRow) {
   return { ...t, next: next ? { stage: next.key, label: next.label, todo: next.todo } : null };
 }
 
-/** 실행기가 손댈 수 있는 글인가 — 릴리스 주제에 묶인 draft 만. */
+/** 실행기가 손댈 수 있는 글인가 — 진행 중(접거나 버리지 않은) 릴리스 주제에 묶인 draft 만. */
 async function assertWorkerPost(slug: string) {
   const { data } = await dbAdmin()
     .from("release_topics")
     .select("id")
     .eq("post_slug", slug)
+    .is("dropped_reason", null)
     .limit(1);
   if (!data?.length) throw new TopicError(`'${slug}' 는 릴리스 주제에 묶인 글이 아니다`);
   const post = await loadPost(slug);
@@ -203,6 +204,7 @@ export async function POST(req: Request) {
           .from("release_topics")
           .select("id")
           .eq("post_slug", input.slug)
+          .is("dropped_reason", null)
           .limit(1);
         if (!topic?.length) {
           return bad("먼저 assets 단계 advance 에서 postSlug 를 정해야 초안을 만들 수 있다");

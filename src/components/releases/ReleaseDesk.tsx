@@ -66,6 +66,11 @@ export function ReleaseDesk({
     );
   }
 
+  function markSkipped(ids: string[], note: string) {
+    const set = new Set(ids);
+    setRows((rs) => rs.map((r) => (set.has(r.id) ? { ...r, status: "skipped", note } : r)));
+  }
+
   return (
     <>
       <TopicBoard
@@ -73,6 +78,7 @@ export function ReleaseDesk({
         onTopicsChange={setTopics}
         candidates={rows.filter((r) => r.status !== "skipped")}
         onQueued={markQueued}
+        onSkipped={markSkipped}
       />
       <ReleaseQueue rows={rows} setRows={setRows} topicsOf={topicsOf} />
     </>

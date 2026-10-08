@@ -1,5 +1,8 @@
 /**
- * 글 주제 — 목록(GET), 만들기(POST), 단계 이동·편집·AI 맡기기(PATCH), 삭제(DELETE).
+ * 글 주제 — 목록(GET), 만들기(POST), 단계 이동·편집·AI 맡기기·접기·버리기(PATCH).
+ *
+ * 지우는 길은 없다. 쓰지 않을 주제는 버린다 — 초안과 노트는 지워도 무엇을
+ * 왜 버렸는지는 남는다.
  *
  * 규칙은 `lib/release-topics` 에 있다. 여기는 입력 검증과 상태 코드만 맡는다.
  */
@@ -13,7 +16,7 @@ import {
   cancelAi,
   queueAi,
   createTopic,
-  deleteTopic,
+  discardTopic,
   dropTopic,
   editTopic,
   getTopics,
@@ -47,6 +50,11 @@ const PatchSchema = z.discriminatedUnion("action", [
     reason: z.string().trim().min(1).max(300).nullable(),
   }),
   z.object({
+    action: z.literal("discard"),
+    id: z.number().int(),
+    reason: z.string().trim().min(1, "버리는 이유를 적어 주세요").max(300),
+  }),
+  z.object({
     action: z.literal("ai"),
     id: z.number().int(),
     until: z.enum(AI_UNTIL as [string, ...string[]]),
@@ -64,8 +72,6 @@ const PatchSchema = z.discriminatedUnion("action", [
     candidateIds: CandidateIds.optional(),
   }),
 ]);
-
-const DeleteSchema = z.object({ id: z.number().int() });
 
 async function parse<T extends z.ZodType>(
   req: Request,
@@ -129,6 +135,10 @@ export async function PATCH(req: Request) {
   if (input instanceof NextResponse) return input;
 
   try {
+    // 버리기는 무시로 옮긴 글감 id 도 돌려준다. 화면의 글감 목록을 맞춘다.
+    if (input.action === "discard") {
+      return NextResponse.json(await discardTopic(input.id, input.reason));
+    }
     const topic =
       input.action === "advance"
         ? await advanceTopic(input.id, input, { allowPublish: true })
@@ -142,20 +152,6 @@ export async function PATCH(req: Request) {
                 ? await cancelAi(input.id)
                 : await editTopic(input.id, input);
     return NextResponse.json({ topic });
-  } catch (e) {
-    return failed(e);
-  }
-}
-
-export async function DELETE(req: Request) {
-  const blocked = await requireApiUser();
-  if (blocked) return blocked;
-  const input = await parse(req, DeleteSchema);
-  if (input instanceof NextResponse) return input;
-
-  try {
-    await deleteTopic(input.id);
-    return NextResponse.json({ ok: true });
   } catch (e) {
     return failed(e);
   }

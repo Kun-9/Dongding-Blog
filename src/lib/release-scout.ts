@@ -28,7 +28,7 @@ curl -sS -X POST "$APP/api/releases/scout/" -H "Authorization: Bearer $TOKEN" -H
 |---|---|---|
 | inbox | — | 추적 중인 레포(sources)와 그 레포의 새 글감 목록(최신순, 본문 없음) |
 | candidates | ids(10개까지) | 글감 본문. 8,000자에서 자른다(truncated) |
-| topics | — | 지금 있는 주제 전부. 접은 것(droppedReason)도 나온다 |
+| topics | — | 지금 있는 주제 전부. 접거나 버린 것(droppedReason, discardedAt)도 나온다 |
 | topic_create | title, angle, candidateIds?, notes | 주제를 만든다. 묶는 글감은 new 인 것만. notes 는 작업 노트의 첫 내용 |
 | skip | ids, note | new 글감을 "건너뜀"으로. note 는 한 줄 이유 |
 | read | url | 웹 페이지를 서버가 대신 읽어 글자만 준다. 이 환경에서 열리지 않는 사이트(프록시 403·ENOTFOUND)용 |
@@ -40,7 +40,7 @@ curl -sS -X POST "$APP/api/releases/scout/" -H "Authorization: Bearer $TOKEN" -H
    - **글이 되는 것**: 새 기능, 기본 동작 변화, 설정·명령 추가나 변경, 모델·가격 변화, 호환성이 깨지는 변경. 이 블로그 독자(코딩 도구를 쓰는 개발자)가 "무엇이 바뀌었고 나는 무엇을 하면 되나"를 한 편으로 읽을 만한 것.
    - **글이 안 되는 것**: 버그 수정·내부 정리만 있는 릴리스, 프리릴리스·나이틀리, 이미 다룬 내용의 반복.
    - 같은 기능이 여러 버전에 걸쳐 바뀌었으면 한 주제로 묶는다(예: v2.1.275·281·286 의 send now 변화). 한 릴리스에 큰 변화가 둘이면 주제도 둘이다.
-   - \`topics\` 의 주제(접은 것 포함)와 겹치면 만들지 않는다. 진행 중인 주제에 이어지는 릴리스는 new 로 두고 보고에 적는다(사람이 붙인다).
+   - \`topics\` 의 주제(접거나 버린 것 포함)와 겹치면 만들지 않는다. 진행 중인 주제에 이어지는 릴리스는 new 로 두고 보고에 적는다(사람이 붙인다).
    - 주제에 묶지 않았고 글이 안 되는 것만 \`skip\` 한다. note 예: "버그 수정만", "프리릴리스". 애매하면 new 로 둔다.
 3. 웹에서 \`inbox.sources\` 의 제품에 대한 지난 7일 공식 발표를 찾는다. 새 글감이 없어도 매번 한다. 레포마다 그 제품과 만든 회사의 공식 블로그·뉴스, 문서의 체인지로그를 한 번 이상 검색한다(예: anthropics/claude-code → Claude Code·Anthropic, openai/codex → Codex·OpenAI). GitHub 릴리스에 없는 변화(모델 출시, 가격·요금제, 정책, 새 제품·통합)만 본다.
    - 출처는 공식 사이트만. 커뮤니티 글·루머·추측 기사는 쓰지 않는다.
@@ -95,7 +95,7 @@ curl -sS -X POST "$APP/api/releases/scout/" -H "Authorization: Bearer $TOKEN" -H
 |---|---|---|
 | signals | — | 소스별로 지금 뜨는 항목. 실패한 소스는 errors 에 이유와 함께 |
 | volume | keywords: ["..."] (5개까지) | 키워드별 HN 언급 추이. 최근 28일을 7일씩 4칸, 오래된 것부터 |
-| topics | — | 지금 있는 주제 전부. 접은 것(droppedReason)도 나온다 |
+| topics | — | 지금 있는 주제 전부. 접거나 버린 것(droppedReason, discardedAt)도 나온다 |
 | read | url | 웹 페이지를 서버가 대신 읽어 글자만 준다(title, text 2만 자). 이 환경은 공식 사이트 대부분을 직접 열지 못한다 |
 | topic_create | title, angle, notes | 주제를 만든다. candidateIds 는 넣지 않는다. notes 는 작업 노트의 첫 내용 |
 
@@ -117,7 +117,7 @@ volume 의 값:
 2. 후보를 고른다. 범위는 AI·개발 도구다: AI 코딩 에이전트·IDE, LLM 모델·API·가격, MCP·에이전트 프레임워크, 개발 도구·런타임·패키지 생태계의 사건(보안 사고, 라이선스·요금 변경, 큰 장애). 일반 뉴스, 인물·투자 소식만 있는 것은 뺀다.
    - 두 소스 이상에서 함께 보이는 것을 먼저 고른다(예: HN 상위와 GitHub 스타 급증, HN 과 구글 급상승).
    - 한 소스에서만 보이면 그 소스 상위 5위 안일 때만 고른다.
-   - \`topics\` 의 주제(접은 것 포함)와 겹치면 고르지 않는다.
+   - \`topics\` 의 주제(접거나 버린 것 포함)와 겹치면 고르지 않는다.
    - 이 블로그 독자(코딩 도구를 쓰는 개발자)가 "무엇이 일어났고 나는 무엇을 하면 되나"를 한 편으로 읽을 만한 것만. 의견·논쟁만 있고 확인할 사실이 없는 것은 뺀다.
 3. 후보를 5개까지 줄여 \`volume\` 을 한 번 부른다. 마지막 칸이 앞 세 칸 평균보다 큰 것, 곧 지금 오르는 것을 먼저 본다.
 4. 고른 후보마다 1차 출처(공식 발표·문서·레포·보안 공지)를 \`read\` 로 읽어 사실과 날짜를 확인한다. signals 의 url(HN 이 가리키는 원문 등)이 공식 사이트면 그것부터 읽고, 없으면 WebSearch 로 공식 주소를 찾는다. 검색 색인은 며칠 늦을 수 있으니 검색에 안 나온다고 없는 것으로 보지 않는다. \`read\` 가 403 이면(봇 차단) 같은 회사의 RSS·문서·GitHub 처럼 다른 공식 경로를 읽는다(예: openai.com 은 \`https://openai.com/news/rss.xml\`). 1차 출처를 읽지 못했거나 커뮤니티 글·루머만 있으면 만들지 않는다.

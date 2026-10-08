@@ -35,6 +35,8 @@ export interface TopicRow {
   checks: Partial<Record<StageKey, StageCheck>>;
   postSlug: string | null;
   droppedReason: string | null;
+  /** 버린 시각. 있으면 droppedReason 이 버린 이유이고, 다시 펼칠 수 없다. */
+  discardedAt: string | null;
   updatedAt: string;
   candidates: TopicCandidate[];
   /** AI 작업 상태. null 이면 맡긴 일이 없다. */
@@ -111,6 +113,7 @@ type DbTopic = {
   ai_started_at?: string | null;
   ai_local?: boolean;
   ai_prompt?: string | null;
+  discarded_at?: string | null;
 };
 
 const BASE_COLUMNS =
@@ -118,16 +121,17 @@ const BASE_COLUMNS =
 const AI_COLUMNS = `${BASE_COLUMNS}, ai_status, ai_until, ai_message, ai_updated_at, notes`;
 const TOPIC_COLUMNS = `${AI_COLUMNS}, ai_log, ai_started_at`;
 const LOCAL_COLUMNS = `${TOPIC_COLUMNS}, ai_local`;
-const FULL_COLUMNS = `${LOCAL_COLUMNS}, ai_prompt`;
+const PROMPT_COLUMNS = `${LOCAL_COLUMNS}, ai_prompt`;
+const FULL_COLUMNS = `${PROMPT_COLUMNS}, discarded_at`;
 
 /**
  * 마이그레이션보다 배포가 먼저 나가도 화면은 살아 있어야 한다. 없는
- * 컬럼(42703)이면 한 단계씩 덜 읽는다: 고치기 → 예약 → 로그 → AI 상태 → 기본 컬럼.
+ * 컬럼(42703)이면 한 단계씩 덜 읽는다: 버림 → 고치기 → 예약 → 로그 → AI 상태 → 기본 컬럼.
  */
 async function selectTopics(
   build: (columns: string) => PromiseLike<{ data: unknown; error: { code?: string; message: string } | null }>,
 ) {
-  for (const cols of [FULL_COLUMNS, LOCAL_COLUMNS, TOPIC_COLUMNS, AI_COLUMNS]) {
+  for (const cols of [FULL_COLUMNS, PROMPT_COLUMNS, LOCAL_COLUMNS, TOPIC_COLUMNS, AI_COLUMNS]) {
     const res = await build(cols);
     if (res.error?.code !== "42703") return res;
   }
@@ -148,6 +152,7 @@ function toRow(t: DbTopic, candidateIds: string[]): TopicRow {
     checks: (t.checks ?? {}) as TopicRow["checks"],
     postSlug: t.post_slug,
     droppedReason: t.dropped_reason,
+    discardedAt: t.discarded_at ?? null,
     updatedAt: t.updated_at,
     candidates: candidateIds.map(splitCandidateId),
     ai: {
@@ -264,7 +269,7 @@ export async function editTopic(
   id: number,
   input: { title?: string; angle?: string | null; candidateIds?: string[] },
 ): Promise<TopicRow> {
-  await getTopic(id);
+  notDiscarded(await getTopic(id));
   const patch: Record<string, unknown> = {};
   if (input.title !== undefined) patch.title = input.title;
   if (input.angle !== undefined) patch.angle = input.angle;
@@ -378,7 +383,7 @@ export async function advanceTopic(
  * draft 로 내린다 — 단계는 점검인데 글은 공개된 채로 남으면 안 된다.
  */
 export async function revertTopic(id: number): Promise<TopicRow> {
-  const topic = await getTopic(id);
+  const topic = notDiscarded(await getTopic(id));
   const i = stageIndex(topic.stage);
   if (i === 0) throw new TopicError("더 되돌릴 단계가 없다");
 
@@ -407,15 +412,135 @@ export async function dropTopic(
   id: number,
   reason: string | null,
 ): Promise<TopicRow> {
-  await getTopic(id);
+  notDiscarded(await getTopic(id));
   await save(id, { dropped_reason: reason });
   return getTopic(id);
 }
 
-export async function deleteTopic(id: number): Promise<void> {
-  await getTopic(id);
-  const { error } = await dbAdmin().from("release_topics").delete().eq("id", id);
+/** 버린 주제는 기록으로만 남는다. 고치거나 되살리는 길을 막는다. */
+function notDiscarded(topic: TopicRow): TopicRow {
+  if (topic.discardedAt) throw new TopicError("버린 주제다. 기록으로만 남는다");
+  return topic;
+}
+
+const IMAGE_BUCKET = "post-images";
+
+/**
+ * 주제를 버린다. 초안 글과 그 이미지 폴더, 작업 노트, AI 기록을 지우고,
+ * 행에는 제목·한 줄 설명·진행 기록·묶인 글감 연결과 버린 이유만 남긴다.
+ *
+ * 묶인 글감 중 쓸래(queued)이고 진행 중인 다른 주제에 묶이지 않은 것은
+ * 무시(skipped)로 옮기고 이유를 메모로 붙인다. 트렌드 탐색기가 같은 글감을
+ * 다시 고르지 않는다. 옮긴 글감 id 를 같이 돌려준다 — 화면의 글감 목록도 맞춘다.
+ *
+ * 발행한 주제와 공개된 글은 거절하고, AI 가 쓰고 있는 주제도 막는다. 버리지
+ * 않은 다른 주제가 같은 slug 를 쓰면 글과 이미지는 그 주제 몫이라 남긴다.
+ *
+ * 버린 표시를 먼저 남기고 정리는 그 뒤에 한다. 표시가 있으면 실행기가 집지
+ * 못하고(claim·worker 가 dropped_reason 으로 거른다) 노트·로그도 못 쓴다 —
+ * 중지 직후 아직 돌던 실행기가 지운 초안을 되살리지 않는다. 정리가 중간에
+ * 실패하면 남은 초안·이미지는 스튜디오에서 지운다.
+ */
+export async function discardTopic(
+  id: number,
+  reason: string,
+): Promise<{ topic: TopicRow; skipped: string[] }> {
+  const topic = notDiscarded(await getTopic(id));
+  if (topic.stage === "published") {
+    throw new TopicError("발행한 주제는 버릴 수 없다. 발행을 취소한 뒤 버릴 것");
+  }
+  if (topic.ai.status === "running") {
+    throw new TopicError("AI 가 작업 중이다. 중지한 뒤 버릴 것");
+  }
+
+  const db = dbAdmin();
+  const slug = topic.postSlug;
+  /** slug 를 이 주제만 쓰는가. 그래야 글·이미지를 지운다. 자료 단계면 글 없이 이미지만 있을 수 있다. */
+  let owned = false;
+  let hasPost = false;
+  if (slug) {
+    const [found, others] = await Promise.all([
+      db.from("posts").select("visibility").eq("slug", slug).maybeSingle(),
+      db.from("release_topics").select("id").eq("post_slug", slug).neq("id", id).is("discarded_at", null).limit(1),
+    ]);
+    if (found.error) throw new Error(found.error.message);
+    if (others.error) throw new Error(others.error.message);
+    // 주제는 발행 전인데 글이 공개돼 있으면 다른 경로로 공개한 글이다. 손대지 않는다.
+    if (found.data?.visibility === "published") {
+      throw new TopicError(`'${slug}' 글이 이미 공개돼 있다. 글을 내린 뒤 버릴 것`);
+    }
+    owned = others.data.length === 0;
+    hasPost = found.data !== null;
+  }
+
+  // 진행 중인 다른 주제(버린 것 제외)에 묶인 글감은 그대로 둔다.
+  const ids = topic.candidates.map((c) => c.id);
+  let own: string[] = [];
+  if (ids.length) {
+    const { data: shared, error } = await db
+      .from("release_topic_candidates")
+      .select("candidate_id, release_topics!inner(discarded_at)")
+      .in("candidate_id", ids)
+      .neq("topic_id", id)
+      .is("release_topics.discarded_at", null);
+    if (error) throw new Error(error.message);
+    const taken = new Set(shared.map((l) => l.candidate_id));
+    own = ids.filter((c) => !taken.has(c));
+  }
+
+  await save(id, {
+    dropped_reason: reason,
+    discarded_at: new Date().toISOString(),
+    notes: "",
+    ai_log: [],
+    ai_status: null,
+    ai_until: null,
+    ai_message: null,
+    ai_prompt: null,
+    ai_local: false,
+  });
+
+  let skipped: string[] = [];
+  if (own.length) {
+    const { data, error } = await db
+      .from("release_candidates")
+      .update({ status: "skipped", note: `버린 주제 '${topic.title}': ${reason}` })
+      .in("id", own)
+      .eq("status", "queued")
+      .select("id");
+    if (error) throw new Error(`버렸지만 글감 정리 실패: ${error.message}`);
+    skipped = data.map((c) => c.id);
+  }
+
+  if (slug && owned) {
+    if (hasPost) {
+      const del = await db.from("posts").delete().eq("slug", slug);
+      if (del.error) throw new Error(`버렸지만 초안 삭제 실패: ${del.error.message}`);
+      revalidatePath("/", "layout");
+    }
+    const storage = db.storage.from(IMAGE_BUCKET);
+    const { data: files, error } = await storage.list(slug, { limit: 1000 });
+    if (error) throw new Error(`버렸지만 이미지 조회 실패: ${error.message}`);
+    if (files.length) {
+      const rm = await storage.remove(files.map((f) => `${slug}/${f.name}`));
+      if (rm.error) throw new Error(`버렸지만 이미지 삭제 실패: ${rm.error.message}`);
+    }
+  }
+
+  return { topic: await getTopic(id), skipped };
+}
+
+/**
+ * 이 slug 가 버린 주제에만 묶여 있는가. MCP 의 글 생성·이미지 올리기가 묻는다 —
+ * 중지 직후 버린 주제를 아직 돌던 로컬 실행기가 되살리지 못하게.
+ */
+export async function slugDiscarded(slug: string): Promise<boolean> {
+  const { data, error } = await dbAdmin()
+    .from("release_topics")
+    .select("discarded_at")
+    .eq("post_slug", slug);
   if (error) throw new Error(error.message);
+  return data.length > 0 && data.every((t) => t.discarded_at);
 }
 
 /* ── AI 작업 ─────────────────────────────────────────────────────────── */
@@ -463,7 +588,7 @@ export async function queueAi(
   local = false,
   prompt: string | null = null,
 ): Promise<TopicRow> {
-  const topic = await getTopic(id);
+  const topic = notDiscarded(await getTopic(id));
   if (topic.droppedReason !== null) throw new TopicError("접은 주제는 맡길 수 없다");
   if (topic.ai.status === "running") throw new TopicError("이미 작업 중이다");
   if (prompt) {
@@ -508,7 +633,7 @@ export async function queueAi(
 
 /** 맡긴 일을 거둔다. 작업 중인 것도 다음 보고 때 멈추도록 상태를 지운다. */
 export async function cancelAi(id: number): Promise<TopicRow> {
-  const topic = await getTopic(id);
+  const topic = notDiscarded(await getTopic(id));
   await saveAi(
     id,
     { ai_status: null, ai_until: null, ai_message: "작업을 취소함" },
@@ -575,7 +700,7 @@ export async function reportAi(id: number, message: string): Promise<TopicRow> {
  * todo 는 사람이 해야 할 남은 일 — 어드민 목록 둘째 줄에 보인다.
  */
 export async function finishAi(id: number, ok: boolean, message: string, todo?: string): Promise<TopicRow> {
-  const topic = await getTopic(id);
+  const topic = notDiscarded(await getTopic(id));
   await saveAi(
     id,
     ok
@@ -595,7 +720,7 @@ export async function saveNotes(
   markdown: string,
   mode: "append" | "replace",
 ): Promise<TopicRow> {
-  const topic = await getTopic(id);
+  const topic = notDiscarded(await getTopic(id));
   const next =
     mode === "replace" ? markdown : [topic.notes.trimEnd(), markdown.trim()].filter(Boolean).join("\n\n");
   if (next.length > 50_000) throw new TopicError("노트가 50,000자를 넘는다. 요약해서 replace 할 것");
