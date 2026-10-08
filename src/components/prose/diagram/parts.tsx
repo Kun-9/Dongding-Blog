@@ -41,7 +41,7 @@ export function Shell({
 }) {
   return (
     <MotionFigure key={sig} className="my-9">
-      <div className={bare ? "" : "dg-panel rounded-2xl border border-border-token px-4 py-5 sm:px-7 sm:py-7"}>
+      <div className={bare ? "" : "dg-panel rounded-2xl border border-border-token px-[18px] py-5 sm:px-7 sm:py-7"}>
         {children}
       </div>
       {caption ? (

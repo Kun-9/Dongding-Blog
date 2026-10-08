@@ -1,12 +1,10 @@
 "use client";
 
 /**
- * 그림 모션(lib/figure-motion)과 자세히(lib/figure-detail)를 붙이는 자리. Motion 은
- * 그림이 있는 글에서만 늦게 불러온다 — 처음 그리는 데는 필요 없고, 최종 상태는
- * 서버가 그린 그대로다. 자세히는 가벼워서 바로 붙는다.
+ * 그림 모션(lib/figure-motion)을 붙이는 자리. Motion 은 그림이 있는 글에서만 늦게
+ * 불러온다 — 처음 그리는 데는 필요 없고, 최종 상태는 서버가 그린 그대로다.
  */
 import { useEffect, useRef, type ReactNode, type RefObject } from "react";
-import { attachFigureDetail } from "@/lib/figure-detail";
 
 /** `dep` 가 바뀌면 다시 붙인다(본문 SVG 는 받아 온 뒤에 그려진다). */
 export function useFigureMotion(ref: RefObject<HTMLElement | null>, dep?: unknown) {
@@ -15,7 +13,6 @@ export function useFigureMotion(ref: RefObject<HTMLElement | null>, dep?: unknow
     if (!el) return;
     let alive = true;
     let stop: (() => void) | undefined;
-    const detach = attachFigureDetail(el);
     import("@/lib/figure-motion")
       .then((m) => {
         if (alive) stop = m.attachFigureMotion(el);
@@ -24,7 +21,6 @@ export function useFigureMotion(ref: RefObject<HTMLElement | null>, dep?: unknow
     return () => {
       alive = false;
       stop?.();
-      detach();
     };
   }, [ref, dep]);
 }

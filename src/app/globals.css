@@ -504,44 +504,149 @@ svg [data-anim]:not([transform]) {
 }
 @keyframes dg-breathe-svg { 50% { opacity: 0.55; } }
 
-/* 자세히(lib/figure-detail) — data-detail 이 달린 칸만 누를 수 있다. 점선이 그 표시. */
-[data-detail]:not(svg *) {
-  cursor: pointer;
-  outline: 1.5px dashed color-mix(in oklab, var(--callout-tip-glyph) 45%, transparent);
-  outline-offset: 3px;
-  transition: outline-color 0.15s;
-}
-[data-detail]:not(svg *):hover { outline-color: var(--callout-tip-glyph); }
-[data-detail]:not(svg *)[aria-expanded="true"],
-[data-detail]:not(svg *):focus-visible { outline: 2px solid var(--callout-tip-glyph); }
-svg [data-detail] { cursor: pointer; }
-svg [data-detail]:hover,
-svg [data-detail][aria-expanded="true"],
-svg [data-detail]:focus-visible { filter: drop-shadow(0 0 3px var(--callout-tip-glyph)); outline: none; }
-.dg-detail {
-  margin: 10px 0 0;
-  padding: 9px 12px;
-  border-radius: 10px;
-  font-size: 13.5px;
-  line-height: 1.55;
-  word-break: keep-all;
-}
-.dg-detail[data-state="hint"] {
-  border: 1px dashed var(--border-strong);
-  color: var(--ink-muted);
-  font-size: 12.5px;
-}
-.dg-detail[data-state="open"] {
-  border: 1px solid var(--callout-tip-glyph);
-  background: var(--callout-tip-bg);
-  color: var(--callout-tip-ink);
-}
 @media (prefers-reduced-motion: no-preference) {
   [data-live] [data-loop="orbit"] { animation: dg-orbit 2310s linear infinite; }
   [data-live] .dg-accent,
   [data-live] .fig-box.fig-accent,
   [data-live] [data-loop="pulse"] { animation: dg-breathe 3.2s ease-in-out infinite; }
   [data-live] svg [data-loop="pulse"] { animation: dg-breathe-svg 3.2s ease-in-out infinite; }
+}
+
+/* 숫자 굴리기(lib/figure-motion 의 roll) — 자리마다 0~9 띠를 두 바퀴 돌려 제 숫자에 멈춘다.
+   다 돌면 원래 글자로 되돌린다. */
+.dg-roll { display: inline-block; height: 1.1em; overflow: hidden; vertical-align: top; }
+.dg-roll > span { display: block; }
+.dg-roll > span > span { display: block; height: 1.1em; line-height: 1.1em; }
+.dg-roll-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* ============================================================
+   장면(components/prose/diagram/Scene) — scene: on 인 timeline·bars.
+   화면 높이 무대가 붙고, 박자(.sc-beat)마다 스냅한다.
+   ============================================================ */
+html.sc-snap { scroll-snap-type: y proximity; }
+.sc { position: relative; margin: 2.25rem 0; }
+.sc-stage { position: sticky; top: 0; height: 100svh; display: grid; align-content: safe center; padding: 64px 0 24px; }
+.sc-in { display: grid; gap: 40px; }
+.sc-beats { margin-top: -100svh; }
+.sc-beat { display: block; height: 50svh; scroll-snap-align: start; }
+.sc-beat:last-child { height: 120svh; }
+.sc-board {
+  margin: 0;
+  display: grid;
+  gap: 16px;
+  padding: 24px 30px 22px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  transition: border-color 0.4s, box-shadow 0.4s;
+}
+.sc-board.is-live {
+  border-color: color-mix(in oklab, var(--callout-tip-glyph) 45%, var(--border));
+  box-shadow: 0 24px 60px -36px color-mix(in oklab, var(--callout-tip-glyph) 60%, transparent);
+}
+.sc-ttl { font-size: 13.5px; font-weight: 600; line-height: 1.45; color: var(--ink-soft); word-break: keep-all; }
+
+/* 설명: 같은 칸에 겹쳐 두고 하나만 보인다. 높이는 가장 긴 설명이 정한다. */
+.sc-notes { display: grid; padding-inline: 31px; }
+.sc-note {
+  grid-area: 1 / 1;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.4s ease, transform 0.55s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.sc-note.up { transform: translateY(-20px); }
+.sc-note.on { opacity: 1; transform: none; transition-delay: 0.15s; }
+.sc-k { display: block; margin-bottom: 9px; font: 600 12.5px/1 var(--font-mono); color: var(--callout-tip-glyph); }
+.sc-note p { margin: 0; font-size: 17px; line-height: 1.7; color: var(--ink-soft); word-break: keep-all; }
+.sc-note b {
+  color: var(--ink);
+  font-weight: 600;
+  background: linear-gradient(color-mix(in oklab, var(--callout-tip-glyph) 38%, transparent), color-mix(in oklab, var(--callout-tip-glyph) 38%, transparent)) no-repeat 0 88% / 0% 42%;
+  transition: background-size 0.6s ease;
+}
+.sc-note.on b { background-size: 100% 42%; transition-delay: 0.55s; }
+.sc-note code { font-family: var(--font-mono); font-size: 0.86em; padding: 1px 5px; border-radius: 5px; background: var(--inline-code-bg); color: var(--inline-code-fg); }
+
+.sc-pips { display: flex; justify-content: center; gap: 6px; margin-top: -16px; }
+.sc-pips i { position: relative; width: 6px; height: 6px; border-radius: 3px; overflow: hidden; background: var(--border-strong); transition: width 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), background-color 0.3s; }
+.sc-pips i.done { background: var(--callout-tip-glyph); }
+.sc-pips i.on { width: 34px; background: color-mix(in oklab, var(--callout-tip-glyph) 28%, transparent); }
+.sc-pips i:not(.on) span { display: none; }
+.sc-pips i span { position: absolute; inset: 0; background: var(--callout-tip-glyph); transform-origin: left; transform: scaleX(var(--f, 0)); }
+
+/* timeline: 버전 슬라이드 띠 + 전체 레일 */
+.sc-car {
+  position: relative;
+  height: 112px;
+  overflow: hidden;
+  container-type: inline-size;
+  --sc-gap: 46cqw;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 16%, #000 84%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 16%, #000 84%, transparent);
+}
+.sc-it { position: absolute; top: 4px; left: 50%; width: 300px; margin-left: -150px; text-align: center; will-change: transform, opacity; }
+.sc-ver { font: 600 12.5px/1 var(--font-mono); color: var(--ink-muted); transition: color 0.25s; }
+.sc-it.cur .sc-ver { color: var(--callout-tip-glyph); }
+.sc-hd { display: block; margin-top: 10px; font-size: 26px; font-weight: 700; line-height: 1.3; letter-spacing: -0.02em; color: var(--ink); word-break: keep-all; text-wrap: balance; }
+.sc-rail { position: relative; height: 40px; }
+.sc-base, .sc-fill { position: absolute; top: 8px; height: 2px; border-radius: 2px; background: var(--border-strong); }
+.sc-fill { background: var(--callout-tip-glyph); transform-origin: left; }
+.sc-d {
+  position: absolute; top: 3px; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%;
+  border: 2px solid var(--ink-muted); background: var(--surface-alt);
+  transition: transform 0.35s cubic-bezier(0.3, 1.7, 0.5, 1), background-color 0.2s, border-color 0.2s;
+}
+.sc-d.on { background: var(--callout-tip-glyph); border-color: var(--callout-tip-glyph); transform: scale(1.2); }
+.sc-lb { position: absolute; top: 24px; transform: translateX(-50%); font: 11px/1 var(--font-mono); color: var(--ink-muted); white-space: nowrap; transition: color 0.2s; }
+.sc-lb.on { color: var(--ink); font-weight: 600; }
+.sc-head { position: absolute; top: 1px; width: 16px; height: 16px; margin-left: -8px; border-radius: 50%; background: var(--callout-tip-glyph); box-shadow: 0 0 0 4px var(--callout-tip-bg); }
+.sc-head::after { content: ""; position: absolute; inset: -2px; border-radius: 50%; border: 2px solid var(--callout-tip-glyph); animation: sc-ring 3s ease-out infinite; }
+@keyframes sc-ring { from { transform: scale(1); opacity: 0.7; } to { transform: scale(2.6); opacity: 0; } }
+
+/* bars: 조각 막대가 자라고, 줄고, 축이 당겨진다 */
+.sc-top { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; }
+.sc-ratio { flex: none; display: grid; justify-items: end; gap: 3px; white-space: nowrap; }
+.sc-ratio small { font-size: 11px; color: var(--ink-muted); }
+.sc-ratio b { font: 700 24px/1 var(--font-mono); color: var(--callout-tip-glyph); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.sc-bars { --sc-nm: 6.2rem; --sc-tot: 3.8rem; position: relative; display: grid; gap: 14px; padding-bottom: 24px; }
+.sc-row { display: grid; grid-template-columns: var(--sc-nm) 1fr var(--sc-tot); gap: 12px; align-items: center; }
+.sc-nm { font-size: 13.5px; font-weight: 600; color: var(--ink); word-break: keep-all; }
+.sc-nm.mut { color: var(--ink-muted); font-weight: 400; }
+.sc-tot { font: 600 14px/1 var(--font-mono); text-align: right; font-variant-numeric: tabular-nums; color: var(--ink); }
+.sc-tk { position: relative; z-index: 1; display: flex; height: 26px; overflow: hidden; border-radius: 7px; background: color-mix(in oklab, var(--ink) 6%, transparent); }
+.sc-sg { flex: none; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.sc-sg em { font: 600 10.5px/1 var(--font-mono); font-style: normal; color: var(--surface); white-space: nowrap; }
+.sc-ghost { position: absolute; inset: 0 auto 0 0; border: 1.5px dashed var(--ink-muted); border-radius: 7px; pointer-events: none; }
+.sc-s0 { background: var(--ink-muted); }
+.sc-s1 { background: var(--callout-info-glyph); }
+.sc-s2 { background: var(--callout-warning-glyph); }
+.sc-s3 { background: var(--callout-note-glyph); }
+.sc-sx { background: var(--callout-tip-glyph); }
+.sc-axis { position: absolute; top: -6px; bottom: 0; left: calc(var(--sc-nm) + 12px); right: calc(var(--sc-tot) + 12px); }
+.sc-tick { position: absolute; top: 0; bottom: 0; width: 0; }
+.sc-tick[hidden] { display: none; }
+.sc-tick i { position: absolute; top: 0; bottom: 18px; border-left: 1px dashed var(--border-strong); }
+.sc-tick b { position: absolute; bottom: 0; transform: translateX(-50%); font: 400 10.5px/1 var(--font-mono); color: var(--ink-muted); white-space: nowrap; }
+.sc-legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12.5px; color: var(--ink-muted); }
+.sc-legend i { display: inline-block; width: 10px; height: 10px; margin-right: 5px; border-radius: 3px; vertical-align: -1px; }
+
+@media (max-width: 560px) {
+  .sc-in { gap: 30px; }
+  .sc-board { padding: 20px 18px 18px; }
+  .sc-notes { padding-inline: 19px; }
+  .sc-note p { font-size: 15.5px; }
+  .sc-pips { margin-top: -10px; }
+  .sc-car { height: 104px; --sc-gap: 74cqw; }
+  .sc-it { width: 250px; margin-left: -125px; }
+  .sc-hd { font-size: 20px; }
+  .sc-lb { font-size: 9.5px; }
+  .sc-row { grid-template-columns: 1fr auto; row-gap: 6px; }
+  .sc-row .sc-tk { grid-column: 1 / -1; order: 3; }
+  .sc-bars { row-gap: 14px; }
+  .sc-axis { left: 0; right: 0; top: 18px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sc-board, .sc-note, .sc-note b, .sc-pips i, .sc-d, .sc-lb, .sc-ver { transition: none; }
+  .sc-head::after { animation: none; }
 }
 
 /* ============================================================

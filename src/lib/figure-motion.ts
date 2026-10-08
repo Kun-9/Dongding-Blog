@@ -10,6 +10,7 @@
  * 화면에 있을 때만 `data-live` 를 붙인다.
  *
  * 최종 상태는 서버가 그린 그대로다. 움직임 줄이기 설정이면 아무것도 안 한다.
+ * 장면(scene: on)은 여기를 거치지 않는다(components/prose/diagram/Scene).
  * 표준은 .claude/skills/blog-figures 의 "애니메이션".
  *
  * 브라우저 DOM 을 쓴다. 클라이언트에서만 부른다(components/prose/diagram/Motion).
@@ -23,7 +24,7 @@ const READ_LINE = "0px 0px -25% 0px";
 const STAGGER = 0.09;
 /** 읽는 높이에 못 미쳐도 화면에 이만큼(ms) 머물면 재생한다. */
 const DWELL = 600;
-/** 종류별 길이·지연(초). 1초 안에 끝나야 읽기를 막지 않는다. */
+/** 종류별 길이·지연(초). 1초 안에 끝나야 읽기를 막지 않는다. 숫자 굴리기만 예외(핵심 숫자 카드에만). */
 const TIMING: Record<Exclude<Anim, "none">, { d: number; delay: number }> = {
   rise: { d: 0.6, delay: 0 },
   fade: { d: 0.6, delay: 0 },
@@ -32,7 +33,13 @@ const TIMING: Record<Exclude<Anim, "none">, { d: number; delay: number }> = {
   "draw-back": { d: 0.5, delay: 0 },
   grow: { d: 0.8, delay: 0.1 },
   count: { d: 0.9, delay: 0.15 },
+  roll: { d: 1.5, delay: 0 },
 };
+/** 숫자 굴리기 — 자리마다 늦게 출발하는 간격(초)과 끝 곡선. */
+const ROLL_STAGGER = 0.09;
+const ROLL_EASE = [0.16, 0.84, 0.24, 1] as const;
+/** 띠 한 칸 높이. globals.css 의 .dg-roll 과 같다. */
+const ROLL_EM = 1.1;
 const EASE = [0.2, 0.7, 0.2, 1] as const;
 const RISE = 16;
 // 끝값은 항등 변환으로 적는다. Motion 은 "none" 을 상대 값의 0 으로 바꿔서
@@ -87,7 +94,8 @@ const CLIP_TO = "inset(0% 0% 0% 0%)";
 
 type Plan =
   | { el: Element; kind: Exclude<Anim, "none">; from: Record<string, string | number>; to: Record<string, string | number> }
-  | { el: Element; kind: Exclude<Anim, "none">; count: { from: number; to: number; show: (v: number) => string } };
+  | { el: Element; kind: Exclude<Anim, "none">; count: { from: number; to: number; show: (v: number) => string } }
+  | { el: Element; kind: Exclude<Anim, "none">; roll: string };
 
 /** 한 칸이 어디서(from) 어디로(to) 움직이는가. */
 function plan(el: Element, kind: Exclude<Anim, "none">): Plan {
@@ -117,6 +125,11 @@ function plan(el: Element, kind: Exclude<Anim, "none">): Plan {
       // fig-bar 는 회색 바탕은 두고 채움(::after)만 키운다.
       if (el.classList.contains("fig-bar")) return p({ "--fig-grow": 0 }, { "--fig-grow": 1 });
       return p({ clipPath: "inset(0% 100% 0% 0%)" }, { clipPath: CLIP_TO });
+    case "roll": {
+      // 안에 다른 요소가 없고 숫자가 있는 HTML 글자만. 나머지는 나타나기만 한다.
+      const text = el.textContent ?? "";
+      return svg || el.childElementCount || !/\d/.test(text) ? appear : { el, kind, roll: text };
+    }
     case "count": {
       // 글자를 통째로 바꾸므로 안에 다른 요소(<tspan> 등)가 있으면 세지 않는다.
       const c = el.childElementCount ? null : countable(el.textContent ?? "");
@@ -126,14 +139,57 @@ function plan(el: Element, kind: Exclude<Anim, "none">): Plan {
   }
 }
 
+/** 숫자 자리마다 0~9 띠를 두 벌 이어 붙인다. 화면 낭독기에는 숨긴 원문을 준다. */
+function strips(el: Element, text: string) {
+  const sr = document.createElement("span");
+  sr.className = "dg-roll-sr";
+  sr.textContent = text;
+  el.replaceChildren(
+    sr,
+    ...[...text].map((ch) => {
+      const cell = document.createElement("span");
+      cell.setAttribute("aria-hidden", "true");
+      if (!/\d/.test(ch)) {
+        cell.textContent = ch;
+        return cell;
+      }
+      cell.className = "dg-roll";
+      cell.dataset.d = ch;
+      const band = document.createElement("span");
+      for (const x of "01234567890123456789") {
+        const c = document.createElement("span");
+        c.textContent = x;
+        band.append(c);
+      }
+      cell.append(band);
+      return cell;
+    }),
+  );
+}
+
 /** 재생 전 자리. */
 function hide(x: Plan) {
-  if ("count" in x) x.el.textContent = x.count.show(x.count.from);
+  if ("roll" in x) strips(x.el, x.roll);
+  else if ("count" in x) x.el.textContent = x.count.show(x.count.from);
   else animate(x.el, x.from as DOMKeyframesDefinition, { duration: 0 });
 }
 
 function play(x: Plan, delay: number) {
   const t = { duration: TIMING[x.kind].d, delay: delay + TIMING[x.kind].delay, ease: EASE };
+  if ("roll" in x) {
+    // 두 바퀴째의 제 숫자에서 멈추고, 다 돌면 원래 글자로 되돌린다.
+    const runs = [...x.el.querySelectorAll<HTMLElement>(".dg-roll")].map((cell, i) =>
+      animate(
+        cell.firstElementChild!,
+        { transform: ["translateY(0em)", `translateY(${-(10 + Number(cell.dataset.d)) * ROLL_EM}em)`] },
+        { duration: t.duration, delay: t.delay + i * ROLL_STAGGER, ease: ROLL_EASE },
+      ),
+    );
+    Promise.all(runs.map((r) => r.finished))
+      .catch(() => {})
+      .finally(() => (x.el.textContent = x.roll));
+    return;
+  }
   if ("count" in x) {
     const { from, to, show } = x.count;
     animate(from, to, { ...t, onUpdate: (v) => (x.el.textContent = show(v)) });

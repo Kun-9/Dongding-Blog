@@ -8,17 +8,16 @@ export function Stats({ items }: { items: Stat[] }) {
   return (
     <ul className="grid grid-cols-[repeat(auto-fit,minmax(9.5rem,1fr))] gap-3">
       {items.map((s, i) => (
-        <li key={i} data-anim="rise" data-detail={s.detail} className={cx("flex flex-col rounded-xl border px-4 py-4", tone(s))} style={step(i)}>
+        <li key={i} data-anim="rise" className={cx("flex flex-col rounded-xl border px-4 py-4", tone(s))} style={step(i)}>
           {s.before ? (
             <span className="mb-1 font-mono text-[12px] tabular-nums text-ink-muted">
               <span className="line-through decoration-ink-subtle">{s.before}</span>
               <span className="mx-1.5">→</span>
             </span>
           ) : null}
-          {/* 바뀐 숫자(14회 → 2회)는 앞 값에서 센다. */}
+          {/* 핵심 숫자는 자리마다 굴러서 멈춘다(roll). */}
           <span
-            data-anim="count"
-            data-from={s.before ? parseFloat(s.before.replace(/,/g, "")) || undefined : undefined}
+            data-anim="roll"
             className={cx(
               "text-[28px] leading-[1.1] font-semibold tracking-[-0.025em] tabular-nums break-keep",
               s.accent ? ACCENT_GLYPH : s.muted ? "text-ink-muted" : "text-ink",
@@ -46,7 +45,6 @@ export function Bars({ items, unit }: { items: Bar[]; unit?: string }) {
         <li
           key={i}
           data-anim="rise"
-          data-detail={b.detail}
           className="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-1.5 sm:col-span-3 sm:grid-cols-subgrid"
           style={step(i)}
         >

@@ -37,7 +37,6 @@ export function Flow({ nodes }: { nodes: Item[] }) {
           {i > 0 && <Connector wide={wide} muted={n.muted} i={i} />}
           <li
             data-anim="rise"
-            data-detail={n.detail}
             className={cx("flex gap-3 rounded-xl border px-4 py-3.5", tone(n), wide && "sm:min-w-0 sm:flex-1 sm:flex-col sm:gap-2.5")}
             style={step(i)}
           >
@@ -107,7 +106,6 @@ export function Cycle({ nodes, center }: { nodes: Item[]; center?: string }) {
             <div
               key={i}
               data-anim="rise"
-              data-detail={node.detail}
               className={cx(
                 "absolute flex w-max max-w-[34%] -translate-x-1/2 -translate-y-1/2 items-center gap-2.5 rounded-xl border px-3.5 py-2.5",
                 tone(node),
@@ -134,7 +132,7 @@ export function Cycle({ nodes, center }: { nodes: Item[]; center?: string }) {
           <li className="mb-1 font-mono text-[11px] tracking-[0.03em] text-ink-muted uppercase">{center}</li>
         ) : null}
         {nodes.map((node, i) => (
-          <li key={i} data-anim="rise" data-detail={node.detail} className={cx("flex items-center gap-3 rounded-xl border px-3.5 py-3", tone(node))} style={step(i)}>
+          <li key={i} data-anim="rise" className={cx("flex items-center gap-3 rounded-xl border px-3.5 py-3", tone(node))} style={step(i)}>
             <Badge m={node} n={i + 1} />
             <Label label={node.label} sub={node.sub} m={node} size="sm" />
           </li>

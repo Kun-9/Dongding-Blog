@@ -9,7 +9,11 @@
  * 공통: 머리 줄 `caption: …` 은 그림 아래 캡션. 종류별 옵션도 머리 줄에
  *       `key: value` 로 둔다(layout·actors·unit·center).
  *       줄 끝 `*` = 강조, `~` = 흐리게(점선). `|` 로 칸을 가른다.
- *       칸 줄 바로 아래 `> 내용` = 그 칸의 자세히(누르거나 마우스를 올리면 열린다. 선택).
+ *
+ * 장면: 머리 줄 `scene: on` 이면 timeline·bars 가 화면에 붙는 무대가 되어 스크롤 박자마다
+ *       다음 단계로 넘어간다(components/prose/diagram/Scene). 단계 설명은 `> 내용` 줄이다.
+ *       timeline 은 시점마다 바로 아래 `>` 한 줄, bars 는 `step: 이름` 줄마다 `>` 와 그 단계의 값.
+ *       장면이 아닌 그림의 `>` 줄은 그리지 않는다.
  *
  * next 에 의존하지 않는 순수 모듈이다 — 점검기와 스크립트에서도 쓴다.
  */
@@ -37,7 +41,7 @@ export interface Mark {
   accent: boolean;
   /** 줄 끝 `~` */
   muted: boolean;
-  /** 바로 아래 `> 내용` 줄 — 누르면 열리는 자세히. */
+  /** 바로 아래 `> 내용` 줄 — 장면의 단계 설명. */
   detail?: string;
 }
 
@@ -95,17 +99,27 @@ export interface Bar extends Mark {
   display?: string;
 }
 
+/** bars 장면 — 같은 행들이 단계마다 다른 값을 갖는다. 값은 parts 순서의 조각 합. */
+export interface BarScene {
+  /** 조각 이름(범례). 없으면 조각 하나. */
+  parts: string[];
+  /** `ratio: A ÷ B` — 첫 행 합 ÷ 둘째 행 합을 오른쪽 위에 보인다. */
+  ratio?: string;
+  rows: (Mark & { label: string })[];
+  steps: { name: string; note: string; zoom: boolean; values: number[][] }[];
+}
+
 export type Diagram = { caption?: string } & (
   | { kind: "flow"; nodes: Item[] }
   | { kind: "cycle"; nodes: Item[]; center?: string }
   | { kind: "compare"; columns: [string, string]; rows: CompareRow[] }
   | { kind: "matrix"; columns: string[]; rows: MatrixRow[] }
-  | { kind: "timeline"; points: TimelinePoint[] }
+  | { kind: "timeline"; points: TimelinePoint[]; scene?: boolean }
   | { kind: "sequence"; actors: string[]; messages: Message[] }
   | { kind: "layers"; layout: "nest" | "stack"; items: Item[] }
   | { kind: "tree"; roots: TreeNode[] }
   | { kind: "stats"; items: Stat[] }
-  | { kind: "bars"; unit?: string; items: Bar[] }
+  | { kind: "bars"; unit?: string; items: Bar[]; scene?: BarScene }
 );
 
 export interface ParseResult {
@@ -157,7 +171,7 @@ function lengths(errors: string[], kind: string, labels: string[], max: number, 
   });
 }
 
-const OPTION_RE = /^(caption|layout|actors|unit|center)\s*:\s*(.*)$/i;
+const OPTION_RE = /^(caption|layout|actors|unit|center|scene|parts|ratio)\s*:\s*(.*)$/i;
 
 const YES = new Set(["o", "O", "✓", "✔", "yes", "y", "있음", "지원"]);
 const NO = new Set(["x", "X", "✕", "✗", "no", "n", "-", "—", "없음", "미지원"]);
@@ -172,7 +186,7 @@ function matrixCell(raw: string): MatrixCell {
 
 const ARROW_RE = /^(.+?)\s*(-->|->|→|⇢)\s*(.+?)$/;
 
-/** 자세히 한 줄의 글자 수 상한. 길면 본문이 할 일이다. */
+/** 단계 설명 한 줄의 글자 수 상한. 길면 본문이 할 일이다. */
 export const DETAIL_MAX = 200;
 
 export function parseDiagram(kind: DiagramKind, source: string): ParseResult {
@@ -181,7 +195,7 @@ export function parseDiagram(kind: DiagramKind, source: string): ParseResult {
   /** 들여쓰기를 살린 줄 — tree 가 쓴다. */
   const raw: string[] = [];
 
-  /** raw 의 몇 번째 줄에 붙은 자세히인가. */
+  /** raw 의 몇 번째 줄에 붙은 `>` 설명인가. */
   const details = new Map<number, string>();
   let head = true;
   for (const line of source.split("\n")) {
@@ -195,11 +209,12 @@ export function parseDiagram(kind: DiagramKind, source: string): ParseResult {
       continue;
     }
     if (more) {
-      errors.push("자세히(`> 내용`) 줄은 칸 줄 바로 아래에 둡니다");
+      errors.push("설명(`> 내용`) 줄은 칸 줄 바로 아래에 둡니다");
       continue;
     }
     const opt = head ? line.trim().match(OPTION_RE) : null;
-    if (opt) {
+    // parts·ratio 는 bars 의 머리 줄이다. 다른 그림에서는 내용 줄로 둔다.
+    if (opt && !(kind !== "bars" && /^(parts|ratio)$/i.test(opt[1]))) {
       opts[opt[1].toLowerCase()] = opt[2].trim();
       continue;
     }
@@ -215,11 +230,14 @@ export function parseDiagram(kind: DiagramKind, source: string): ParseResult {
   const body = raw.map((l) => l.trim());
   const caption = opts.caption || undefined;
   for (const [, d] of details) {
-    if (d.length > DETAIL_MAX) errors.push(`자세히 "${short(d, 20)}" 가 깁니다(${DETAIL_MAX}자까지). 긴 설명은 본문으로`);
+    if (d.length > DETAIL_MAX) errors.push(`설명 "${short(d, 20)}" 가 깁니다(${DETAIL_MAX}자까지). 긴 설명은 본문으로`);
   }
-  /** i 번째 줄에서 만든 칸에 자세히를 붙인다. */
+  /** i 번째 줄에서 만든 칸에 설명을 붙인다. */
   const at = <T extends Mark>(x: T, i: number): T => (details.has(i) ? { ...x, detail: details.get(i) } : x);
   const done = (d: Diagram): ParseResult => ({ diagram: errors.length ? null : d, errors });
+  const scene = /^(on|true|yes|1)$/i.test(opts.scene ?? "");
+  if (opts.scene !== undefined && !scene && !/^(off|false|no|0)$/i.test(opts.scene)) errors.push("scene 은 `scene: on` 으로 씁니다");
+  if (scene && kind !== "timeline" && kind !== "bars") errors.push("scene 은 timeline·bars 에서만 씁니다");
 
   switch (kind) {
     case "flow": {
@@ -284,16 +302,17 @@ export function parseDiagram(kind: DiagramKind, source: string): ParseResult {
     }
 
     case "timeline": {
-      const points = body.map((line, i) => {
+      const points: TimelinePoint[] = body.map((line, i) => {
         const m = marks(line);
         const [when, ...rest] = cells(m.text);
         return at({ when, what: rest.join(" | "), accent: m.accent, muted: m.muted }, i);
       });
-      count(errors, "timeline", points.length, 2, 10);
+      count(errors, "timeline", points.length, 2, scene ? 6 : 10);
       points.forEach((p, i) => {
         if (!p.when || !p.what) errors.push(`timeline ${i + 1}번째 줄은 \`시점 | 내용\` 꼴입니다`);
+        else if (scene && !p.detail) errors.push(`timeline 장면은 시점마다 바로 아래 \`> 설명\` 줄이 있어야 합니다: "${short(p.when)}"`);
       });
-      return done({ kind, caption, points });
+      return done({ kind, caption, points, scene: scene || undefined });
     }
 
     case "sequence": {
@@ -389,6 +408,12 @@ export function parseDiagram(kind: DiagramKind, source: string): ParseResult {
     }
 
     case "bars": {
+      if (scene) {
+        const sc = barScene(raw, details, opts, errors);
+        const first = sc.steps[0]?.values ?? [];
+        const items: Bar[] = sc.rows.map((r, k) => ({ ...r, value: (first[k] ?? []).reduce((a, b) => a + b, 0) }));
+        return done({ kind, caption, unit: opts.unit || undefined, items, scene: sc });
+      }
       const items: Bar[] = [];
       for (const [i, line] of body.entries()) {
         const m = marks(line);
@@ -406,6 +431,67 @@ export function parseDiagram(kind: DiagramKind, source: string): ParseResult {
       return done({ kind, caption, unit: opts.unit || undefined, items });
     }
   }
+}
+
+const STEP_RE = /^step\s*:\s*(.+?)(?:\s*\|\s*(zoom))?\s*$/i;
+
+/** 값 칸 `2.00 + 0.02 + 0.04` → 조각들. 숫자가 아니면 null. */
+function segments(text: string): number[] | null {
+  const parts = text.split("+").map((x) => x.trim());
+  if (!parts.every((x) => /^\d[\d,]*(?:\.\d+)?$/.test(x))) return null;
+  return parts.map((x) => Number(x.replace(/,/g, "")));
+}
+
+/**
+ * bars 장면 — `step: 이름` 줄로 단계를 나누고, 단계마다 `>` 설명과 그 단계의 행 값.
+ * 첫 단계에 모든 행이 있어야 하고, 뒤 단계에서 빠진 행은 앞 단계 값을 그대로 쓴다.
+ */
+function barScene(raw: string[], details: Map<number, string>, opts: Record<string, string>, errors: string[]): BarScene {
+  const parts = opts.parts ? opts.parts.split(/[,，]/).map((x) => x.trim()).filter(Boolean) : [];
+  const width = Math.max(1, parts.length);
+  const rows: BarScene["rows"] = [];
+  const steps: BarScene["steps"] = [];
+  for (const [i, line] of raw.entries()) {
+    const t = line.trim();
+    const st = t.match(STEP_RE);
+    if (st) {
+      if (st[1].includes("|")) errors.push(`bars 장면의 단계 줄은 \`step: 이름\` 이나 \`step: 이름 | zoom\` 입니다: "${short(t, 30)}"`);
+      const prev = steps[steps.length - 1];
+      steps.push({ name: st[1].trim(), note: details.get(i) ?? "", zoom: !!st[2], values: prev ? prev.values.map((v) => [...v]) : [] });
+      if (!details.has(i)) errors.push(`bars 장면의 단계 "${short(st[1].trim())}" 바로 아래에 \`> 설명\` 줄이 있어야 합니다`);
+      continue;
+    }
+    const step = steps[steps.length - 1];
+    if (!step) {
+      errors.push("bars 장면은 `step: 이름` 줄로 시작합니다");
+      break;
+    }
+    if (details.has(i)) errors.push(`bars 장면의 설명은 \`step:\` 줄 바로 아래에 둡니다: "${short(t, 30)}"`);
+    const m = marks(t);
+    const [label, num, ...extra] = cells(m.text);
+    const segs = segments(num ?? "");
+    if (!label || !segs || extra.length) {
+      errors.push(`bars 장면 줄은 \`이름 | 숫자\` 또는 \`이름 | 숫자 + 숫자\` 꼴입니다: "${short(t, 30)}"`);
+      continue;
+    }
+    if (segs.length !== width) errors.push(`bars "${short(label)}" 의 조각이 ${segs.length}개입니다. parts 는 ${width}개입니다`);
+    let k = rows.findIndex((r) => r.label === label);
+    if (k < 0) {
+      if (steps.length > 1) {
+        errors.push(`bars 장면의 행 "${short(label)}" 은 첫 단계에 있어야 합니다`);
+        continue;
+      }
+      rows.push({ label, accent: m.accent, muted: m.muted });
+      k = rows.length - 1;
+    }
+    step.values[k] = segs;
+  }
+  count(errors, "bars 장면", steps.length, 2, 5, "단계");
+  count(errors, "bars 장면", rows.length, 1, 6, "행");
+  lengths(errors, "bars", rows.map((r) => r.label), 20, "짧게");
+  if (opts.ratio && rows.length < 2) errors.push("ratio 는 행이 둘 이상일 때 씁니다");
+  if (steps.length && steps.every((s) => s.values.every((v) => v.reduce((a, b) => a + b, 0) === 0))) errors.push("bars 값이 모두 0 입니다");
+  return { parts, ratio: opts.ratio || undefined, rows, steps };
 }
 
 /** 본문에서 그림 블록(```figure 포함)을 찾아 낸다. 점검기가 개수·오류를 센다. */
