@@ -60,8 +60,11 @@ export default function Page() {
 }
 `,
   );
+  // 남은 dev 캐시가 예전 globals.css 를 그대로 내줘 장면 CSS 가 빠진 적이 있다 — 매번 새로 컴파일한다.
+  rmSync(join(root, ".next/dev"), { recursive: true, force: true });
   const log = join(tmpdir(), `figure-preview-${port}.log`);
-  const child = spawn("npx", ["next", "dev", "-p", String(port)], { cwd: root, detached: true, stdio: ["ignore", openSync(log, "a"), openSync(log, "a")] });
+  const out = openSync(log, "w"); // 지난 실행의 오류가 섞여 원인을 잘못 짚지 않게 비우고 시작한다
+  const child = spawn("npx", ["next", "dev", "-p", String(port)], { cwd: root, detached: true, stdio: ["ignore", out, out] });
   child.unref();
   writeFileSync(state, JSON.stringify({ pid: child.pid, links, port }));
   const url = `http://localhost:${port}/figure-preview/`;
