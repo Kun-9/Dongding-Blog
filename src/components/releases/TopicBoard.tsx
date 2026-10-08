@@ -7,7 +7,7 @@ import { useMounted } from "@/lib/hooks";
 import { renderMarkdown } from "@/lib/markdown";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Field, Modal } from "@/components/ui/Modal";
-import { Select } from "@/components/ui/Select";
+import { ChoiceMenu } from "@/components/ui/Select";
 import type { QueueRow } from "@/lib/release-queue";
 import type { AiLogEntry, AiUntil, TopicRow } from "@/lib/release-topics";
 import {
@@ -159,7 +159,7 @@ export function TopicBoard({ topics, onTopicsChange, candidates, onQueued }: Pro
     rows.push(
       <div
         key={`head-${g.key}`}
-        className={`flex flex-wrap items-baseline gap-x-2.5 gap-y-1 ${gi > 0 ? "mt-6" : ""} ${open ? "mb-2.5" : ""}`}
+        className={`flex flex-wrap items-baseline gap-x-2.5 gap-y-1 md:col-span-full ${gi > 0 ? "mt-6" : ""} ${open ? "mb-2.5" : ""}`}
       >
         {g.fold ? (
           <button
@@ -259,7 +259,9 @@ export function TopicBoard({ topics, onTopicsChange, candidates, onQueued }: Pro
           </p>
         </div>
       )}
-      <div>{rows}</div>
+      {/* md 부터 판 전체가 한 grid 다. 행마다 subgrid 로 같은 칸(점·제목·진행바·칩·버튼·펼치기)을
+          써서 진행바·칩·버튼이 구역을 넘어 같은 세로줄에 선다. 칸 폭은 보이는 행 중 가장 긴 것이 정한다. */}
+      <div className="md:grid md:grid-cols-[14px_minmax(0,1fr)_auto_auto_auto_auto] md:gap-x-3">{rows}</div>
     </section>
   );
 }
@@ -473,6 +475,12 @@ function Progress({ topic }: { topic: TopicRow }) {
 
 type ChipTone = "tip" | "warning" | "muted" | "danger" | "plain";
 
+/** 행 오른쪽 칸들 — md 부터 두 줄(제목·설명)에 걸쳐 가운데 선다. */
+const SIDE = "md:row-span-2 md:row-start-1";
+/** 발행 알약의 한 칸. md 부터는 칸 폭에 맞춰 고르게 늘어난다. */
+const SEG =
+  "inline-flex items-center justify-center gap-1.5 whitespace-nowrap px-3 py-1.5 font-sans text-[12.5px] font-medium no-underline transition-colors md:flex-1";
+
 const CHIP: Record<ChipTone, string> = {
   tip: "px-2.5 font-semibold bg-[color:var(--callout-tip-bg)] text-[color:var(--callout-tip-ink)]",
   warning: "px-2.5 font-semibold bg-[color:var(--callout-warning-bg)] text-[color:var(--callout-warning-ink)]",
@@ -488,8 +496,10 @@ const monthDay = (iso: string) => iso.slice(5, 10).replace("-", ".");
 function chipOf(t: TopicRow): { label: string; tone: ChipTone } {
   const next = nextStage(t.stage);
   if (t.droppedReason !== null) return { label: "접음", tone: "muted" };
-  if (t.ai.status === "running") return { label: `${next?.label ?? ""} 쓰는 중`, tone: "tip" };
-  if (t.ai.status === "queued") return { label: t.ai.local ? "예약" : "AI 대기", tone: "muted" };
+  if (t.ai.status === "running") return { label: t.ai.prompt ? "고치는 중" : `${next?.label ?? ""} 쓰는 중`, tone: "tip" };
+  if (t.ai.status === "queued") {
+    return { label: t.ai.local ? (t.ai.prompt ? "고치기 예약" : "예약") : "AI 대기", tone: "muted" };
+  }
   if (!next) {
     const at = t.checks.published?.at;
     return { label: at ? `${monthDay(at)} 발행` : "발행함", tone: "plain" };
@@ -577,9 +587,10 @@ function TopicItem({
   /** 펼친 칸 안에서는 하나만 연다. */
   const [panel, setPanel] = useState<null | "notes" | "history" | "ai">(null);
   const [mode, setMode] = useState<"view" | "edit">("view");
-  /** 열린 모달. advance = 직접 완료, publish = 발행, drop = 접기. */
-  const [dialog, setDialog] = useState<null | "advance" | "publish" | "drop">(null);
+  /** 열린 모달. advance = 직접 완료, publish = 발행, drop = 접기, revise = AI 고치기. */
+  const [dialog, setDialog] = useState<null | "advance" | "publish" | "drop" | "revise">(null);
   const [note, setNote] = useState("");
+  const [prompt, setPrompt] = useState("");
   const [slug, setSlug] = useState(topic.postSlug ?? "");
   const [reason, setReason] = useState("");
   const [until, setUntil] = useState<AiUntil>("review");
@@ -634,7 +645,7 @@ function TopicItem({
 
   if (mode === "edit") {
     return (
-      <div className={`${edge} bg-surface p-5`}>
+      <div className={`${edge} bg-surface p-5 md:col-span-full`}>
         <div className="mb-3 font-sans text-[13px] font-semibold text-ink">주제 편집</div>
         <TopicEditor
           initial={topic}
@@ -654,8 +665,9 @@ function TopicItem({
     );
   }
 
-  // 지금 누를 것 하나.
+  // 지금 누를 것 하나. 알약 버튼(맡기기·발행)은 칸 폭까지 늘려 양 끝을 맞춘다.
   let action: ReactNode = null;
+  let fill = false;
   if (paused) {
     action = (
       <Btn disabled={busy} onClick={() => patch({ action: "drop", reason: null })}>
@@ -687,22 +699,48 @@ function TopicItem({
       </a>
     );
   } else if (publishing) {
+    fill = true;
     action = (
-      <>
-        {topic.postSlug && <PreviewLink slug={topic.postSlug} quiet className="whitespace-nowrap" />}
+      <div className="inline-flex items-stretch rounded-full border border-border-strong bg-surface text-ink-soft md:flex-1">
+        {topic.postSlug && (
+          <>
+            <a
+              href={`/preview/${topic.postSlug}`}
+              target="_blank"
+              rel="noreferrer"
+              className={`${SEG} rounded-l-full pl-3.5 hover:bg-hover hover:text-ink`}
+            >
+              미리보기
+              <span aria-hidden className="text-[11px] opacity-80">↗</span>
+            </a>
+            <span aria-hidden className="my-1.5 w-px bg-border-strong" />
+          </>
+        )}
+        <button
+          type="button"
+          onClick={() => {
+            setError(null);
+            setDialog("revise");
+          }}
+          className={`${SEG} text-[var(--callout-tip-ink)] hover:bg-hover ${topic.postSlug ? "" : "rounded-l-full pl-3.5"}`}
+        >
+          <span aria-hidden className="text-[12px] text-[var(--callout-tip-glyph)]">✦</span>
+          고치기
+        </button>
         <button
           type="button"
           onClick={() => {
             setError(null);
             setDialog("publish");
           }}
-          className="whitespace-nowrap rounded-full bg-ink px-3 py-1 font-sans text-[12px] font-medium text-bg transition-[opacity,transform] hover:opacity-90 active:scale-[0.97]"
+          className={`${SEG} -my-px -mr-px rounded-r-full bg-ink pr-3.5 font-semibold text-bg hover:opacity-90`}
         >
           발행하기
         </button>
-      </>
+      </div>
     );
   } else if (pick) {
+    fill = true;
     action = (
       <AiLaunch
         options={left}
@@ -729,7 +767,12 @@ function TopicItem({
       </>
     );
   } else if (status === "queued") {
-    sub = (
+    sub = topic.ai.prompt ? (
+      <>
+        <b className="mr-1 font-semibold text-ink-soft">고치기</b>
+        {topic.ai.prompt}
+      </>
+    ) : (
       <>
         <b className="mr-1 font-semibold text-ink-soft">{untilLabel(topic.ai.until)}</b>
         <AiMessage text={message ?? "다음 실행 때 시작"} />
@@ -748,9 +791,9 @@ function TopicItem({
 
   return (
     <div
-      className={`${edge} ${running ? "bg-[color-mix(in_srgb,var(--callout-tip-bg)_45%,var(--surface))]" : "bg-surface"}`}
+      className={`${edge} md:col-span-full md:grid md:grid-cols-subgrid ${running ? "bg-[color-mix(in_srgb,var(--callout-tip-bg)_45%,var(--surface))]" : "bg-surface"}`}
     >
-      <div className="grid grid-cols-[14px_minmax(0,1fr)] items-center gap-x-3 gap-y-[3px] py-3 pr-3 pl-4 md:grid-cols-[14px_minmax(0,1fr)_auto]">
+      <div className="grid grid-cols-[14px_minmax(0,1fr)] items-center gap-x-3 gap-y-[3px] py-3 pr-3 pl-4 md:col-span-full md:grid-cols-subgrid">
         <span
           aria-hidden
           className={`col-start-1 row-start-1 size-[7px] justify-self-center rounded-full ${running ? "topic-pulse" : ""}`}
@@ -769,18 +812,25 @@ function TopicItem({
         <div className="col-start-2 row-start-2 line-clamp-2 min-w-0 text-[13px] leading-[1.5] text-ink-muted md:line-clamp-1">
           {sub}
         </div>
-        <div className="col-start-2 row-start-3 flex flex-wrap items-center gap-2.5 pt-1.5 md:col-start-3 md:row-span-2 md:row-start-1 md:flex-nowrap md:justify-end md:pt-0">
-          <MiniProgress topic={topic} />
-          <span className={`whitespace-nowrap rounded-full py-[3px] font-sans text-[11.5px] ${CHIP[chip.tone]}`}>
+        {/* 좁은 화면에선 셋째 줄에 한 줄로, md 부터는 각자 판의 칸(3~6열)에 선다. */}
+        <div className="col-start-2 row-start-3 flex flex-wrap items-center gap-2.5 pt-1.5 md:contents">
+          <span className={`flex ${SIDE} md:col-start-3`}>
+            <MiniProgress topic={topic} />
+          </span>
+          <span className={`whitespace-nowrap rounded-full py-[3px] font-sans text-[11.5px] ${SIDE} md:col-start-4 md:justify-self-start ${CHIP[chip.tone]}`}>
             {chip.label}
           </span>
-          {action}
+          {action && (
+            <div className={`flex items-center gap-2.5 ${SIDE} md:col-start-5 ${fill ? "md:justify-self-stretch" : "md:justify-self-end"}`}>
+              {action}
+            </div>
+          )}
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
             aria-expanded={open}
             aria-label={open ? "접기" : "자세히"}
-            className="flex size-7 shrink-0 items-center justify-center rounded-md text-ink-muted transition-colors hover:bg-hover hover:text-ink"
+            className={`flex size-7 shrink-0 items-center justify-center rounded-md text-ink-muted transition-colors hover:bg-hover hover:text-ink ${SIDE} md:col-start-6`}
           >
             <svg
               viewBox="0 0 12 12"
@@ -795,12 +845,12 @@ function TopicItem({
 
       {/* 접혀 있어도 보여야 하는 것 — 맡기기·발행 버튼이 낸 오류. */}
       {error && !dialog && (
-        <p className="topic-rise mx-4 mt-0 mb-3 whitespace-pre-line rounded-lg border border-danger/30 px-3 py-2.5 text-[12.5px] leading-[1.6] text-danger md:ml-[42px]">
+        <p className="topic-rise mx-4 mt-0 mb-3 whitespace-pre-line rounded-lg border border-danger/30 px-3 py-2.5 text-[12.5px] leading-[1.6] text-danger md:col-span-full md:ml-[42px]">
           {error}
         </p>
       )}
 
-      <Collapse open={open}>
+      <Collapse open={open} className="md:col-span-full">
         <div className="px-4 pt-0.5 pb-4 md:pl-[42px]">
           <div className="max-w-[560px]">
             <Progress topic={topic} />
@@ -830,7 +880,9 @@ function TopicItem({
 
           {running && (
             <div className="mt-3">
-              <div className="font-sans text-[12px] text-ink-muted">{untilLabel(topic.ai.until)} 맡김</div>
+              <div className="font-sans text-[12px] text-ink-muted">
+                {topic.ai.prompt ? "고치기 맡김" : `${untilLabel(topic.ai.until)} 맡김`}
+              </div>
               <AiLog entries={log} live fallback={message} />
             </div>
           )}
@@ -1051,6 +1103,53 @@ function TopicItem({
         </Field>
       </Modal>
       <Modal
+        open={dialog === "revise"}
+        tone="accent"
+        eyebrow="AI 고치기"
+        title="무엇을 고칠까요?"
+        description={`'${topic.title}' 초안을 지시대로 고치고 점검을 다시 돌립니다. 단계는 그대로이고 발행은 하지 않습니다.`}
+        confirmLabel={local ? "고치기 예약" : "고쳐 맡기기"}
+        confirmDisabled={!prompt.trim()}
+        busy={busy}
+        error={dialog === "revise" ? error : null}
+        onClose={() => setDialog(null)}
+        onConfirm={() =>
+          patch({ action: "ai", until: "review", local, prompt: prompt.trim() }).then((ok) => ok && setPrompt(""))
+        }
+      >
+        <Field label="지시">
+          <textarea
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            rows={5}
+            maxLength={2000}
+            placeholder="예: 도입부를 두 문장으로 줄이고, 가격 표에 이전 모델 행을 더해 주세요."
+            className={field}
+          />
+        </Field>
+        <div role="group" aria-label="어디서 실행할까요" className="grid gap-2 sm:grid-cols-2">
+          {WHERE.map((o) => {
+            const on = local === (o.value === "local");
+            return (
+              <button
+                key={o.value}
+                type="button"
+                aria-pressed={on}
+                onClick={() => setLocal(o.value === "local")}
+                className={`rounded-lg border px-3 py-2.5 text-left transition-colors ${
+                  on
+                    ? "border-[color-mix(in_oklab,var(--callout-tip-glyph)_55%,var(--border))] bg-[color-mix(in_oklab,var(--callout-tip-bg)_70%,var(--surface))]"
+                    : "border-border-token hover:border-border-strong"
+                }`}
+              >
+                <span className="block font-sans text-[12.5px] font-semibold text-ink">{o.label}</span>
+                <span className="mt-0.5 block text-[11.5px] leading-[1.45] text-ink-muted">{o.hint}</span>
+              </button>
+            );
+          })}
+        </div>
+      </Modal>
+      <Modal
         open={dialog === "drop"}
         eyebrow="접기"
         title="이 주제를 접어 둘까요?"
@@ -1098,9 +1197,15 @@ function ago(iso: string | null): string {
   return h < 24 ? `${h}시간 전` : `${Math.round(h / 24)}일 전`;
 }
 
+/** AI 작업을 어디서 돌릴지. */
+const WHERE = [
+  { value: "now", label: "바로 실행", hint: "클라우드 루틴을 지금 깨워 작업합니다" },
+  { value: "local", label: "예약", hint: "쌓아 두었다가 로컬 CLI 에서 집을 때 작업합니다" },
+];
+
 /**
- * 맡기기 버튼 — 왼쪽은 실행, 오른쪽은 어디까지 갈지 고르는 목록.
- * 한 덩어리로 붙어 있어 "무엇을 · 어디까지"가 한 번에 읽힌다.
+ * 맡기기 버튼 — 이름이 누르면 일어날 일을 그대로 말한다("점검까지 맡기기").
+ * 오른쪽 화살표 하나로 어디까지·어디서를 고른다.
  */
 function AiLaunch({
   options,
@@ -1125,49 +1230,40 @@ function AiLaunch({
 }) {
   const half =
     "transition-colors hover:bg-[color-mix(in_oklab,var(--callout-tip-glyph)_14%,transparent)] disabled:opacity-40";
+  const verb = local ? (retry ? "다시 예약" : "예약") : retry ? "다시 맡기기" : "맡기기";
   return (
-    <div className="ai-launch inline-flex items-stretch rounded-full border border-[color-mix(in_oklab,var(--callout-tip-glyph)_45%,var(--border))] bg-[color-mix(in_oklab,var(--callout-tip-bg)_70%,var(--surface))] text-[var(--callout-tip-ink)] shadow-[0_6px_16px_-10px_var(--callout-tip-glyph)]">
+    <div className="inline-flex items-stretch rounded-full border border-[color-mix(in_oklab,var(--callout-tip-glyph)_45%,var(--border))] bg-[color-mix(in_oklab,var(--callout-tip-bg)_70%,var(--surface))] text-[var(--callout-tip-ink)] md:flex-1">
       <button
         type="button"
         disabled={busy}
         onClick={onLaunch}
-        className={`group inline-flex items-center gap-1.5 rounded-l-full py-1.5 pr-3 pl-3.5 font-sans text-[12.5px] font-semibold active:scale-[0.98] ${half}`}
+        className={`group inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-l-full py-1.5 pr-3 pl-3.5 font-sans text-[12.5px] font-semibold active:scale-[0.98] md:flex-1 ${half}`}
       >
         <span aria-hidden className="text-[12px] text-[var(--callout-tip-glyph)] transition-transform duration-500 group-hover:rotate-[72deg]">
           ✦
         </span>
-        {busy ? "맡기는 중…" : local ? (retry ? "다시 예약" : "AI 작업 예약") : retry ? "다시 맡기기" : "AI에게 맡기기"}
+        {busy ? "맡기는 중…" : `${untilLabel(value)} ${verb}`}
       </button>
       <span aria-hidden className="my-1.5 w-px bg-[color-mix(in_oklab,var(--callout-tip-glyph)_35%,transparent)]" />
-      <Select
-        label="어디까지 맡길까요"
-        align="right-md"
-        value={value}
-        onChange={onChange}
+      <ChoiceMenu
+        label="맡길 범위와 실행 위치"
         disabled={busy}
-        options={options.map((o) => ({
-          value: o.key,
-          label: o.label,
-          hint: o.hint,
-          meta: `${stageIndex(o.key) - from}단계`,
-        }))}
-        className={`inline-flex items-center gap-1 py-1.5 pr-2.5 pl-2.5 font-sans text-[12.5px] font-medium ${half}`}
-      />
-      <span aria-hidden className="my-1.5 w-px bg-[color-mix(in_oklab,var(--callout-tip-glyph)_35%,transparent)]" />
-      <Select
-        label="어디서 실행할까요"
-        align="right"
-        value={local ? "local" : "now"}
-        onChange={(v) => onLocal(v === "local")}
-        disabled={busy}
-        options={[
-          { value: "now", label: "바로 실행", hint: "클라우드 루틴을 지금 깨워 작업합니다" },
-          { value: "local", label: "예약", hint: "쌓아 두었다가 로컬 CLI 에서 집을 때 작업합니다" },
+        groups={[
+          {
+            label: "어디까지",
+            value,
+            onChange: (v) => onChange(v as AiUntil),
+            options: options.map((o) => ({
+              value: o.key,
+              label: o.label,
+              hint: o.hint,
+              meta: `${stageIndex(o.key) - from}단계`,
+            })),
+          },
+          { label: "어디서", value: local ? "local" : "now", onChange: (v) => onLocal(v === "local"), options: WHERE },
         ]}
-        className={`inline-flex items-center gap-1 rounded-r-full py-1.5 pr-3 pl-2.5 font-sans text-[12.5px] font-medium ${half}`}
-      >
-        {local ? "예약" : <>바로<span className="hidden md:inline"> 실행</span></>}
-      </Select>
+        className={`inline-flex h-full items-center rounded-r-full py-1.5 pr-3 pl-2.5 ${half}`}
+      />
     </div>
   );
 }
@@ -1309,28 +1405,6 @@ function groupByRepo(items: TopicRow["candidates"]): [string, TopicRow["candidat
   return [...m];
 }
 
-/** 발행 전 미리보기(/preview/slug) — 새 탭으로 연다. */
-function PreviewLink({ slug, quiet, className = "" }: { slug: string; quiet?: boolean; className?: string }) {
-  return (
-    <a
-      href={`/preview/${slug}`}
-      target="_blank"
-      rel="noreferrer"
-      className={`group inline-flex items-center gap-1.5 font-sans no-underline transition-colors ${
-        quiet
-          ? "text-[12px] text-ink-muted hover:text-ink"
-          : "rounded-full border border-border-strong px-3.5 py-1.5 text-[12.5px] font-medium text-ink hover:bg-hover"
-      } ${className}`}
-    >
-      <svg viewBox="0 0 16 16" aria-hidden className="size-3.5">
-        <path d="M1.5 8s2.5-4.5 6.5-4.5S14.5 8 14.5 8s-2.5 4.5-6.5 4.5S1.5 8 1.5 8Z" fill="none" stroke="currentColor" strokeWidth="1.3" />
-        <circle cx="8" cy="8" r="2" fill="none" stroke="currentColor" strokeWidth="1.3" />
-      </svg>
-      {quiet ? "초안 미리보기" : "미리보기"}
-      <span aria-hidden className="text-[11px] transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5">↗</span>
-    </a>
-  );
-}
 
 function Btn({
   primary,

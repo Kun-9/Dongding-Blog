@@ -435,6 +435,7 @@ export type Database = {
           ai_log: Json
           ai_started_at: string | null
           ai_local: boolean
+          ai_prompt: string | null
         }
         Insert: {
           angle?: string | null
@@ -454,6 +455,7 @@ export type Database = {
           ai_log?: Json
           ai_started_at?: string | null
           ai_local?: boolean
+          ai_prompt?: string | null
         }
         Update: {
           angle?: string | null
@@ -473,6 +475,7 @@ export type Database = {
           ai_log?: Json
           ai_started_at?: string | null
           ai_local?: boolean
+          ai_prompt?: string | null
         }
         Relationships: []
       }

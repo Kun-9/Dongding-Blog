@@ -51,6 +51,8 @@ export interface TopicRow {
     todo: string | null;
     /** 예약 — 루틴을 깨우지 않고 로컬 CLI 세션이 집기를 기다린다. */
     local: boolean;
+    /** 고치기 지시. 있으면 단계를 넘기지 않고 발행 대기 초안만 고치는 작업이다. */
+    prompt: string | null;
   };
   /** 작업 노트(markdown) — 조사 요약, 링크, 비교 표, 그림 목록. */
   notes: string;
@@ -108,22 +110,24 @@ type DbTopic = {
   ai_log?: Json;
   ai_started_at?: string | null;
   ai_local?: boolean;
+  ai_prompt?: string | null;
 };
 
 const BASE_COLUMNS =
   "id, title, angle, stage, checks, post_slug, dropped_reason, updated_at";
 const AI_COLUMNS = `${BASE_COLUMNS}, ai_status, ai_until, ai_message, ai_updated_at, notes`;
 const TOPIC_COLUMNS = `${AI_COLUMNS}, ai_log, ai_started_at`;
-const FULL_COLUMNS = `${TOPIC_COLUMNS}, ai_local`;
+const LOCAL_COLUMNS = `${TOPIC_COLUMNS}, ai_local`;
+const FULL_COLUMNS = `${LOCAL_COLUMNS}, ai_prompt`;
 
 /**
  * 마이그레이션보다 배포가 먼저 나가도 화면은 살아 있어야 한다. 없는
- * 컬럼(42703)이면 한 단계씩 덜 읽는다: 예약 → 로그 → AI 상태 → 기본 컬럼.
+ * 컬럼(42703)이면 한 단계씩 덜 읽는다: 고치기 → 예약 → 로그 → AI 상태 → 기본 컬럼.
  */
 async function selectTopics(
   build: (columns: string) => PromiseLike<{ data: unknown; error: { code?: string; message: string } | null }>,
 ) {
-  for (const cols of [FULL_COLUMNS, TOPIC_COLUMNS, AI_COLUMNS]) {
+  for (const cols of [FULL_COLUMNS, LOCAL_COLUMNS, TOPIC_COLUMNS, AI_COLUMNS]) {
     const res = await build(cols);
     if (res.error?.code !== "42703") return res;
   }
@@ -158,6 +162,7 @@ function toRow(t: DbTopic, candidateIds: string[]): TopicRow {
           ? (end.todo ?? null)
           : null,
       local: t.ai_local ?? false,
+      prompt: t.ai_prompt ?? null,
     },
     notes: t.notes ?? "",
   };
@@ -299,6 +304,9 @@ export async function advanceTopic(
   if (next.key === "published" && !opts.allowPublish) {
     throw new TopicError("발행은 어드민의 발행 버튼으로만 한다");
   }
+  if (next.key === "published" && (topic.ai.status === "queued" || topic.ai.status === "running")) {
+    throw new TopicError("AI 가 맡은 작업이 끝나지 않았다. 끝나거나 취소한 뒤 발행할 것");
+  }
 
   let note = input.note;
   // 점검과 발행 모두 본문을 검사한다. 점검 뒤에 본문을 고쳤을 수 있어서
@@ -414,6 +422,7 @@ async function saveAi(
     ai_until?: AiUntil | null;
     ai_message?: string | null;
     ai_local?: boolean;
+    ai_prompt?: string | null;
   },
   /** 로그에 한 줄 덧붙인다. reset 이면 로그를 비우고 이 줄로 시작한다. */
   log?: { topic: TopicRow; kind: AiLogEntry["kind"]; message: string; todo?: string; reset?: boolean },
@@ -439,12 +448,25 @@ async function saveAi(
  * AI 에게 맡긴다. until 단계까지 진행하고 멈춘다. 이미 그 단계를 지났거나
  * 접은 주제면 거절한다. local 이면 예약만 한다 — 루틴을 깨우지 않고, 로컬
  * CLI 세션이 claim_release_work(MCP)로 집을 때까지 기다린다.
+ *
+ * prompt 가 있으면 고치기다. 발행 대기(점검까지 끝남) 초안만 받고, 실행기는
+ * 단계를 넘기지 않은 채 지시대로 초안을 고치고 점검을 다시 돌린다.
  */
-export async function queueAi(id: number, until: AiUntil, local = false): Promise<TopicRow> {
+export async function queueAi(
+  id: number,
+  until: AiUntil,
+  local = false,
+  prompt: string | null = null,
+): Promise<TopicRow> {
   const topic = await getTopic(id);
   if (topic.droppedReason !== null) throw new TopicError("접은 주제는 맡길 수 없다");
   if (topic.ai.status === "running") throw new TopicError("이미 작업 중이다");
-  if (stageIndex(topic.stage) >= stageIndex(until)) {
+  if (prompt) {
+    if (topic.stage !== "review" || !topic.postSlug) {
+      throw new TopicError("고치기는 점검까지 끝난 초안에만 맡길 수 있다");
+    }
+    until = "review";
+  } else if (stageIndex(topic.stage) >= stageIndex(until)) {
     throw new TopicError(`이미 ${until} 단계를 지났다`);
   }
   if (local) {
@@ -452,11 +474,12 @@ export async function queueAi(id: number, until: AiUntil, local = false): Promis
       ai_status: "queued",
       ai_until: until,
       ai_local: true,
+      ai_prompt: prompt,
       ai_message: "예약함 — 로컬 CLI 에서 집으면 시작",
     });
     return getTopic(id);
   }
-  await saveAi(id, { ai_status: "queued", ai_until: until, ai_local: false, ai_message: null });
+  await saveAi(id, { ai_status: "queued", ai_until: until, ai_local: false, ai_prompt: prompt, ai_message: null });
 
   // 루틴을 바로 깨운다. 깨운 세션은 이 주제만 집는다(지시서 0단계).
   // 실패해도 요청은 queued 로 남아 정기 실행이 집어 간다.
@@ -522,8 +545,9 @@ export async function claimAiWork(id?: number, local = false): Promise<TopicRow 
       .maybeSingle();
     if (won) {
       const topic = await getTopic(c.id);
-      // 로그를 새로 시작하고 시작 시각을 찍는다.
-      await saveAi(c.id, {}, { topic, kind: "start", message: "실행기가 작업을 집었음", reset: true });
+      // 로그를 새로 시작하고 시작 시각을 찍는다. 고치기면 지시를 첫 줄에 남긴다.
+      const message = topic.ai.prompt ? `실행기가 고치기를 집었음 — ${topic.ai.prompt}` : "실행기가 작업을 집었음";
+      await saveAi(c.id, {}, { topic, kind: "start", message, reset: true });
       return getTopic(c.id);
     }
   }
