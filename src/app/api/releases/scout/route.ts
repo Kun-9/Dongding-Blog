@@ -2,18 +2,21 @@
  * 릴리스 글감 탐색기 API — 매일 수집 직후 도는 탐색 루틴이 curl 로 부른다.
  *
  * 실행기 API(../worker)와 같은 토큰(RELEASE_WORKER_TOKEN)을 쓴다. 할 수 있는
- * 일은 탐색기 몫으로 좁힌다: 새 글감 읽기, 주제 만들기, new 글감 건너뛰기.
- * 사람이 정한 글감 상태와 이미 있는 주제는 바꾸지 못한다.
+ * 일은 탐색기 몫으로 좁힌다: 새 글감 읽기, 트렌드 신호 읽기, 주제 만들기,
+ * new 글감 건너뛰기. 사람이 정한 글감 상태와 이미 있는 주제는 바꾸지 못한다.
+ * 트렌드 탐색기 루틴도 같은 API 를 쓴다(signals·volume·topics·topic_create).
  *
- * GET  → 지시서(markdown). 토큰 없이 연다 — 비밀값이 없고, 첫 호출에 토큰이
- *        실리면 루틴의 권한 분류기가 Data Exfiltration 으로 막는 일이 잦았다.
+ * GET  → 지시서(markdown). `?kind=trend` 면 트렌드 탐색기 지시서. 토큰 없이
+ *        연다 — 비밀값이 없고, 첫 호출에 토큰이 실리면 루틴의 권한 분류기가
+ *        Data Exfiltration 으로 막는 일이 잦았다.
  * POST → { action, ... }
  */
 import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { dbAdmin } from "@/lib/supabase";
-import { SCOUT_PROMPT } from "@/lib/release-scout";
+import { SCOUT_PROMPT, TREND_PROMPT } from "@/lib/release-scout";
+import { collectSignals, keywordVolume } from "@/lib/trends";
 import { TopicError, createTopic, getTopics, saveNotes } from "@/lib/release-topics";
 
 /** 글감 본문은 분류에 이 정도면 족하다. 수십 건을 한 세션에서 읽는다. */
@@ -46,10 +49,19 @@ const Action = z.discriminatedUnion("action", [
     notes: z.string().min(1).max(20_000),
   }),
   z.object({ action: z.literal("skip"), ids: IDS.max(50), note: z.string().min(1).max(200) }),
+  z.object({ action: z.literal("signals") }),
+  z.object({
+    action: z.literal("volume"),
+    keywords: z
+      .array(z.object({ term: z.string().min(1).max(60), ko: z.string().min(1).max(60).optional() }))
+      .min(1)
+      .max(5),
+  }),
 ]);
 
-export async function GET() {
-  return new Response(SCOUT_PROMPT, {
+export async function GET(req: Request) {
+  const trend = new URL(req.url).searchParams.get("kind") === "trend";
+  return new Response(trend ? TREND_PROMPT : SCOUT_PROMPT, {
     headers: { "content-type": "text/markdown; charset=utf-8", "cache-control": "no-store" },
   });
 }
@@ -143,6 +155,12 @@ export async function POST(req: Request) {
         if (error) throw new Error(error.message);
         return ok({ skipped: data.map((c) => c.id) });
       }
+
+      case "signals":
+        return ok(await collectSignals());
+
+      case "volume":
+        return ok(await keywordVolume(input.keywords));
     }
   } catch (e) {
     if (e instanceof TopicError) return bad(e.message, e.status);
