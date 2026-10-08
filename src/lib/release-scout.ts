@@ -31,6 +31,7 @@ curl -sS -X POST "$APP/api/releases/scout/" -H "Authorization: Bearer $TOKEN" -H
 | topics | — | 지금 있는 주제 전부. 접은 것(droppedReason)도 나온다 |
 | topic_create | title, angle, candidateIds?, notes | 주제를 만든다. 묶는 글감은 new 인 것만. notes 는 작업 노트의 첫 내용 |
 | skip | ids, note | new 글감을 "건너뜀"으로. note 는 한 줄 이유 |
+| read | url | 웹 페이지를 서버가 대신 읽어 글자만 준다. 이 환경에서 열리지 않는 사이트(프록시 403·ENOTFOUND)용 |
 
 ## 순서
 
@@ -95,6 +96,7 @@ curl -sS -X POST "$APP/api/releases/scout/" -H "Authorization: Bearer $TOKEN" -H
 | signals | — | 소스별로 지금 뜨는 항목. 실패한 소스는 errors 에 이유와 함께 |
 | volume | keywords: [{term, ko?}] (5개까지) | 키워드별 관심 추이. 최근 28일을 7일씩 4칸, 오래된 것부터 |
 | topics | — | 지금 있는 주제 전부. 접은 것(droppedReason)도 나온다 |
+| read | url | 웹 페이지를 서버가 대신 읽어 글자만 준다(title, text 2만 자). 이 환경은 공식 사이트 대부분을 직접 열지 못한다 |
 | topic_create | title, angle, notes | 주제를 만든다. candidateIds 는 넣지 않는다. notes 는 작업 노트의 첫 내용 |
 
 signals 의 소스:
@@ -119,7 +121,7 @@ volume 의 값:
    - \`topics\` 의 주제(접은 것 포함)와 겹치면 고르지 않는다.
    - 이 블로그 독자(코딩 도구를 쓰는 개발자)가 "무엇이 일어났고 나는 무엇을 하면 되나"를 한 편으로 읽을 만한 것만. 의견·논쟁만 있고 확인할 사실이 없는 것은 뺀다.
 3. 후보를 5개까지 줄여 \`volume\` 을 한 번 부른다. 마지막 칸이 앞 세 칸 평균보다 큰 것, 곧 지금 오르는 것을 먼저 본다. 해외(hn)가 오르는 것이 국내(naver)만 오르는 것보다 앞선다.
-4. 고른 후보마다 웹에서 1차 출처(공식 발표·문서·레포·보안 공지)를 찾아 사실과 날짜를 확인한다. 1차 출처가 없으면(커뮤니티 글·루머만 있으면) 만들지 않는다.
+4. 고른 후보마다 1차 출처(공식 발표·문서·레포·보안 공지)를 \`read\` 로 읽어 사실과 날짜를 확인한다. signals 의 url(HN 이 가리키는 원문 등)이 공식 사이트면 그것부터 읽고, 없으면 WebSearch 로 공식 주소를 찾는다. 검색 색인은 며칠 늦을 수 있으니 검색에 안 나온다고 없는 것으로 보지 않는다. \`read\` 가 403 이면(봇 차단) 같은 회사의 RSS·문서·GitHub 처럼 다른 공식 경로를 읽는다(예: openai.com 은 \`https://openai.com/news/rss.xml\`). 1차 출처를 읽지 못했거나 커뮤니티 글·루머만 있으면 만들지 않는다.
 5. 이번 실행에서 만드는 주제는 3개까지. 기준을 넘는 것이 없으면 만들지 않는다. 억지로 채우지 않는다.
 6. 끝나면 한국어 서너 줄로 보고한다: 만든 주제(id·제목과 대표 신호 수치), 후보였지만 뺀 것 두세 개와 이유, 실패한 소스.
 

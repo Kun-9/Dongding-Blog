@@ -31,7 +31,10 @@ const decode = (s: string) =>
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
-    .replace(/&apos;|&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&#x([0-9a-f]+);/gi, (_, h: string) => String.fromCodePoint(parseInt(h, 16)))
+    .replace(/&#(\d+);/g, (_, n: string) => String.fromCodePoint(Number(n)))
     .replace(/&amp;/g, "&")
     .trim();
 
@@ -247,5 +250,35 @@ export async function keywordVolume(keywords: VolumeKeyword[]) {
         hnCounts.flatMap((h, i) => (h.status === "rejected" ? [[`hn:${keywords[i].term}`, reason(h.reason)]] : [])),
       ),
     },
+  };
+}
+
+/* ── 페이지 읽기 ──────────────────────────────────────────────────────── */
+
+/** 본문은 사실 확인에 이 정도면 족하다. */
+const READ_LIMIT = 20_000;
+
+/**
+ * 루틴 환경은 허용 목록 밖 사이트(openai.com, mistral.ai 등)를 열지 못한다.
+ * 1차 출처는 서버가 대신 받아 글자만 돌려준다. 토큰을 가진 루틴만 부른다.
+ */
+export async function readPage(raw: string) {
+  const url = new URL(raw);
+  if (url.protocol !== "https:" || /^(localhost|[\d.]+|\[.*\])$/i.test(url.hostname)) {
+    throw new Error("https 공개 주소만 읽는다");
+  }
+  const res = await get(url.toString(), { headers: { accept: "text/html,text/plain,application/json;q=0.9,*/*;q=0.5" } });
+  const type = res.headers.get("content-type") ?? "";
+  if (!/text|json|xml/.test(type)) throw new Error(`읽을 수 없는 형식: ${type || "알 수 없음"}`);
+  const body = await res.text();
+  const html = type.includes("html");
+  const text = html
+    ? decode(body.replace(/<(script|style|noscript|svg|nav|footer)[\s\S]*?<\/\1>/gi, " ").replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ")
+    : body;
+  return {
+    url: res.url,
+    title: html ? tag(body, "title") : null,
+    text: text.slice(0, READ_LIMIT),
+    truncated: text.length > READ_LIMIT,
   };
 }

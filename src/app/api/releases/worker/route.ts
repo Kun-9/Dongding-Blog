@@ -23,6 +23,7 @@ import { postExists, toRow, PostBodySchema } from "@/app/api/posts/_shared";
 import { applyReplacements, loadPost, loadTaxonomy } from "@/lib/mcp-blog";
 import { checkVoice, releaseDay } from "@/lib/voice";
 import { WORKER_PROMPT } from "@/lib/release-worker";
+import { readPage } from "@/lib/trends";
 import {
   TopicError,
   advanceTopic,
@@ -132,6 +133,7 @@ const Action = z.discriminatedUnion("action", [
     svg: z.string().max(500_000).optional(),
     base64: z.string().max(8_000_000).optional(),
   }),
+  z.object({ action: z.literal("read"), url: z.string().url() }),
 ]);
 
 export async function GET() {
@@ -265,6 +267,9 @@ export async function POST(req: Request) {
         const path = `/posts/${input.slug}/${input.name}`;
         return ok({ path, markdown: `![설명](${path})` });
       }
+
+      case "read":
+        return ok(await readPage(input.url));
     }
   } catch (e) {
     if (e instanceof TopicError) return bad(e.message, e.status);
