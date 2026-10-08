@@ -52,10 +52,7 @@ const Action = z.discriminatedUnion("action", [
   z.object({ action: z.literal("signals") }),
   z.object({
     action: z.literal("volume"),
-    keywords: z
-      .array(z.object({ term: z.string().min(1).max(60), ko: z.string().min(1).max(60).optional() }))
-      .min(1)
-      .max(5),
+    keywords: z.array(z.string().min(1).max(60)).min(1).max(5),
   }),
   z.object({ action: z.literal("read"), url: z.string().url() }),
 ]);

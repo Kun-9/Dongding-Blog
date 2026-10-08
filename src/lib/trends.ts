@@ -2,8 +2,8 @@
  * 트렌드 신호 — 트렌드 탐색기(release-scout.ts 의 TREND_PROMPT)가 탐색기 API 의
  * `signals`·`volume` 액션으로 읽는다.
  *
- * 외부 소스는 서버가 대신 부른다. 루틴 환경의 네트워크 허용 목록을 타지 않고,
- * 네이버 키도 서버 밖으로 나가지 않는다. 소스 하나가 막혀도 나머지는 돌려준다.
+ * 외부 소스는 서버가 대신 부른다. 루틴 환경은 허용 목록 밖 사이트를 열지 못한다.
+ * 키 없이 열리는 소스만 쓴다. 소스 하나가 막혀도 나머지는 돌려준다.
  */
 import "server-only";
 
@@ -164,13 +164,6 @@ export async function collectSignals() {
 
 /* ── 키워드 추이 ──────────────────────────────────────────────────────── */
 
-export interface VolumeKeyword {
-  /** 해외에서 쓰는 이름 그대로. HN 과 네이버에 같이 쓴다. */
-  term: string;
-  /** 국내 표기. 네이버에서 term 과 합쳐 센다. */
-  ko?: string;
-}
-
 /** HN 스토리·댓글에서 term 을 언급한 수. 7일씩 4칸, 오래된 것부터. */
 async function hnWeekly(term: string): Promise<number[]> {
   const now = Math.floor(Date.now() / 1000);
@@ -189,67 +182,15 @@ async function hnWeekly(term: string): Promise<number[]> {
   );
 }
 
-/**
- * 네이버 데이터랩 상대 검색량을 7일씩 4칸으로 더한다. 어제까지 28일, 오래된 것부터.
- * 비율은 한 요청 안에서 가장 많이 검색된 날이 100 이라 키워드끼리만 비교된다.
- */
-async function naverWeekly(keywords: VolumeKeyword[]): Promise<number[][]> {
-  const id = process.env.NAVER_CLIENT_ID;
-  const secret = process.env.NAVER_CLIENT_SECRET;
-  if (!id || !secret) throw new Error("NAVER_CLIENT_ID·NAVER_CLIENT_SECRET 없음");
-  // 한국 날짜. 오늘은 덜 찼으니 어제까지.
-  const day = (ago: number) => new Date(Date.now() + 9 * 3600_000 - ago * DAY * 1000).toISOString().slice(0, 10);
-  const startDate = day(WEEKS * 7);
-  const res = await get("https://openapi.naver.com/v1/datalab/search", {
-    method: "POST",
-    headers: { "X-Naver-Client-Id": id, "X-Naver-Client-Secret": secret, "content-type": "application/json" },
-    body: JSON.stringify({
-      startDate,
-      endDate: day(1),
-      timeUnit: "date",
-      keywordGroups: keywords.map((k) => ({ groupName: k.term, keywords: k.ko ? [k.term, k.ko] : [k.term] })),
-    }),
-  });
-  const { results } = (await res.json()) as { results: { data: { period: string; ratio: number }[] }[] };
-  return results.map((r) => bucketWeeks(r.data, startDate));
-}
-
-/** 날짜별 값을 startDate 부터 7일씩 WEEKS 칸으로 더한다. 빠진 날은 0 이다. */
-export function bucketWeeks(data: { period: string; ratio: number }[], startDate: string): number[] {
-  const weeks = Array<number>(WEEKS).fill(0);
-  const start = Date.parse(startDate);
-  for (const d of data) {
-    const i = Math.floor((Date.parse(d.period) - start) / (7 * DAY * 1000));
-    if (i >= 0 && i < WEEKS) weeks[i] += d.ratio;
-  }
-  return weeks.map((v) => Math.round(v * 10) / 10);
-}
-
-export async function keywordVolume(keywords: VolumeKeyword[]) {
-  const [hnCounts, naver] = await Promise.all([
-    Promise.allSettled(keywords.map((k) => hnWeekly(k.term))),
-    naverWeekly(keywords).then(
-      (v) => ({ ok: true as const, v }),
-      (e: unknown) => ({ ok: false as const, error: reason(e) }),
-    ),
-  ]);
+export async function keywordVolume(terms: string[]) {
+  const counts = await Promise.allSettled(terms.map(hnWeekly));
   return {
     windows: `최근 ${WEEKS * 7}일을 7일씩 ${WEEKS}칸, 오래된 것부터`,
-    keywords: keywords.map((k, i) => {
-      const h = hnCounts[i];
-      return {
-        term: k.term,
-        ko: k.ko ?? null,
-        hn: h.status === "fulfilled" ? h.value : null,
-        naver: naver.ok ? naver.v[i] : null,
-      };
+    keywords: terms.map((term, i) => {
+      const c = counts[i];
+      return { term, hn: c.status === "fulfilled" ? c.value : null };
     }),
-    errors: {
-      ...(naver.ok ? {} : { naver: naver.error }),
-      ...Object.fromEntries(
-        hnCounts.flatMap((h, i) => (h.status === "rejected" ? [[`hn:${keywords[i].term}`, reason(h.reason)]] : [])),
-      ),
-    },
+    errors: Object.fromEntries(counts.flatMap((c, i) => (c.status === "rejected" ? [[terms[i], reason(c.reason)]] : []))),
   };
 }
 
