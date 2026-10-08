@@ -97,7 +97,7 @@ export const VISUAL_RULES = [
   "강조(`*`)는 그림마다 지금 이야기하는 한두 곳만. 다 강조하면 아무것도 안 보인다",
   "그림 블록·figure 의 캡션은 첫 줄 `caption: …`, 이미지는 alt 자리에. 그림이 보여 주는 것을 40자 안팎 명사구로",
   "모션은 블로그가 정한다. 그림 블록은 아무것도 안 써도 칸이 화면의 읽는 높이에 오면 차례로 나타나고, figure 는 키트 기본 모션이 있다. figure·SVG 에서 바꾸거나 더할 때만 `data-anim`·`data-loop` 을 의미가 있는 곳에 단다. 모션이 없어도 읽히게 그린다",
-  "더 알고 싶어질 칸 몇 개에만 자세히(누르거나 마우스를 올리면 열림)를 단다: 그림 블록은 칸 줄 바로 아래 `> 내용`, figure·SVG 는 `data-detail=\"내용\"`. 배포일·출처·계산 내역 같은 보충만, 200자까지. 글을 이해하는 데 꼭 필요한 내용은 칸이나 본문에 둔다",
+  "자세히(칸 줄 아래 `> 내용`, figure·SVG 의 `data-detail`)는 새로 달지 않는다. 지금은 그림 아래 패널이 열리며 글 위치가 흔들려 다른 방식으로 바꿀 예정이다. 배포일·출처·계산 내역 같은 보충은 본문 문장이나 캡션에 쓴다",
   "실제 화면은 사람 몫으로 남기지 않는다. blog-capture 스킬대로 ① 직접 뜬다: `node .claude/skills/blog-capture/capture.mjs --run \"claude\" --keys /model --keys Enter --from \"Select model\" --to \"Esc to cancel\" --out /tmp/<이름>.svg` 한 줄로 SVG 를 만들어 올리고, 본문에는 '직접 v2.1.292에서 열어 보니'처럼 버전과 함께 밝힌다 ② 띄울 수 없으면(끝 코드 3·4) 자료 조사: 공식 문서·릴리스·이슈의 같은 화면이나 출력 예시를 코드 블록으로 옮기고 출처를 단다 ③ 그것도 없으면 화면의 구조·숫자를 그림 블록·figure 로 다시 그리고 캡션에 실제 화면이 아니라 구성이라고 밝힌다",
   "셋 다 안 될 때만 그 자리에 `![캡션](/posts/<slug>/todo-<이름>.png)` 를 남기고 못 뜬 이유를 노트에 적는다. 본문에 '캡처 필요' 자리로 보이고, 남아 있으면 발행이 막힌다. 점검은 경로에 `/todo-` 가 있으면 캡처 대기로 보므로, 실제 캡처는 todo- 없는 이름으로 올리고 경로를 바꾼다",
 ] as const;
@@ -118,7 +118,7 @@ export const SVG_STYLE = `- 캔버스: \`viewBox="0 0 720 H"\` (H 는 내용만�
 - 종류: 흐름(왼→오, 번호 배지), 전/후 비교(두 열, 바뀐 칸만 강조색), 버전 타임라인(가로선 위 점), 겹친 상자(계층)
 - 그림 하나에 생각 하나. 설명은 캡션과 본문이 한다 — 그림 안에 문장을 쓰지 않는다
 - \`<script>\`, \`on*\` 속성, \`<foreignObject>\`, 외부 링크는 넣지 않는다(올릴 때 거절된다)
-- 모션: 표기한 것만 움직인다. 묶음 \`<g data-anim="rise">\`, 선 \`data-anim="draw"\`, 점 \`pop\`, 큰 숫자 \`<text>\`(tspan 없이) \`count\`. 순서는 \`style="--i: 1"\`(없으면 문서 순서). 되풀이 경로(점선)는 \`data-loop="orbit"\`, 지금 이야기하는 도형 하나는 \`data-loop="pulse"\`. 누르면 열리는 자세히는 \`data-detail="내용"\`(보충만, 200자). \`transform\` 속성이 있는 요소는 rise·pop 대신 나타나기만 하므로 움직일 묶음은 좌표로 놓는다
+- 모션: 표기한 것만 움직인다. 묶음 \`<g data-anim="rise">\`, 선 \`data-anim="draw"\`, 점 \`pop\`, 큰 숫자 \`<text>\`(tspan 없이) \`count\`. 순서는 \`style="--i: 1"\`(없으면 문서 순서). 되풀이 경로(점선)는 \`data-loop="orbit"\`, 지금 이야기하는 도형 하나는 \`data-loop="pulse"\`. 자세히(\`data-detail\`)는 지금 달지 않는다. \`transform\` 속성이 있는 요소는 rise·pop 대신 나타나기만 하므로 움직일 묶음은 좌표로 놓는다
 
 \`\`\`svg
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 200" font-family="inherit">
@@ -140,7 +140,7 @@ export const SVG_STYLE = `- 캔버스: \`viewBox="0 0 720 H"\` (H 는 내용만�
 \`\`\``;
 
 /** 그림 블록 문법(lib/diagram.ts). 사람과 실행기가 같이 본다. */
-export const DIAGRAM_SYNTAX = String.raw`코드 펜스 언어를 아래 종류로 쓰면 그림이 된다. 머리 줄 ${"`caption: …`"} 은 그림 아래 캡션. 줄 끝 ${"`*`"} 는 강조, ${"`~`"} 는 흐리게(예정·선택). 칸은 ${"`|`"} 로 가른다. 칸 줄 바로 아래 ${"`> 내용`"} 은 그 칸의 자세히(누르면 열린다, 선택). 문법이 틀리면 코드로 보이고 점검에서 경고가 난다.
+export const DIAGRAM_SYNTAX = String.raw`코드 펜스 언어를 아래 종류로 쓰면 그림이 된다. 머리 줄 ${"`caption: …`"} 은 그림 아래 캡션. 줄 끝 ${"`*`"} 는 강조, ${"`~`"} 는 흐리게(예정·선택). 칸은 ${"`|`"} 로 가른다. 칸 줄 바로 아래 ${"`> 내용`"} 은 그 칸의 자세히인데 지금은 새로 달지 않는다. 문법이 틀리면 코드로 보이고 점검에서 경고가 난다.
 
 - flow — 한 방향 단계. ${"`제목 | 설명`"}. 2~8단계, 제목 24자
 - cycle — 되풀이되는 고리. ${"`제목 | 설명`"}, 머리 ${"`center: 가운데 글`"}. 3~6단계, 제목 14자
@@ -195,7 +195,7 @@ export const FIGURE_KIT = String.raw`그림 블록으로 안 되는 구성(두 �
 - 상자: ${"`fig-box`"} + ${"`fig-accent`"}(강조) ${"`fig-muted`"}(점선) ${"`fig-info`"} ${"`fig-warn`"}
 - 글자: ${"`fig-label`"}(작은 머리말) ${"`fig-title`"} ${"`fig-sub`"} ${"`fig-big`"}(큰 숫자) ${"`fig-mono`"}
 - 조각: ${"`fig-arrow`"}(→, ${"`fig-down`"} 이면 ↓) ${"`fig-num`"}(번호) ${"`fig-chip`"} ${"`fig-dot`"} ${"`fig-ok`"} ${"`fig-no`"} ${"`fig-part`"} ${"`fig-bar`"}(style ${"`--v: 70%`"})
-- 모션: 키트가 기본을 갖는다(상자·행 올라오기, 화살표 그려지기, 막대 자라기, 배지·체크 튀어나오기, ${"`fig-big`"} 숫자 세기, 강조 상자 숨쉬기). 바꿀 때만 ${"`data-anim=\"rise|fade|pop|draw|draw-back|grow|count|none\"`"}, 반복은 ${"`data-loop=\"pulse|orbit\"`"}, 순서는 style ${"`--i: 2`"}, 세기 시작 값은 ${"`data-from=\"14\"`"}, 누르면 열리는 자세히는 ${"`data-detail=\"내용\"`"}(200자). 다른 값은 지워진다
+- 모션: 키트가 기본을 갖는다(상자·행 올라오기, 화살표 그려지기, 막대 자라기, 배지·체크 튀어나오기, ${"`fig-big`"} 숫자 세기, 강조 상자 숨쉬기). 바꿀 때만 ${"`data-anim=\"rise|fade|pop|draw|draw-back|grow|count|none\"`"}, 반복은 ${"`data-loop=\"pulse|orbit\"`"}, 순서는 style ${"`--i: 2`"}, 세기 시작 값은 ${"`data-from=\"14\"`"}. 다른 값은 지워진다. 자세히(${"`data-detail`"})는 지금 달지 않는다
 
 ${"````"}
 ${"```"}figure
