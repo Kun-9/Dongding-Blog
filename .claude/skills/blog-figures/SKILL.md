@@ -51,6 +51,7 @@ description: dongding 블로그 글 본문에 그림을 넣는 방법 — 그림
 | 파일 구조, 계층 | `tree` |
 | 핵심 숫자 몇 개 | `stats` |
 | 수치 크기 비교 | `bars` |
+| 활용 예 두세 개(하는 일 × 쓰는 이벤트·명령) | ```figure 카드(아래 "활용 예 카드") |
 
 글 전체에서 같은 종류만 반복하지 말고 내용에 맞게 섞는다. 비교는 `compare`·`matrix` 가 비교 표 요건도 채운다.
 
@@ -284,6 +285,36 @@ caption: 분류기가 명령을 두 갈래로 나누는 방식
 <div class="fig-grid-3" style="margin-top: 14px">
   <div class="fig-box"><span class="fig-label">평균 대기</span><span class="fig-big">1.2s</span><span class="fig-bar" style="--v: 30%"></span></div>
   <div class="fig-box fig-accent"><span class="fig-label">자동 승인</span><span class="fig-big">86%</span><span class="fig-bar fig-accent" style="--v: 86%"></span></div>
+</div>
+```
+````
+
+### 활용 예 카드
+
+새 기능을 어디에 쓰는지는 공식 예제·샘플에서 고른 두세 개를 카드 한 줄로 보여 준다. 카드마다 `fig-label` 쓰임 갈래(지켜보기·그리기·붙잡기처럼 앞 그림의 말과 맞춘다), `fig-title fig-mono` 이름, `fig-sub` 하는 일 한 줄, `fig-chip` 쓰는 이벤트·명령. 덜 끼어드는 것부터 놓고, 본문에서 자세히 다룰 하나만 `fig-accent`. 칸 이름과 칩은 직접 확인한 것만 쓴다(예: `claude plugin validate` 의 `hooks:` 줄). 카드 뒤 문단에서 하나를 골라 동작을 풀고, 따라 할 명령 한 줄을 붙인다.
+
+````
+```figure
+caption: 공식 예제 mod 셋이 받는 이벤트와 하는 일
+<div class="fig-grid-3">
+  <div class="fig-box">
+    <span class="fig-label">지켜보기</span>
+    <span class="fig-title fig-mono">replay-theater</span>
+    <span class="fig-sub">지난 턴의 파일 편집을 /replay로 한 단계씩 되감기</span>
+    <span class="fig-chip">tool.call → next(e)</span>
+  </div>
+  <div class="fig-box">
+    <span class="fig-label">그리기</span>
+    <span class="fig-title fig-mono">token-weather</span>
+    <span class="fig-sub">턴이 끝날 때마다 컨텍스트 사용량을 프롬프트 위 띠에</span>
+    <span class="fig-chip">turn.complete · AbovePrompt</span>
+  </div>
+  <div class="fig-box fig-accent">
+    <span class="fig-label">붙잡기</span>
+    <span class="fig-title fig-mono">blast-radius</span>
+    <span class="fig-sub">rm -rf·강제 푸시를 멈추고 영향 범위를 pane에</span>
+    <span class="fig-chip">tool.call → deny 또는 next(e)</span>
+  </div>
 </div>
 ```
 ````
