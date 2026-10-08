@@ -83,11 +83,23 @@ function scan() {
       if (e.left < r.left - 1 || e.right > r.right + 1) out.push(`그림 판 밖으로 나감: ${name(el)} (${Math.round(e.left)}~${Math.round(e.right)}, 판 ${Math.round(r.left)}~${Math.round(r.right)})`);
     }
   }
+  // 공백에서 접힌 줄은 괜찮다. 공백 없는 낱말 하나가 두 줄에 걸쳤을 때만 잡는다.
   for (const line of document.querySelectorAll(".fig-term-body div")) {
     if (line.querySelector("div") || !visible(line)) continue;
-    const lh = parseFloat(getComputedStyle(line).lineHeight) || 20;
-    const longest = Math.max(0, ...(line.textContent ?? "").split(/\s+/).map((w) => w.length));
-    if (line.getBoundingClientRect().height > lh * 1.5 && longest > 24) out.push(`터미널 줄이 토큰 중간에서 끊김: "${(line.textContent ?? "").trim().slice(0, 40)}" (줄을 나누거나 JSON 은 들여쓰기로)`);
+    const walker = document.createTreeWalker(line, NodeFilter.SHOW_TEXT);
+    let broken = null;
+    for (let n = walker.nextNode(); n && !broken; n = walker.nextNode()) {
+      for (const m of n.data.matchAll(/\S{6,}/g)) {
+        const r = document.createRange();
+        r.setStart(n, m.index);
+        r.setEnd(n, m.index + m[0].length);
+        if (new Set([...r.getClientRects()].map((x) => Math.round(x.top))).size > 1) {
+          broken = m[0];
+          break;
+        }
+      }
+    }
+    if (broken) out.push(`터미널 줄이 토큰 중간에서 끊김: "${broken.slice(0, 40)}" (줄을 나누거나 이름을 줄이고, JSON 은 들여쓰기로)`);
   }
   return out;
 }
@@ -100,12 +112,14 @@ if (selftest) {
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
   await page.setContent(`<article><figure style="width:300px;margin:0">
     <div style="margin-left:-40px;width:120px;height:20px">밖으로 나간 상자</div>
-    <div class="fig-term-body" style="width:200px;font:12px/20px monospace"><div>{"sub":"user-42","role":"admin","jti":"d7853a97"}</div></div>
+    <div class="fig-term-body" style="width:200px;font:12px/20px monospace"><div>{"sub":"user-42","role":"admin","jti":"d7853a97"}</div><div>Exception: error creating bean with name main</div></div>
   </figure><div style="width:600px;height:10px"></div></article>`);
   const got = await page.evaluate(scan);
   await browser.close();
   const want = ["문서 가로 넘침", "그림 판 밖으로 나감", "터미널 줄이 토큰 중간에서 끊김"];
   const miss = want.filter((w) => !got.some((g) => g.startsWith(w)));
+  // 공백에서 접힌 줄은 잡지 않아야 한다.
+  if (got.some((g) => g.includes("Exception"))) miss.push("공백에서 접힌 줄을 잘못 잡음");
   console.log(miss.length ? `selftest 실패: ${miss.join(", ")}` : "selftest ok");
   process.exit(miss.length ? 1 : 0);
 }
