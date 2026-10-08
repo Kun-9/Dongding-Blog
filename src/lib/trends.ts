@@ -206,11 +206,12 @@ export async function conceptQuestions(area: ConceptArea) {
   const { tags } = CONCEPT_AREAS.find((a) => a.key === area)!;
   const settled = await Promise.allSettled(
     tags.map(async (tag) => {
-      const res = await get(`https://api.stackexchange.com/2.3/tags/${encodeURIComponent(tag)}/faq?site=stackoverflow&pagesize=8`);
+      const res = await get(`https://api.stackexchange.com/2.3/tags/${encodeURIComponent(tag)}/faq?site=stackoverflow&pagesize=6`);
       const { items } = (await res.json()) as {
-        items: { title: string; link: string; score: number; view_count: number; tags: string[] }[];
+        items: { title: string; link: string; view_count: number }[];
       };
-      return items.map((q) => ({ title: decode(q.title), views: q.view_count, score: q.score, url: q.link, tags: q.tags }));
+      // 태그 여덟 개를 한 번에 읽는다. 조회수와 제목이면 헷갈리는 지점을 고르기에 족하다.
+      return items.map((q) => ({ title: decode(q.title), views: q.view_count, url: q.link }));
     }),
   );
   return {
@@ -239,14 +240,19 @@ export async function readPage(raw: string) {
   const res = await get(url.toString(), { headers: { accept: "text/html,text/plain,application/json;q=0.9,*/*;q=0.5" } });
   const type = res.headers.get("content-type") ?? "";
   if (!/text|json|xml/.test(type)) throw new Error(`읽을 수 없는 형식: ${type || "알 수 없음"}`);
-  const body = await res.text();
+  const page = await res.text();
   const html = type.includes("html");
+  // 주소에 #조각이 있으면 그 요소부터 읽는다. RFC·명세는 한 쪽이 길어 앞 2만 자에 원하는 절이 없다.
+  const id = url.hash ? decodeURIComponent(url.hash.slice(1)) : "";
+  const escaped = id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const at = html && id ? page.search(new RegExp(`\\sid=["']${escaped}["']`)) : -1;
+  const body = at > 0 ? page.slice(page.lastIndexOf("<", at)) : page;
   const text = html
     ? decode(body.replace(/<(script|style|noscript|svg|nav|footer)[\s\S]*?<\/\1>/gi, " ").replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ")
     : body;
   return {
     url: res.url,
-    title: html ? tag(body, "title") : null,
+    title: html ? tag(page, "title") : null,
     text: text.slice(0, READ_LIMIT),
     truncated: text.length > READ_LIMIT,
   };

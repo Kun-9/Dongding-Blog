@@ -175,7 +175,7 @@ curl -sS -X POST "$APP/api/releases/scout/" -H "Authorization: Bearer $TOKEN" -H
 | questions | area | 그 분야 태그마다 Stack Overflow 자주 묻는 질문(title·views·score·url). 실패한 태그는 errors 에 |
 | posts | — | 블로그에 이미 있는 글(slug·title·tags) |
 | topics | — | 지금 있는 주제 전부. 접은 것(droppedReason)도 나온다 |
-| read | url | 웹 페이지를 서버가 대신 읽어 글자만 준다(title, text 2만 자). 이 환경은 공식 사이트 대부분을 직접 열지 못한다 |
+| read | url | 웹 페이지를 서버가 대신 읽어 글자만 준다(title, text 2만 자). 이 환경은 공식 사이트 대부분을 직접 열지 못한다. 긴 명세는 주소에 \`#절-id\` 를 붙이면 그 절부터 준다 |
 | topic_create | title, angle, notes, kind | 주제를 만든다. kind 는 반드시 "concept". candidateIds 는 넣지 않는다 |
 
 ## 기본 목록
