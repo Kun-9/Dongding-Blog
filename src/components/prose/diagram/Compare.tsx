@@ -89,8 +89,10 @@ function Cell({ c }: { c: MatrixCell }) {
 }
 
 export function Matrix({ columns, rows }: { columns: string[]; rows: MatrixRow[] }) {
+  // overflow-x 만 auto 로 두면 세로도 auto 가 되어, 행이 올라오는 모션의 몇 px 때문에
+  // 판 안에 세로 스크롤이 생기고 휠이 판 안쪽을 내려 머리줄이 잘린다. 세로는 막는다.
   return (
-    <div className="dg-lift overflow-x-auto rounded-xl border border-border-token bg-surface">
+    <div className="dg-lift overflow-x-auto overflow-y-hidden rounded-xl border border-border-token bg-surface">
       <table className="w-full border-collapse text-[14px] leading-[1.45]">
         <thead>
           <tr className="border-b border-border-token bg-surface-alt/60">

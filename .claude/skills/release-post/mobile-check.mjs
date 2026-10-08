@@ -76,6 +76,10 @@ function scan() {
     if (r.height === 0 || r.bottom < 0 || r.top > innerHeight) continue;
     for (const el of box.querySelectorAll("*")) {
       if (!visible(el)) continue;
+      // 그림 안 세로 스크롤 — 휠이 페이지 대신 판 안쪽을 내려 머리줄이 잘린다(2026-10-08 matrix).
+      const oy = getComputedStyle(el).overflowY;
+      if ((oy === "auto" || oy === "scroll") && el.tagName !== "PRE" && (el.scrollTop > 0 || el.scrollHeight > el.clientHeight + 1))
+        out.push(`그림 안에 세로 스크롤: ${name(el)} (내용 ${el.scrollHeight}px, 판 ${el.clientHeight}px)`);
       const e = el.getBoundingClientRect();
       if (e.width === 0 || e.height === 0) continue;
       // 가로로 스크롤되는 칸(코드 블록·표) 안은 넘쳐도 된다.
@@ -112,11 +116,12 @@ if (selftest) {
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
   await page.setContent(`<article><figure style="width:300px;margin:0">
     <div style="margin-left:-40px;width:120px;height:20px">밖으로 나간 상자</div>
+    <div style="overflow-x:auto;height:30px"><div style="height:46px">세로로 넘치는 판</div></div>
     <div class="fig-term-body" style="width:200px;font:12px/20px monospace"><div>{"sub":"user-42","role":"admin","jti":"d7853a97"}</div><div>Exception: error creating bean with name main</div></div>
   </figure><div style="width:600px;height:10px"></div></article>`);
   const got = await page.evaluate(scan);
   await browser.close();
-  const want = ["문서 가로 넘침", "그림 판 밖으로 나감", "터미널 줄이 토큰 중간에서 끊김"];
+  const want = ["문서 가로 넘침", "그림 판 밖으로 나감", "터미널 줄이 토큰 중간에서 끊김", "그림 안에 세로 스크롤"];
   const miss = want.filter((w) => !got.some((g) => g.startsWith(w)));
   // 공백에서 접힌 줄은 잡지 않아야 한다.
   if (got.some((g) => g.includes("Exception"))) miss.push("공백에서 접힌 줄을 잘못 잡음");
