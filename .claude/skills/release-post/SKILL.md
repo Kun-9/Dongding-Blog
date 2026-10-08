@@ -13,6 +13,8 @@ description: Use when the user asks you directly (not through the admin "AI에�
 2. `list_release_topics` 로 주제의 `stage` 와 `next` 를 본다. 요청이 지금 단계와 맞지 않으면(이미 점검까지 끝난 주제를 "처음부터" 등) 쓰기 전에 고르게 한다: 기존 초안 다듬기 / `update_release_topic` revert 로 되돌려 다시 쓰기 / 새 slug. revert 는 한 번에 한 단계만 내리고 그 단계의 근거만 지운다. 작업 노트·글·postSlug 는 남는다.
 3. `next` 단계부터 하나씩 한다. 단계를 건너뛰지 않는다.
 
+주제가 어드민에서 **예약**된 것(`ai.status` queued, `ai.local` true)이면 release-reserved 로 집은 뒤 쓴다. 집지 않고 쓰면 어드민에는 계속 "예약"으로 남고 로컬 실행기가 같은 주제를 또 집는다.
+
 ## 대응표
 
 | 지시서 액션 | MCP 도구 |

@@ -458,13 +458,18 @@ const handler = createMcpHandler(
           "릴리스 글을 쓰기 전에 먼저 불러 어디까지 진행됐는지 확인할 것. 글감 본문은 주지 않는다.",
         inputSchema: z.object({
           includeDropped: z.boolean().optional().describe("접거나 버린 주제도 포함. 버린 주제는 discardedAt 이 있다"),
+          reserved: z
+            .boolean()
+            .optional()
+            .describe("어드민에서 '예약'으로 맡겨 로컬 세션을 기다리는 주제만. claim_release_work 에 id 로 넘길 후보"),
         }),
       },
-      async ({ includeDropped }) => {
+      async ({ includeDropped, reserved }) => {
         const topics = await getTopics();
         return json(
           topics
             .filter((t) => includeDropped || t.droppedReason === null)
+            .filter((t) => !reserved || (t.ai.status === "queued" && t.ai.local))
             .map(brief),
         );
       },
@@ -499,10 +504,16 @@ const handler = createMcpHandler(
           "어드민에서 'AI에게 맡기기'를 '예약'으로 맡긴 작업 하나를 집는다(바로 실행으로 맡긴 것은 클라우드 루틴 몫이라 집지 않는다). " +
           "집은 주제는 running 이 되고, 주제 전체(단계·근거·노트·글감·until)를 돌려준다. 할 일이 없으면 { work: null }. " +
           "로컬 실행기(scripts/release-worker.sh)가 맨 먼저 부른다. 한 번에 하나만 집을 것.",
-        inputSchema: z.object({}),
+        inputSchema: z.object({
+          id: z
+            .number()
+            .int()
+            .optional()
+            .describe("이 주제만 집는다(예약된 것이어야 한다). 없으면 가장 먼저 예약된 것"),
+        }),
       },
-      async () => {
-        const t = await claimAiWork(undefined, true);
+      async ({ id }) => {
+        const t = await claimAiWork(id, true);
         return json({ work: t ? withNext(t) : null });
       },
     );
