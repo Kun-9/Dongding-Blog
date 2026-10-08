@@ -172,10 +172,48 @@ function shoot() {
 
 /* ── 자르기·검사 ──────────────────────────────────────────────────────── */
 
+/**
+ * 캡처 폴더는 하나라(신뢰 기록이 쌓이지 않게) 동시에 뜨면 서로 지운다. 잠금 폴더로 차례를 지킨다.
+ * 2026-10-09 실행기 넷이 동시에 돌 때 "Working directory was deleted" 가 났다.
+ * 잡은 쪽이 죽어 남은 잠금(pid 가 없음)은 치우고 잡는다.
+ */
+const LOCK = join(tmpdir(), "blogcap-screen.lock");
+function lock() {
+  const end = Date.now() + 300_000;
+  for (;;) {
+    try {
+      mkdirSync(LOCK);
+      writeFileSync(join(LOCK, "pid"), String(process.pid));
+      return;
+    } catch {
+      let pid = 0;
+      try {
+        pid = Number(readFileSync(join(LOCK, "pid"), "utf8"));
+      } catch {}
+      let alive = false;
+      try {
+        alive = pid > 0 && process.kill(pid, 0);
+      } catch {}
+      if (pid > 0 && !alive) rmSync(LOCK, { recursive: true, force: true });
+      else if (Date.now() > end) throw new Fail(3, "다른 캡처가 5분 넘게 캡처 폴더를 잡고 있다. 끝난 뒤 다시 뜬다.");
+      else sleep(1000);
+    }
+  }
+}
+
 let ansi;
+let held = false;
+// fail() 은 process.exit 라 finally 를 건너뛴다. 잠금은 실패를 알리기 전에 먼저 푼다.
+const unlock = () => held && rmSync(LOCK, { recursive: true, force: true });
 try {
+  if (!opt.ansi) {
+    lock();
+    held = true;
+  }
   ansi = opt.ansi ? readFileSync(opt.ansi, "utf8") : shoot();
+  unlock();
 } catch (e) {
+  unlock();
   if (e instanceof Fail) fail(e.code, e.message);
   throw e;
 }
