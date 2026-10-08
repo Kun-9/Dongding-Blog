@@ -49,6 +49,8 @@ export interface TopicRow {
     log: AiLogEntry[];
     /** 마지막 작업이 남긴 사람 몫의 일. 그 뒤로 무슨 일이든 생기면 비운다. */
     todo: string | null;
+    /** 예약 — 루틴을 깨우지 않고 로컬 CLI 세션이 집기를 기다린다. */
+    local: boolean;
   };
   /** 작업 노트(markdown) — 조사 요약, 링크, 비교 표, 그림 목록. */
   notes: string;
@@ -105,21 +107,23 @@ type DbTopic = {
   notes?: string;
   ai_log?: Json;
   ai_started_at?: string | null;
+  ai_local?: boolean;
 };
 
 const BASE_COLUMNS =
   "id, title, angle, stage, checks, post_slug, dropped_reason, updated_at";
 const AI_COLUMNS = `${BASE_COLUMNS}, ai_status, ai_until, ai_message, ai_updated_at, notes`;
 const TOPIC_COLUMNS = `${AI_COLUMNS}, ai_log, ai_started_at`;
+const FULL_COLUMNS = `${TOPIC_COLUMNS}, ai_local`;
 
 /**
  * 마이그레이션보다 배포가 먼저 나가도 화면은 살아 있어야 한다. 없는
- * 컬럼(42703)이면 한 단계씩 덜 읽는다: 로그 → AI 상태 → 기본 컬럼.
+ * 컬럼(42703)이면 한 단계씩 덜 읽는다: 예약 → 로그 → AI 상태 → 기본 컬럼.
  */
 async function selectTopics(
   build: (columns: string) => PromiseLike<{ data: unknown; error: { code?: string; message: string } | null }>,
 ) {
-  for (const cols of [TOPIC_COLUMNS, AI_COLUMNS]) {
+  for (const cols of [FULL_COLUMNS, TOPIC_COLUMNS, AI_COLUMNS]) {
     const res = await build(cols);
     if (res.error?.code !== "42703") return res;
   }
@@ -153,6 +157,7 @@ function toRow(t: DbTopic, candidateIds: string[]): TopicRow {
         end && (end.kind === "done" || end.kind === "fail") && Date.parse(t.updated_at) <= Date.parse(end.at)
           ? (end.todo ?? null)
           : null,
+      local: t.ai_local ?? false,
     },
     notes: t.notes ?? "",
   };
@@ -404,7 +409,12 @@ export async function deleteTopic(id: number): Promise<void> {
 
 async function saveAi(
   id: number,
-  patch: { ai_status?: AiStatus | null; ai_until?: AiUntil | null; ai_message?: string | null },
+  patch: {
+    ai_status?: AiStatus | null;
+    ai_until?: AiUntil | null;
+    ai_message?: string | null;
+    ai_local?: boolean;
+  },
   /** 로그에 한 줄 덧붙인다. reset 이면 로그를 비우고 이 줄로 시작한다. */
   log?: { topic: TopicRow; kind: AiLogEntry["kind"]; message: string; todo?: string; reset?: boolean },
 ) {
@@ -427,16 +437,26 @@ async function saveAi(
 
 /**
  * AI 에게 맡긴다. until 단계까지 진행하고 멈춘다. 이미 그 단계를 지났거나
- * 접은 주제면 거절한다.
+ * 접은 주제면 거절한다. local 이면 예약만 한다 — 루틴을 깨우지 않고, 로컬
+ * CLI 세션이 claim_release_work(MCP)로 집을 때까지 기다린다.
  */
-export async function queueAi(id: number, until: AiUntil): Promise<TopicRow> {
+export async function queueAi(id: number, until: AiUntil, local = false): Promise<TopicRow> {
   const topic = await getTopic(id);
   if (topic.droppedReason !== null) throw new TopicError("접은 주제는 맡길 수 없다");
   if (topic.ai.status === "running") throw new TopicError("이미 작업 중이다");
   if (stageIndex(topic.stage) >= stageIndex(until)) {
     throw new TopicError(`이미 ${until} 단계를 지났다`);
   }
-  await saveAi(id, { ai_status: "queued", ai_until: until, ai_message: null });
+  if (local) {
+    await saveAi(id, {
+      ai_status: "queued",
+      ai_until: until,
+      ai_local: true,
+      ai_message: "예약함 — 로컬 CLI 에서 집으면 시작",
+    });
+    return getTopic(id);
+  }
+  await saveAi(id, { ai_status: "queued", ai_until: until, ai_local: false, ai_message: null });
 
   // 루틴을 바로 깨운다. 깨운 세션은 이 주제만 집는다(지시서 0단계).
   // 실패해도 요청은 queued 로 남아 정기 실행이 집어 간다.
@@ -450,7 +470,8 @@ export async function queueAi(id: number, until: AiUntil): Promise<TopicRow> {
         : `${fire.reason} — 다음 정기 실행 때 시작`,
     })
     .eq("id", id)
-    .eq("ai_status", "queued");
+    .eq("ai_status", "queued")
+    .eq("ai_local", false);
   return getTopic(id);
 }
 
@@ -471,8 +492,10 @@ export async function cancelAi(id: number): Promise<TopicRow> {
  *
  * 조건부 update 로 집어서 실행기 둘이 같은 주제를 동시에 잡지 않는다.
  * id 를 주면 그 주제만 본다 — 맡기기 버튼이 깨운 세션이 자기 주제만 집는다.
+ * 어느 쪽이든 local 이 맞는 것만 — 클라우드 루틴은 예약을, 로컬 세션은
+ * 바로 실행을 집지 않는다. 깨운 뒤 예약으로 바꿔 맡겨도 깨운 세션이 못 집는다.
  */
-export async function claimAiWork(id?: number): Promise<TopicRow | null> {
+export async function claimAiWork(id?: number, local = false): Promise<TopicRow | null> {
   const db = dbAdmin();
   const stale = new Date(Date.now() - STALE_MS).toISOString();
   let q = db
@@ -480,6 +503,7 @@ export async function claimAiWork(id?: number): Promise<TopicRow | null> {
     .select("id, ai_status, ai_updated_at")
     .or(`ai_status.eq.queued,and(ai_status.eq.running,ai_updated_at.lt."${stale}")`)
     .is("dropped_reason", null);
+  q = q.eq("ai_local", local);
   if (id !== undefined) q = q.eq("id", id);
   const { data } = await q.order("ai_updated_at", { ascending: true }).limit(5);
 

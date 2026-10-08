@@ -57,17 +57,19 @@ function tone(key: StageKey | "done") {
  * 누가 움직일 차례인가. 판은 단계가 아니라 이 순서로 구역을 나눈다 —
  * 위에서부터 지금 봐야 하는 것.
  */
-type Turn = "ai" | "me" | "idle" | "done";
+type Turn = "ai" | "me" | "later" | "idle" | "done";
 
 const TURNS: { key: Turn; label: string; hint: string; color: string }[] = [
   { key: "ai", label: "AI 작성 중", hint: "작업 중에는 화면이 저절로 갱신됩니다", color: "var(--callout-tip-ink)" },
   { key: "me", label: "내 차례", hint: "남은 일을 처리해 발행하거나, 멈춘 작업을 다시 맡깁니다", color: "var(--callout-warning-ink)" },
+  { key: "later", label: "예약", hint: "로컬 CLI 에서 집으면 시작합니다", color: "var(--ink-soft)" },
   { key: "idle", label: "맡기기 전", hint: "AI에게 맡기거나 직접 진행합니다", color: "var(--ink)" },
   { key: "done", label: "발행함", hint: "", color: "var(--ink-muted)" },
 ];
 
 function turnOf(t: TopicRow): Turn {
-  if (t.ai.status === "running" || t.ai.status === "queued") return "ai";
+  if (t.ai.status === "running") return "ai";
+  if (t.ai.status === "queued") return t.ai.local ? "later" : "ai";
   const next = nextStage(t.stage);
   if (!next) return "done";
   return t.ai.status === "failed" || next.key === "published" ? "me" : "idle";
@@ -76,6 +78,7 @@ function turnOf(t: TopicRow): Turn {
 const TURN_DOT: Record<Turn, string> = {
   ai: "var(--callout-tip-glyph)",
   me: "var(--callout-warning-glyph)",
+  later: "var(--ink-muted)",
   idle: "var(--border-strong)",
   done: "var(--ink-subtle)",
 };
@@ -486,7 +489,7 @@ function chipOf(t: TopicRow): { label: string; tone: ChipTone } {
   const next = nextStage(t.stage);
   if (t.droppedReason !== null) return { label: "접음", tone: "muted" };
   if (t.ai.status === "running") return { label: `${next?.label ?? ""} 쓰는 중`, tone: "tip" };
-  if (t.ai.status === "queued") return { label: "AI 대기", tone: "muted" };
+  if (t.ai.status === "queued") return { label: t.ai.local ? "예약" : "AI 대기", tone: "muted" };
   if (!next) {
     const at = t.checks.published?.at;
     return { label: at ? `${monthDay(at)} 발행` : "발행함", tone: "plain" };
@@ -580,6 +583,9 @@ function TopicItem({
   const [slug, setSlug] = useState(topic.postSlug ?? "");
   const [reason, setReason] = useState("");
   const [until, setUntil] = useState<AiUntil>("review");
+  /** 예약으로 맡길지. 고르기 전에는 지난번 방식(폴링으로 바뀌어도 따라간다). */
+  const [pickLocal, setLocal] = useState<boolean | null>(null);
+  const local = pickLocal ?? topic.ai.local;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -703,9 +709,11 @@ function TopicItem({
         from={stageIndex(topic.stage)}
         value={pick}
         onChange={setUntil}
+        local={local}
+        onLocal={setLocal}
         retry={status === "failed"}
         busy={busy}
-        onLaunch={() => patch({ action: "ai", until: pick })}
+        onLaunch={() => patch({ action: "ai", until: pick, local })}
       />
     );
   }
@@ -1099,6 +1107,8 @@ function AiLaunch({
   from,
   value,
   onChange,
+  local,
+  onLocal,
   retry,
   busy,
   onLaunch,
@@ -1107,6 +1117,8 @@ function AiLaunch({
   from: number;
   value: AiUntil;
   onChange: (v: AiUntil) => void;
+  local: boolean;
+  onLocal: (v: boolean) => void;
   retry: boolean;
   busy: boolean;
   onLaunch: () => void;
@@ -1124,7 +1136,7 @@ function AiLaunch({
         <span aria-hidden className="text-[12px] text-[var(--callout-tip-glyph)] transition-transform duration-500 group-hover:rotate-[72deg]">
           ✦
         </span>
-        {busy ? "맡기는 중…" : retry ? "다시 맡기기" : "AI에게 맡기기"}
+        {busy ? "맡기는 중…" : local ? (retry ? "다시 예약" : "AI 작업 예약") : retry ? "다시 맡기기" : "AI에게 맡기기"}
       </button>
       <span aria-hidden className="my-1.5 w-px bg-[color-mix(in_oklab,var(--callout-tip-glyph)_35%,transparent)]" />
       <Select
@@ -1139,8 +1151,23 @@ function AiLaunch({
           hint: o.hint,
           meta: `${stageIndex(o.key) - from}단계`,
         }))}
-        className={`inline-flex items-center gap-1 rounded-r-full py-1.5 pr-3 pl-2.5 font-sans text-[12.5px] font-medium ${half}`}
+        className={`inline-flex items-center gap-1 py-1.5 pr-2.5 pl-2.5 font-sans text-[12.5px] font-medium ${half}`}
       />
+      <span aria-hidden className="my-1.5 w-px bg-[color-mix(in_oklab,var(--callout-tip-glyph)_35%,transparent)]" />
+      <Select
+        label="어디서 실행할까요"
+        align="right"
+        value={local ? "local" : "now"}
+        onChange={(v) => onLocal(v === "local")}
+        disabled={busy}
+        options={[
+          { value: "now", label: "바로 실행", hint: "클라우드 루틴을 지금 깨워 작업합니다" },
+          { value: "local", label: "예약", hint: "쌓아 두었다가 로컬 CLI 에서 집을 때 작업합니다" },
+        ]}
+        className={`inline-flex items-center gap-1 rounded-r-full py-1.5 pr-3 pl-2.5 font-sans text-[12.5px] font-medium ${half}`}
+      >
+        {local ? "예약" : <>바로<span className="hidden md:inline"> 실행</span></>}
+      </Select>
     </div>
   );
 }

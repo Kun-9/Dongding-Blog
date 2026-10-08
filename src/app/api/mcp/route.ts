@@ -489,12 +489,13 @@ const handler = createMcpHandler(
       {
         title: "릴리스 AI 작업 집기",
         description:
-          "어드민에서 'AI에게 맡기기'로 쌓인 작업 하나를 집는다. 집은 주제는 running 이 되고, 주제 전체(단계·근거·노트·글감·until)를 돌려준다. " +
-          "할 일이 없으면 { work: null }. 실행기(루틴·크론)가 맨 먼저 부른다. 한 번에 하나만 집을 것.",
+          "어드민에서 'AI에게 맡기기'를 '예약'으로 맡긴 작업 하나를 집는다(바로 실행으로 맡긴 것은 클라우드 루틴 몫이라 집지 않는다). " +
+          "집은 주제는 running 이 되고, 주제 전체(단계·근거·노트·글감·until)를 돌려준다. 할 일이 없으면 { work: null }. " +
+          "로컬 실행기(scripts/release-worker.sh)가 맨 먼저 부른다. 한 번에 하나만 집을 것.",
         inputSchema: z.object({}),
       },
       async () => {
-        const t = await claimAiWork();
+        const t = await claimAiWork(undefined, true);
         return json({ work: t ? withNext(t) : null });
       },
     );

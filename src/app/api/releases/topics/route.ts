@@ -47,6 +47,8 @@ const PatchSchema = z.discriminatedUnion("action", [
     action: z.literal("ai"),
     id: z.number().int(),
     until: z.enum(AI_UNTIL as [string, ...string[]]),
+    /** 예약 — 루틴을 깨우지 않고 로컬 CLI 가 집기를 기다린다. */
+    local: z.boolean().default(false),
   }),
   z.object({ action: z.literal("ai_cancel"), id: z.number().int() }),
   z.object({
@@ -130,7 +132,7 @@ export async function PATCH(req: Request) {
           : input.action === "drop"
             ? await dropTopic(input.id, input.reason)
             : input.action === "ai"
-              ? await queueAi(input.id, input.until as (typeof AI_UNTIL)[number])
+              ? await queueAi(input.id, input.until as (typeof AI_UNTIL)[number], input.local)
               : input.action === "ai_cancel"
                 ? await cancelAi(input.id)
                 : await editTopic(input.id, input);

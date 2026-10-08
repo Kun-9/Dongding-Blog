@@ -22,13 +22,17 @@ export function ReleaseDesk({
   const [topics, setTopics] = useState(initialTopics);
 
   // AI 작업이 걸려 있는 동안만 다시 읽는다. 작업 중이면 5초, 대기 중이면
-  // 15초. 실행기가 남기는 로그·단계·노트가 새로고침 없이 따라온다. 탭이
-  // 가려져 있으면 쉬었다가 돌아오면 바로 한 번 읽는다.
-  const mode = topics.some((t) => t.ai.status === "running")
+  // 15초, 예약만 있으면 1분. 실행기가 남기는 로그·단계·노트가 새로고침 없이
+  // 따라온다. 탭이 가려져 있으면 쉬었다가 돌아오면 바로 한 번 읽는다.
+  // 접은 주제는 실행기가 집지 않으니 기다릴 것도 없다.
+  const live = topics.filter((t) => t.droppedReason === null);
+  const mode = live.some((t) => t.ai.status === "running")
     ? "running"
-    : topics.some((t) => t.ai.status === "queued")
+    : live.some((t) => t.ai.status === "queued" && !t.ai.local)
       ? "queued"
-      : null;
+      : live.some((t) => t.ai.status === "queued")
+        ? "reserved"
+        : null;
   useEffect(() => {
     if (!mode) return;
     const refresh = async () => {
@@ -38,7 +42,7 @@ export function ReleaseDesk({
       const body = (await res.json()) as { topics: TopicRow[] };
       setTopics(body.topics);
     };
-    const timer = setInterval(refresh, mode === "running" ? 5_000 : 15_000);
+    const timer = setInterval(refresh, { running: 5_000, queued: 15_000, reserved: 60_000 }[mode]);
     document.addEventListener("visibilitychange", refresh);
     return () => {
       clearInterval(timer);

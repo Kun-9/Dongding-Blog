@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # 릴리스 글 실행기 — 로컬 크론용.
 #
-# 어드민에서 "AI에게 맡기기"로 쌓인 작업 하나를 Claude Code 가 집어서 처리한다.
-# 지시문은 scripts/release-worker-prompt.md 하나로, 클라우드 루틴과 같다.
+# 어드민에서 "AI에게 맡기기"를 '예약'으로 맡긴 작업 하나를 Claude Code 가 집어서
+# 처리한다. '바로 실행'으로 맡긴 것은 클라우드 루틴 몫이라 집지 않는다 — 로컬로
+# 돌리려면 어드민에서 취소하고 예약으로 다시 맡긴다. 지시문은
+# scripts/release-worker-prompt.md.
 #
 # 준비 (한 번):
 #   claude mcp add --scope user --transport http dongding-blog \
