@@ -9,7 +9,8 @@
  * 좁힌다: 발행은 못 하고(advance 가 발행 단계를 거절), 글 생성은 draft 만,
  * 수정과 이미지 업로드는 릴리스 주제에 묶인 draft 글에만.
  *
- * GET  → 지시서(markdown)
+ * GET  → 지시서(markdown). 토큰 없이 연다 — 비밀값이 없고, 첫 호출에 토큰이
+ *        실리면 루틴의 권한 분류기가 Data Exfiltration 으로 막을 수 있다.
  * POST → { action, ... }
  */
 import { timingSafeEqual } from "node:crypto";
@@ -133,8 +134,7 @@ const Action = z.discriminatedUnion("action", [
   }),
 ]);
 
-export async function GET(req: Request) {
-  if (!authorized(req)) return deny();
+export async function GET() {
   return new Response(WORKER_PROMPT, {
     headers: { "content-type": "text/markdown; charset=utf-8", "cache-control": "no-store" },
   });
