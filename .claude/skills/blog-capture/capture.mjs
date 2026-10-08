@@ -9,8 +9,9 @@
  *     --out context-1m.svg
  *
  * --ansi <파일> 을 주면 띄우지 않고 이미 뜬 화면(tmux capture-pane -e -p)만 바꾼다.
- * claude 는 --safe-mode 를 붙여 띄운다 — 내 CLAUDE.md·플러그인·훅·MCP·상태줄 없이
- * 기본 설치 화면이 나와야 어디서 떠도 같은 그림이다. 꼭 내 구성이 보여야 하면 --no-safe-mode.
+ * claude 는 --safe-mode --setting-sources project 로 띄운다 — 내 CLAUDE.md·플러그인·훅·MCP·
+ * 상태줄·저장된 모델·effort 없이 기본 설치 화면이 나와야 어디서 떠도 같은 그림이다.
+ * 꼭 내 구성이 보여야 하면 --no-safe-mode.
  *
  * 끝 코드: 0 성공 · 1 사용법 · 2 개인 정보가 보임 · 3 띄우지 못함(설치·로그인)
  *          4 tmux 없음 · 5 --from/--to 를 화면에서 못 찾음
@@ -99,9 +100,14 @@ function shoot() {
   // 변수만 뺀다. 로그인 변수(…_OAUTH_TOKEN, ANTHROPIC_*)는 남겨야 클라우드에서도 뜬다.
   // 색을 정하는 변수도 고정한다. 터미널마다 다르면 같은 화면이 다른 색으로 뜬다.
   const nested = ["CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "CLAUDE_CODE_SSE_PORT", "CLAUDE_CODE_SESSION_ID", "CLAUDE_CODE_CHILD_SESSION", "CLAUDE_PID",
-    "FORCE_COLOR", "NO_COLOR", ...Object.keys(process.env).filter((k) => k.startsWith("CLAUDE_CODE_MESSAGING_"))];
+    "FORCE_COLOR", "NO_COLOR",
+    // 모델을 정하는 변수도 뺀다. 남기면 실행 환경의 기본 모델이 선택기·상태에 섞인다.
+    "ANTHROPIC_MODEL", "ANTHROPIC_SMALL_FAST_MODEL", "ANTHROPIC_DEFAULT_OPUS_MODEL", "ANTHROPIC_DEFAULT_SONNET_MODEL",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL", "CLAUDE_CODE_SUBAGENT_MODEL",
+    ...Object.keys(process.env).filter((k) => k.startsWith("CLAUDE_CODE_MESSAGING_"))];
   let run = opt.run;
-  if (opt.safe && /^claude(\s|$)/.test(run) && !run.includes("--safe-mode")) run = run.replace(/^claude/, "claude --safe-mode");
+  // 사용자 설정(~/.claude/settings.json)도 읽지 않는다. 저장된 모델·effort 가 화면에 보인다.
+  if (opt.safe && /^claude(\s|$)/.test(run) && !run.includes("--safe-mode")) run = run.replace(/^claude/, "claude --safe-mode --setting-sources project");
   // 명령이 끝나도 화면이 남도록 [exit] 를 찍고 기다린다.
   const cmd = `env ${nested.map((k) => `-u ${k}`).join(" ")} TERM=xterm-256color COLORTERM=truecolor ${run}; echo "[blogcap exit $?]"; sleep 600`;
   // 캡션에 적을 버전. 따로 `--version` 을 치면 띄운 실행 파일과 다를 수 있다.

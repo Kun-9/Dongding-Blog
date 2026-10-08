@@ -27,7 +27,7 @@ node .claude/skills/blog-capture/capture.mjs --run "claude --model claude-sonnet
 
 | 인자 | 뜻 |
 | --- | --- |
-| `--run` | 띄울 명령. `claude` 면 `--safe-mode` 가 자동으로 붙어 내 CLAUDE.md·플러그인·훅·MCP·상태줄 없는 기본 설치 화면이 나온다. 모델이 화면에 영향을 주면 별칭(`sonnet`) 대신 모델 ID 로 띄운다. 별칭이 가리키는 모델은 버전마다 바뀐다 |
+| `--run` | 띄울 명령. `claude` 면 `--safe-mode --setting-sources project` 가 자동으로 붙어 내 CLAUDE.md·플러그인·훅·MCP·상태줄·저장된 모델·effort 없는 기본 설치 화면이 나온다. 모델이 화면에 영향을 주면 별칭(`sonnet`) 대신 모델 ID 로 띄운다. 별칭이 가리키는 모델은 버전마다 바뀐다 |
 | `--keys` | 차례로 보낼 입력. `Enter`·`Escape`·`Down`·`Tab`·`C-c` 같은 키 이름이 아니면 글자 그대로 친다 |
 | `--from` `--to` | 화면에서 자를 첫 줄·끝 줄에 들어 있는 글자. 행 번호는 쓰지 않는다 |
 | `--out` | SVG 경로. 이름에 `todo-` 를 넣지 않는다 |
@@ -55,6 +55,7 @@ node .claude/skills/blog-capture/capture.mjs --run "claude --model claude-sonnet
 - 캡션에 도구가 출력한 버전을 넣는다: `![v2.1.292 Sonnet 5.5 세션의 /context](/posts/<slug>/context-1m.svg)`
 - 문단에서 직접 확인한 것임을 밝힌다: "직접 v2.1.292에서 `/context`를 열어 보니 창이 1m tokens였습니다."
 - 화면에서 새로 안 사실(안내 문구, 남아 있는 옛 선택지, 숫자)은 본문에 쓴다. 캡처만 붙이지 않는다.
+- 계정 종류에 따라 다른 화면이 있다. `/model` 의 기본값·목록, `/usage`, `/status` 는 로그인한 계정(구독 요금제, API, 클라우드 루틴의 계정)을 그대로 보여 준다. 캡션이나 본문에 어떤 계정으로 떴는지 적는다("Max 구독 계정에서"). 글이 특정 요금제의 화면을 말하는데 그 요금제로 뜬 것이 아니면 쓰지 않고 2단계로 간다.
 - safe-mode 화면의 사용량 숫자(시스템 도구 21.8k 같은)는 플러그인·MCP 가 없는 기본 설치의 값이다. "보통 이 정도 쓴다"로 쓰지 않는다. 창 크기·컴팩트 여유처럼 구성과 상관없는 숫자만 근거로 쓴다.
 
 ## 웹 화면
@@ -66,7 +67,8 @@ node .claude/skills/blog-capture/capture.mjs --run "claude --model claude-sonnet
 | 틀린 것 | 대신 |
 | --- | --- |
 | tmux 를 손으로 열고 `capture-pane`·행 번호로 자르기 | `capture.mjs` 한 줄. 창 크기·자르기가 매번 달라진다 |
-| `--safe-mode` 를 빼고 내 구성으로 뜨기 | 기본값 그대로. 내 플러그인·MCP 숫자가 화면에 실린다. 내 구성이 보여야 하는 글만 `--no-safe-mode` |
+| `--safe-mode` 를 빼고 내 구성으로 뜨기 | 기본값 그대로. 내 플러그인·MCP 숫자와 저장된 모델이 화면에 실린다. 내 구성이 보여야 하는 글만 `--no-safe-mode` |
+| 클라우드에서 뜬 `/model` 로 "Pro 의 기본값"을 설명하기 | 계정 종류가 다르면 화면도 다르다. 그 요금제로 뜬 화면만 그 요금제의 근거로 쓴다 |
 | 끝 코드 2 를 무시하거나 범위를 넓혀 통과시키기 | 범위를 좁힌다. 화면 자체가 그 정보를 보여 주는 글이면 `--allow <path|email|secret|usage|account>` |
 | 캡처를 todo- 이름으로 올리기 | 점검은 경로에 `/todo-` 가 있으면 캡처 대기로 본다. todo- 없는 이름으로 올리고 본문 경로를 바꾼다 |
 | 띄울 수 없다고 바로 todo- 남기기 | 2·3단계를 먼저 |
