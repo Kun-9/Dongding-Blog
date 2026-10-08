@@ -20,6 +20,7 @@ import {
 } from "@/components/settings/CategoryManager";
 import {
   Card,
+  NavButton,
   Row,
   SaveBar,
   Segmented,
@@ -130,6 +131,14 @@ function SettingsView() {
 
   return (
     <main className="mx-auto grid max-w-[1080px] grid-cols-[200px_1fr] gap-8 px-[var(--gut)] pb-16 pt-10 max-[1000px]:grid-cols-1 max-[1000px]:gap-[18px]">
+      {/* 다른 화면으로 가는 길은 맨 위 한 줄에. 사이드바는 이 화면 안 섹션 이동만 맡는다. */}
+      <div className="col-span-full flex items-center justify-between gap-2.5">
+        <NavButton href="/admin" back>
+          대시보드
+        </NavButton>
+        <NavButton href="/settings/cards">README 카드</NavButton>
+      </div>
+
       {/* Side nav — 좁은 화면에선 가로 스크롤 스트립 */}
       <aside className="sticky top-20 min-w-0 self-start max-[1000px]:static max-[1000px]:top-auto">
         <div className="mb-3.5 whitespace-nowrap font-sans text-[11px] font-bold uppercase tracking-[0.1em] text-ink-muted">
@@ -153,20 +162,6 @@ function SettingsView() {
             </li>
           ))}
         </ul>
-        <div className="mt-6 flex flex-col gap-2 border-t border-border-token pt-4">
-          <a
-            href="/settings/cards"
-            className="whitespace-nowrap text-[12.5px] text-ink-soft no-underline"
-          >
-            README 카드 →
-          </a>
-          <a
-            href="/admin"
-            className="whitespace-nowrap text-[12.5px] text-ink-muted no-underline"
-          >
-            ← 대시보드
-          </a>
-        </div>
       </aside>
 
       {/* Content */}

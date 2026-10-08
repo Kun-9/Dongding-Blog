@@ -38,6 +38,33 @@ export function Card({
   );
 }
 
+/** 다른 화면으로 가는 둥근 버튼. 화살표는 가는 방향 쪽에 붙인다. */
+export function NavButton({
+  href,
+  back,
+  children,
+}: {
+  href: string;
+  back?: boolean;
+  children: ReactNode;
+}) {
+  const arrow = (
+    <span aria-hidden className="text-ink-muted">
+      {back ? "←" : "→"}
+    </span>
+  );
+  return (
+    <a
+      href={href}
+      className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-border-strong bg-surface px-3.5 py-1.5 font-sans text-[12.5px] font-medium text-ink-soft no-underline transition-colors hover:bg-hover hover:text-ink"
+    >
+      {back && arrow}
+      {children}
+      {!back && arrow}
+    </a>
+  );
+}
+
 export function Row({
   label,
   children,

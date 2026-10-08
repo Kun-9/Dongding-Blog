@@ -16,6 +16,7 @@ import { API } from "@/lib/api-routes";
 import type { AppCard, SiteMeta } from "@/lib/types";
 import {
   Card,
+  NavButton,
   Row,
   SaveBar,
   Segmented,
@@ -55,13 +56,10 @@ export default function Page() {
   return (
     <main className="mx-auto max-w-[880px] px-[var(--gut)] pb-16 pt-10">
       <header className="mb-7">
-        <a
-          href="/settings"
-          className="font-sans text-[12.5px] text-ink-muted no-underline"
-        >
-          ← 설정
-        </a>
-        <h1 className="mb-0 mt-2 font-sans text-[clamp(27px,6vw,36px)] font-semibold tracking-[-0.03em] text-ink">
+        <NavButton href="/settings" back>
+          설정
+        </NavButton>
+        <h1 className="mb-0 mt-5 font-sans text-[clamp(27px,6vw,36px)] font-semibold tracking-[-0.03em] text-ink">
           README 카드
         </h1>
         <p className="mt-2 text-sm leading-[1.6] text-ink-muted">
