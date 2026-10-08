@@ -10,7 +10,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import { CommandPalette } from "@/components/command/CommandPalette";
-import { AdminMenu } from "@/components/layout/AdminMenu";
+import { AdminMenu, AdminSheet } from "@/components/layout/AdminMenu";
 import { Avatar } from "@/components/layout/Avatar";
 import { useMounted } from "@/lib/hooks";
 import type { Category, PostMeta } from "@/lib/types";
@@ -155,6 +155,7 @@ export function Header({ categories, posts, title }: Props) {
                 {label}
               </Link>
             ))}
+            <AdminSheet onNavigate={() => setNavOpen(false)} />
           </nav>
         )}
       </header>
