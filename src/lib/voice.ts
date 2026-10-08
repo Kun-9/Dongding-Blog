@@ -13,6 +13,9 @@
 import type { Issue } from "./lint";
 import { findDiagrams, findFences } from "./diagram";
 import { parseFigureHtml } from "./html-figure";
+import { ANIMS, LOOPS } from "./figure/anims";
+import { KITS } from "./figure/kits";
+import { SCENE_ATTRS } from "./figure/scene-attrs";
 import { AVOID, excerpt, lintPhrases, proseLines } from "./phrases";
 
 /* ── 기준 ─────────────────────────────────────────────────────────────── */
@@ -216,18 +219,23 @@ caption: auto mode 전환 뒤 달라진 숫자
 ${"```"}
 ${"````"}`;
 
+/** 쓰기 기준의 키트·장면 속성·모션 줄 — 그림 확장 모듈(lib/figure) 목록에서 만든다. */
+const tick = (x: string) => `\`${x}\``;
+const FIGURE_KIT_LINES = KITS.map(
+  (k) => `- ${k.label}: ${k.classes.map(([c, d]) => (d ? `${tick(c)}(${d})` : tick(c))).join(" ")}${k.use ? `. ${k.use}` : ""}`,
+).join("\n");
+const SCENE_ATTR_LINE = SCENE_ATTRS.map((x) => `${tick(x.doc.example)}(${x.doc.meaning})`).join(", ");
+const ANIM_ATTR = tick(`data-anim="${ANIMS.join("|")}"`);
+const LOOP_ATTR = tick(`data-loop="${LOOPS.join("|")}"`);
+
 /** ```figure 디자인 키트. 허용 목록은 lib/html-figure.ts. */
 export const FIGURE_KIT = String.raw`그림 블록으로 안 되는 구성(두 갈래로 나뉘는 흐름, 숫자 카드와 흐름을 한 그림에, 화면 배치 설명 등)만 ${"```figure"} 로 쓴다. 조합은 자유, 생김새는 키트가 정한다.
 
 - 태그: div span p ul ol li strong em code kbd mark small br hr table thead tbody tr th td details summary. 링크·이미지·스크립트·SVG 는 지워진다
 - class: ${"`fig-`"} 로 시작하는 것만 남는다. style: 배치(display, grid-template-columns, gap, flex, width, text-align, margin-top 등)만 남고 색·글꼴·위치는 지워진다. 지워진 게 있으면 점검에서 경고
-- 배치: ${"`fig-flow`"}(가로 흐름, 좁으면 세로) ${"`fig-row`"} ${"`fig-col`"} ${"`fig-grid-2|3|4`"} ${"`fig-center`"}
-- 상자: ${"`fig-box`"} + ${"`fig-accent`"}(강조) ${"`fig-muted`"}(점선) ${"`fig-info`"} ${"`fig-warn`"}
-- 글자: ${"`fig-label`"}(작은 머리말) ${"`fig-title`"} ${"`fig-sub`"} ${"`fig-big`"}(큰 숫자) ${"`fig-mono`"}
-- 조각: ${"`fig-arrow`"}(→, ${"`fig-down`"} 이면 ↓) ${"`fig-num`"}(번호) ${"`fig-chip`"} ${"`fig-dot`"} ${"`fig-ok`"} ${"`fig-no`"} ${"`fig-part`"} ${"`fig-bar`"}(style ${"`--v: 70%`"})
-- 장면: HTML 앞 머리 줄에 ${"`scene: on`"} 과 단계마다 ${"`step: 이름`"}·바로 아래 ${"`> 설명`"}(2~8단계). 요소에 ${"`data-step=\"2\"`"}(2단계부터 보임, ${"`\"2-3\"`"} 은 그 사이만), ${"`data-on=\"2:accent|3+:dim\"`"}(accent·dim·hide·strike), ${"`data-v=\"1:90%|2:12%\"`"}(${"`--v`"}), ${"`data-text=\"1:$2.06|2:$0.16\"`"}(글자, 숫자끼리면 센다). 단계마다 바뀌는 화면은 ${"`fig-layer`"} 안에 겹쳐 둔다
-- 터미널(활용 예 화면 재현): ${"`fig-term`"} 안에 ${"`fig-term-bar`"}(머리줄, 오른쪽 칩 ${"`fig-term-tag`"})와 ${"`fig-term-body`"}. 줄은 div 하나씩, 색 ${"`fig-t-dim|ok|bad|warn`"}, 안쪽 상자 ${"`fig-t-box`"}, 버튼·배지 ${"`fig-t-key`"}, 구분선 ${"`fig-t-sep`"}. 문구는 실제 화면·README·소스에서 옮긴다
-- 모션: 키트가 기본을 갖는다(상자·행 올라오기, 화살표 그려지기, 막대 자라기, 배지·체크 튀어나오기, ${"`fig-big`"} 숫자 세기, 강조 상자 숨쉬기). 바꿀 때만 ${"`data-anim=\"rise|fade|pop|draw|draw-back|grow|count|roll|none\"`"}(${"`roll`"} 은 숫자가 자리마다 굴러 멈춘다, 핵심 숫자 하나에만), 반복은 ${"`data-loop=\"pulse|orbit\"`"}, 순서는 style ${"`--i: 2`"}, 세기 시작 값은 ${"`data-from=\"14\"`"}. 다른 값은 지워진다
+${FIGURE_KIT_LINES}
+- 장면: HTML 앞 머리 줄에 ${"`scene: on`"} 과 단계마다 ${"`step: 이름`"}·바로 아래 ${"`> 설명`"}(2~8단계). 요소에 ${SCENE_ATTR_LINE}. 단계마다 바뀌는 화면은 ${"`fig-layer`"} 안에 겹쳐 둔다
+- 모션: 키트가 기본을 갖는다(상자·행 올라오기, 화살표 그려지기, 막대 자라기, 배지·체크 튀어나오기, ${"`fig-big`"} 숫자 세기, 강조 상자 숨쉬기). 바꿀 때만 ${ANIM_ATTR}(${"`roll`"} 은 숫자가 자리마다 굴러 멈춘다, 핵심 숫자 하나에만), 반복은 ${LOOP_ATTR}, 순서는 style ${"`--i: 2`"}, 세기 시작 값은 ${"`data-from=\"14\"`"}. 다른 값은 지워진다
 
 ${"````"}
 ${"```"}figure

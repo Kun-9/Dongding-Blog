@@ -1,0 +1,5 @@
+/* 모션 roll — anims/roll.ts 가 숫자 자리마다 띠를 붙인다. 띠 한 칸 높이 1.1em 은 roll.ts 의 CELL_EM 과 같다. */
+.dg-roll { display: inline-block; height: 1.1em; overflow: hidden; vertical-align: top; }
+.dg-roll > span { display: block; }
+.dg-roll > span > span { display: block; height: 1.1em; line-height: 1.1em; }
+.dg-roll-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }

@@ -1,0 +1,56 @@
+/* figure 판 안의 기본 — 글자 크기와 태그(code·kbd·table 등)의 키트 모양. 클래스 없이 입혀진다. */
+.fig-html {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink);
+  word-break: keep-all;
+}
+.fig-html :where(p) { margin: 0; }
+.fig-html :where(ul, ol) { margin: 0; padding-left: 1.15em; }
+.fig-html :where(ul) { list-style: disc; }
+.fig-html :where(ol) { list-style: decimal; }
+.fig-html :where(li + li) { margin-top: 2px; }
+.fig-html :where(strong, b) { font-weight: 600; }
+.fig-html :where(code) {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: var(--inline-code-bg);
+  color: var(--inline-code-fg);
+}
+.fig-html :where(kbd) {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  padding: 1px 6px;
+  border: 1px solid var(--border-strong);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: var(--surface);
+}
+.fig-html :where(mark) {
+  background: var(--callout-warning-bg);
+  color: var(--callout-warning-ink);
+  padding: 0 3px;
+  border-radius: 3px;
+}
+.fig-html :where(hr) { border: 0; height: 1px; background: var(--border); margin: 12px 0; }
+.fig-html :where(table) {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  font-size: 13.5px;
+}
+.fig-html :where(th, td) { padding: 9px 12px; text-align: left; border-top: 1px solid var(--border); }
+.fig-html :where(thead th) {
+  border-top: 0;
+  background: color-mix(in oklab, var(--surface-alt) 60%, transparent);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+.fig-html :where(details) { border: 1px solid var(--border); border-radius: 12px; background: var(--surface); padding: 10px 14px; }
+.fig-html :where(summary) { cursor: pointer; font-weight: 600; }

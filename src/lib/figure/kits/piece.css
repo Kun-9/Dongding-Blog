@@ -1,0 +1,86 @@
+/* 키트 piece — kits/piece.ts */
+/* 작은 조각 */
+.fig-num {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  flex: none;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--surface);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+}
+.fig-accent .fig-num { background: var(--callout-tip-glyph); color: var(--callout-tip-bg); }
+.fig-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 9px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+.fig-chip.fig-accent { box-shadow: none; }
+.fig-arrow {
+  flex: none;
+  align-self: center;
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  color: var(--ink-muted);
+}
+.fig-arrow::before { content: "→"; font-size: 15px; line-height: 1; }
+.fig-arrow.fig-down::before { content: "↓"; }
+.fig-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--ink-muted);
+  vertical-align: middle;
+}
+.fig-accent .fig-dot, .fig-dot.fig-accent { background: var(--callout-tip-glyph); box-shadow: none; }
+.fig-ok::before, .fig-no::before, .fig-part::before {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  margin-right: 6px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  vertical-align: -5px;
+}
+.fig-ok::before { content: "✓"; background: var(--callout-tip-bg); color: var(--callout-tip-glyph); }
+.fig-no::before { content: "–"; color: var(--ink-subtle); }
+.fig-part::before {
+  content: "";
+  background: linear-gradient(90deg, var(--callout-warning-glyph) 50%, var(--callout-warning-bg) 50%);
+  box-shadow: inset 0 0 0 1.5px var(--callout-warning-glyph), inset 0 0 0 3.5px var(--callout-warning-bg);
+}
+.fig-bar {
+  position: relative;
+  display: block;
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: color-mix(in oklab, var(--ink) 7%, transparent);
+}
+.fig-bar::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--v, 50%);
+  transform: scaleX(var(--fig-grow, 1)); /* 그림 모션 grow */
+  transform-origin: left center;
+  border-radius: inherit;
+  background: color-mix(in oklab, var(--ink-muted) 70%, transparent);
+}
+.fig-bar.fig-accent { border: 0; box-shadow: none; background: color-mix(in oklab, var(--ink) 7%, transparent); }
+.fig-bar.fig-accent::after { background: var(--callout-tip-glyph); }

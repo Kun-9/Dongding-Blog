@@ -1,0 +1,19 @@
+/* 키트 layout — kits/layout.ts */
+/* 배치 */
+.fig-row { display: flex; flex-wrap: wrap; align-items: stretch; gap: 10px; }
+.fig-col, .fig-stack { display: flex; flex-direction: column; gap: 10px; }
+.fig-flow { display: flex; align-items: stretch; gap: 8px; }
+.fig-grid-2, .fig-grid-3, .fig-grid-4 { display: grid; gap: 10px; }
+.fig-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.fig-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.fig-grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 640px) {
+  .fig-flow { flex-direction: column; }
+  .fig-flow > .fig-arrow { transform: rotate(90deg); }
+  .fig-grid-3, .fig-grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 420px) {
+  .fig-grid-2, .fig-grid-3, .fig-grid-4 { grid-template-columns: minmax(0, 1fr); }
+}
+.fig-center { text-align: center; justify-content: center; align-items: center; }
+.fig-gap-lg { gap: 18px; }

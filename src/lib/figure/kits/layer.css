@@ -1,0 +1,4 @@
+/* 키트 layer — kits/layer.ts */
+/* 겹치기 — 자식들이 한 칸에 겹친다. 장면에서 단계마다 바뀌는 화면을 높이 흔들림 없이 둘 때. */
+.fig-layer { display: grid; }
+.fig-layer > * { grid-area: 1 / 1; }

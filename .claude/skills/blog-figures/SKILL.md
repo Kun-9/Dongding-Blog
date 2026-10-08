@@ -24,7 +24,9 @@ description: dongding 블로그 글 본문에 그림을 넣는 방법 — 그림
 2. **```figure** — 그림 블록으로 안 되는 구성(두 갈래로 나뉘는 흐름, 숫자 카드와 흐름을 한 그림에 등)만. `fig-*` 키트 클래스를 조합한 HTML.
 3. **SVG** — 위 둘로도 안 되는 모양만. 올려서 `![캡션](/posts/<slug>/<이름>.svg)` 로 넣는다. 양식은 쓰기 기준(GUIDE)의 "SVG 그림 양식".
 
-구현 위치: 파서 `src/lib/diagram.ts`, 렌더 `src/components/prose/Diagram.tsx`·`diagram/*`, figure 필터 `src/lib/html-figure.ts`, 키트 CSS `src/app/globals.css`(`.fig-*`), 모션 `src/lib/figure-motion.ts`·`diagram/Motion.tsx`, 점검 `src/lib/voice.ts`.
+구현 위치: 파서 `src/lib/diagram.ts`, 렌더 `src/components/prose/Diagram.tsx`·`diagram/*`, figure 필터 `src/lib/html-figure.ts`, 키트·모션·장면 속성 모듈 `src/lib/figure/`(kits·anims·scene-attrs), 모션 런타임 `src/lib/figure-motion.ts`·`diagram/Motion.tsx`, 점검 `src/lib/voice.ts`.
+
+지금 어휘로 그릴 수 없는 그림이면 흉내 내지 말고 **blog-figure-extend** 스킬로 키트·모션·장면 속성을 더한다. 이 문서의 키트·모션·장면 속성 표는 모듈 목록에서 만들어진다(`<!-- figure:… -->` 자리, 손으로 고치지 않는다).
 
 ## 공통 규칙
 
@@ -277,12 +279,14 @@ sec-default | 내장 가드
 
 정해진 그림 블록으로 안 되는 장면(실제 화면 재현, 값이 단계마다 바뀌는 구성)은 ```figure 로 짠다. HTML 앞 머리 줄에 `scene: on`, 단계마다 `step: 이름` 과 바로 아래 `> 설명`(2~8단계)을 쓰고, 요소에 단계를 적는다. 단계는 1부터 센다.
 
+<!-- figure:scene-attrs -->
 | 속성 | 뜻 |
 | --- | --- |
 | `data-step="2"` | 2단계에 나타나 끝까지 남는다. `"2-3"` 은 2~3단계에만 보인다 |
-| `data-on="2:accent\|3+:dim"` | 그 단계에 상태를 입힌다. `accent`(빛남)·`dim`(흐림)·`hide`(숨김)·`strike`(취소선). `2` 는 그 단계만, `3+` 는 3부터, `2-3` 은 범위 |
+| `data-on="2:accent\|3+:dim"` | 그 단계에 상태를 입힌다: `accent`·`dim`·`hide`·`strike`(빛남·흐림·숨김·취소선). `2` 는 그 단계만, `3+` 는 3부터, `2-3` 은 범위 |
 | `data-v="1:90%\|2:12%"` | 단계마다 `--v` 를 바꾼다(`fig-bar` 길이). 그 단계까지 마지막 값 |
 | `data-text="1:$2.06\|2:$0.16"` | 단계마다 글자를 바꾼다. 앞뒤 글자가 같은 숫자끼리면 센다 |
+<!-- /figure:scene-attrs -->
 
 - 단계마다 바뀌는 화면은 `fig-layer` 안에 겹쳐 두고 `data-step="1-1"`·`"2-2"` 로 하나씩 보인다. 높이는 가장 큰 화면이 정해 흔들리지 않는다.
 - 터미널 화면은 `fig-term`(어두운 판) 안에 `fig-term-bar`(머리줄, 점 셋은 자동)와 `fig-term-body` 를 둔다. 머리줄 오른쪽 `fig-term-tag` 칩에 지금 움직이는 훅·명령을 `data-text` 로 바꿔 넣는다. 줄은 `div` 하나씩, 색은 `fig-t-dim`·`fig-t-ok`·`fig-t-bad`·`fig-t-warn`, 안쪽 상자 `fig-t-box`, 버튼·배지 `fig-t-key`, 위 구분선 `fig-t-sep`.
@@ -338,14 +342,16 @@ step: blast-radius · 실행 직전
 
 ### 키트 클래스
 
+<!-- figure:kits -->
 | 분류 | 클래스 |
 | --- | --- |
-| 배치 | `fig-flow`(가로 흐름, 640px 아래는 세로 + 화살표 회전) `fig-row`(줄바꿈 되는 가로) `fig-col`·`fig-stack`(세로) `fig-grid-2`·`fig-grid-3`·`fig-grid-4`(좁으면 2열→1열) `fig-center` `fig-gap-lg` |
-| 상자 | `fig-box` + `fig-accent`(강조) `fig-muted`(점선) `fig-info`(파랑) `fig-warn`(노랑) |
-| 글자 | `fig-label`(작은 대문자 머리말) `fig-title`(굵은 제목) `fig-sub`(보조 설명) `fig-big`(큰 숫자) `fig-mono` |
-| 겹치기 | `fig-layer`(자식이 한 칸에 겹친다. 장면에서 단계마다 바뀌는 화면) |
-| 터미널 | `fig-term` `fig-term-bar` `fig-term-tag`(머리줄 칩) `fig-term-body` · 줄 색 `fig-t-dim` `fig-t-ok` `fig-t-bad` `fig-t-warn` · `fig-t-box`(안쪽 상자) `fig-t-key`(버튼·배지) `fig-t-sep`(구분선) |
+| 배치 | `fig-flow`(가로 흐름, 640px 아래는 세로 + 화살표 회전) `fig-row`(줄바꿈 되는 가로) `fig-col`(세로) `fig-stack`(세로) `fig-grid-2` `fig-grid-3` `fig-grid-4`(좁으면 2열→1열) `fig-center` `fig-gap-lg` |
+| 상자 | `fig-box` `fig-accent`(강조) `fig-muted`(점선) `fig-info`(파랑) `fig-warn`(노랑) |
 | 조각 | `fig-arrow`(→, `fig-down` 을 더하면 ↓) `fig-num`(번호 배지) `fig-chip`(알약) `fig-dot` `fig-ok`(✓) `fig-no`(–) `fig-part`(반쯤) `fig-bar`(막대, `style="--v: 70%"`, `fig-accent` 면 강조색) |
+| 글자 | `fig-label`(작은 대문자 머리말) `fig-title`(굵은 제목) `fig-sub`(보조 설명) `fig-big`(큰 숫자) `fig-mono` |
+| 겹치기 | `fig-layer`(자식이 한 칸에 겹친다)<br>장면에서 단계마다 바뀌는 화면을 한 칸에 겹쳐 둔다. 높이는 가장 큰 화면이 정해 흔들리지 않는다 |
+| 터미널 | `fig-term`(어두운 판) `fig-term-bar`(머리줄, 점 셋은 자동) `fig-term-tag`(머리줄 오른쪽 칩. 장면에서 지금 움직이는 훅·명령을 data-text 로) `fig-term-body`(본문. 줄은 div 하나씩) `fig-t-dim` `fig-t-ok` `fig-t-bad` `fig-t-warn`(줄 색) `fig-t-box`(안쪽 상자) `fig-t-key`(버튼·배지) `fig-t-sep`(위 구분선)<br>활용 예의 실제 화면을 다시 그릴 때. 두 테마 모두 어두운 판이고, 문구는 실제 화면·README·소스에서 옮긴다 |
+<!-- /figure:kits -->
 
 `code`·`kbd`·`mark`·`table`·`details` 는 클래스 없이도 키트 모양이 입혀진다.
 
@@ -373,7 +379,7 @@ caption: 분류기가 명령을 두 갈래로 나누는 방식
 
 칸마다 화면의 읽는 높이(아래에서 4분의 1)를 넘어오거나 화면에 0.6초 머물면, 그 칸이 한 번 재생된다(0.5~0.9초). 그림이 화면 아래로 막 들어올 때 끝나 버리면 눈이 닿기 전이라 아무도 못 본다. 이미 화면에 있거나 지나간 칸은 그대로 두고, 같은 순간 걸린 칸은 차례 순서대로 0.09초 간격으로 튼다. 라이브러리는 Motion(`motion`, MIT)이고 그림이 있는 글에서만 늦게 불러온다.
 
-구현: 런타임 `src/lib/figure-motion.ts`, 붙이는 자리 `src/components/prose/diagram/Motion.tsx`(판 `Shell`, 본문 SVG `InlineSvg`), 표기 허용 목록 `src/lib/html-figure.ts`(`ANIMS`·`LOOPS`), 반복 CSS `src/app/globals.css`(`dg-orbit`·`dg-breathe`). 런타임은 움직인 흔적을 되돌리지 않는다. 그림 내용이 바뀌면(스튜디오) 판을 `key` 로 새로 그린다. 장면은 이 런타임을 거치지 않고 `src/components/prose/diagram/Scene.tsx` 가 직접 움직인다(CSS 는 `globals.css` 의 `.sc-*`).
+구현: 런타임 `src/lib/figure-motion.ts`, 붙이는 자리 `src/components/prose/diagram/Motion.tsx`(판 `Shell`, 본문 SVG `InlineSvg`), 모션 모듈 `src/lib/figure/anims/`(`ANIM_MODULES`·`LOOPS`, 허용 목록이 따라간다), 키트 기본 모션 `src/lib/figure/kits/`, 반복 CSS `src/app/globals.css`(`dg-orbit`·`dg-breathe`). 런타임은 움직인 흔적을 되돌리지 않는다. 그림 내용이 바뀌면(스튜디오) 판을 `key` 로 새로 그린다. 장면은 이 런타임을 거치지 않고 `src/components/prose/diagram/Scene.tsx` 가 직접 움직인다(무대 CSS 는 `globals.css` 의 `.sc-*`, figure 장면 상태는 `src/lib/figure/scene-attrs/states.css`).
 
 ### 원칙
 
@@ -387,6 +393,7 @@ caption: 분류기가 명령을 두 갈래로 나누는 방식
 
 ### 등장 — `data-anim`
 
+<!-- figure:anims -->
 | 값 | 움직임 | 쓰는 곳 |
 | --- | --- | --- |
 | `rise` | 16px 아래에서 올라오며 나타남 | 칸·카드·행. 기본 |
@@ -395,9 +402,10 @@ caption: 분류기가 명령을 두 갈래로 나누는 방식
 | `draw` | 선이 그려짐. HTML 은 긴 쪽 방향(왼→오, 위→아래), SVG 는 경로를 따라 | 연결선·화살표·타임라인 선 |
 | `draw-back` | `draw` 의 반대 방향(오→왼, 아래→위) | 되돌아오는 메시지·응답 |
 | `grow` | 왼쪽에서 자람 | 막대 |
-| `count` | 0(또는 `data-from`)에서 값까지 숫자를 셈 | 큰 숫자. 안에 다른 요소 없이 `86%`·`1.2s`·`2,400건`·`-12%` 처럼 숫자가 하나인 글자만 센다. 다 센 글자가 원문과 같아야 해서 `v2.1.283`·`007` 이나 `<tspan>` 이 든 글자는 나타나기만 한다 |
+| `count` | 0(또는 `data-from`)에서 값까지 숫자를 셈 | 큰 숫자. 안에 다른 요소 없이 `86%`·`1.2s`·`2,400건` 처럼 숫자가 하나인 글자만 센다. `v2.1.283`·`007`·`<tspan>` 이 든 글자는 나타나기만 한다 |
 | `roll` | 숫자 자리마다 0~9 띠가 두 바퀴 돌아 제 숫자에 멈춤(1.5초, 자리마다 0.09초씩 늦게). 다 돌면 원래 글자로 돌아간다 | 글의 핵심 숫자 카드. stats 값이 쓴다. 남용하지 않는다 |
 | `none` | 움직이지 않음 | 키트 기본 모션을 끌 때 |
+<!-- /figure:anims -->
 
 순서:
 - `style="--i: N"` 이 차례다. 같은 값은 함께 움직이고 소수도 된다(연결선은 앞 칸 + 0.5).
@@ -407,10 +415,12 @@ caption: 분류기가 명령을 두 갈래로 나누는 방식
 
 ### 반복 — `data-loop`
 
+<!-- figure:loops -->
 | 값 | 움직임 | 쓰는 곳 |
 | --- | --- | --- |
 | `orbit` | 점선 무늬가 경로 방향으로 천천히 흐름(초당 약 12px) | 고리·순환 경로. `stroke-dasharray` 가 있는 SVG 선에만 |
 | `pulse` | 강조 테두리(HTML)나 불투명도(SVG)가 3.2초 주기로 숨 쉼 | 지금 이야기하는 칸 하나 |
+<!-- /figure:loops -->
 
 ### 그림 블록 — 블로그가 정한다
 
@@ -484,4 +494,4 @@ caption: 확인이 필요한 명령만 사용자에게 간다
 
 - 릴리스 글: MCP `check_release_voice`(slug) 또는 실행기 API `check`. 그림 관련 규칙은 `diagram-error`·`figure-dropped`·`figure-empty`·`figure-no-caption`·`figure-long-caption`·`capture-pending`.
 - 직접 보려면 스튜디오(`/studio`) 미리보기가 같은 렌더러를 쓴다. 다크 모드와 좁은 화면에서도 한 번 본다.
-- 그림 종류·키트·모션 어휘를 바꾸면 이 스킬, `src/lib/voice.ts` 의 `DIAGRAM_SYNTAX`·`FIGURE_KIT`·`SVG_STYLE`, `src/lib/html-figure.ts` 의 `ANIMS`·`LOOPS`, 스튜디오 문법표를 같이 고친다. 장면 문법은 `src/lib/diagram.ts`(`barScene`)와 `Scene.tsx` 를 같이 본다.
+- 키트·모션·장면 속성을 늘리거나 바꾸면 **blog-figure-extend** 스킬을 따른다(모듈 하나 + 등록, `sync-docs.ts` 로 표 갱신). 그림 블록 종류·장면 문법은 `src/lib/diagram.ts`(`barScene`·`sceneCells`)와 `Scene.tsx`, 쓰기 기준 `src/lib/voice.ts` 의 `DIAGRAM_SYNTAX`, 스튜디오 문법표를 같이 고친다.

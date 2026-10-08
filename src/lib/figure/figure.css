@@ -1,0 +1,13 @@
+/*
+ * 그림 확장의 CSS 목록. 키트·모션·장면 속성 모듈의 .css 를 여기서 한 번에 부른다.
+ * 새 모듈에 CSS 가 있으면 이 목록에 한 줄 넣는다(점검: blog-figure-extend 의 sync-docs --check).
+ */
+@import "./kits/base.css";
+@import "./kits/layout.css";
+@import "./kits/box.css";
+@import "./kits/text.css";
+@import "./kits/piece.css";
+@import "./kits/layer.css";
+@import "./kits/term.css";
+@import "./anims/roll.css";
+@import "./scene-attrs/states.css";

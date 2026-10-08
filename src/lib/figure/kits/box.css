@@ -1,0 +1,33 @@
+/* 키트 box — kits/box.ts */
+/* 상자 */
+.fig-box {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 1px 2px color-mix(in oklab, var(--ink) 7%, transparent);
+}
+.fig-box > * + * { margin-top: 4px; }
+.fig-accent {
+  border-color: var(--callout-tip-glyph);
+  background: var(--callout-tip-bg);
+  color: var(--callout-tip-ink);
+  box-shadow:
+    0 0 0 4px color-mix(in oklab, var(--callout-tip-glyph) 13%, transparent),
+    0 8px 20px -10px color-mix(in oklab, var(--callout-tip-glyph) 55%, transparent);
+}
+.fig-info { border-color: var(--callout-info-bd); background: var(--callout-info-bg); color: var(--callout-info-ink); }
+.fig-warn { border-color: var(--callout-warning-bd); background: var(--callout-warning-bg); color: var(--callout-warning-ink); }
+.fig-muted {
+  border-style: dashed;
+  border-color: var(--border-strong);
+  background: transparent;
+  color: var(--ink-muted);
+  box-shadow: none;
+}
+/* box.ts 의 live — 화면에 있을 때 강조 상자가 숨 쉰다(키프레임 dg-breathe 는 globals.css 공용) */
+@media (prefers-reduced-motion: no-preference) {
+  [data-live] .fig-box.fig-accent { animation: dg-breathe 3.2s ease-in-out infinite; }
+}

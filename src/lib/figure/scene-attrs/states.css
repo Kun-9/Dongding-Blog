@@ -1,0 +1,17 @@
+/* figure 장면 속성이 단계마다 붙이는 상태(scene-attrs/*.ts). on.ts 의 STATES 와 이름이 같아야 한다. */
+.sc-html [data-step],
+.sc-html [data-on] { transition: opacity 0.45s, translate 0.45s, box-shadow 0.45s, border-color 0.45s, background-color 0.45s, color 0.45s; }
+.sc-html .is-dim { opacity: 0.3; }
+.sc-html .is-hide { opacity: 0; }
+.sc-html .is-strike { text-decoration: line-through; opacity: 0.5; }
+/* 숨김이 이긴다 — 같은 요소에 dim·strike 가 같이 붙어도 보이지 않는다 */
+.sc-html .sc-off.sc-off { opacity: 0; translate: 0 8px; pointer-events: none; }
+/* JS 가 붙기 전(서버 렌더·JS 없음·장면이 오류로 정지 그림이 됐을 때)에는 1단계 모습만 */
+.fig-html:not([data-ready]) [data-step]:not([data-step^="1"]) { opacity: 0; }
+.sc-html .is-accent {
+  border-color: var(--callout-tip-glyph);
+  box-shadow:
+    0 0 0 3px color-mix(in oklab, var(--callout-tip-glyph) 35%, transparent),
+    0 10px 26px -12px color-mix(in oklab, var(--callout-tip-glyph) 70%, transparent);
+}
+.sc-html .fig-bar::after { transition: width 0.8s cubic-bezier(0.2, 0.8, 0.2, 1); }

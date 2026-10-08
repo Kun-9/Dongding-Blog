@@ -9,12 +9,18 @@
  * - class 는 `fig-` 로 시작하는 것만
  * - style 은 배치 속성(grid·flex·gap·폭·정렬)만. 색·글꼴·위치는 지운다
  * - 모션은 `data-anim`·`data-loop` 의 정해진 값과 숫자 `data-from` 만
+ * - 장면 속성(`data-step` 등)은 모듈마다 정한 값 모양만(lib/figure/scene-attrs)
+ *
+ * 키트·모션·장면 속성의 목록은 lib/figure 의 모듈이 정한다. 여기는 그 목록으로 거른다.
  *
  * 받은 문자열을 거르는 대신 토큰을 읽어 허용된 것만 새로 쓴다. 지운 것은
  * `dropped` 로 돌려줘 점검기가 알린다.
  *
  * DOM 없이 도는 순수 모듈이다 — 서버 렌더와 점검기에서 같이 쓴다.
  */
+
+import { ANIMS, LOOPS } from "./figure/anims";
+import { SCENE_ATTRS, badSteps, sceneAttr } from "./figure/scene-attrs";
 
 const TAGS = new Set([
   "div", "span", "p", "ul", "ol", "li", "strong", "em", "b", "i", "code", "small",
@@ -36,13 +42,6 @@ const STYLE_PROPS = new Set([
   "text-align", "width", "min-width", "max-width", "height", "min-height",
   "margin-top", "margin-bottom", "margin-inline", "padding", "--v", "--i",
 ]);
-/**
- * 그림 모션 표기(lib/figure-motion). `data-anim` 은 스크롤에 맞춘 등장,
- * `data-loop` 는 그림이 화면에 있을 때만 도는 반복이다. 그림 블록·figure·SVG 공통.
- */
-export const ANIMS = ["rise", "fade", "pop", "draw", "draw-back", "grow", "count", "roll", "none"] as const;
-export const LOOPS = ["orbit", "pulse"] as const;
-export type Anim = (typeof ANIMS)[number];
 
 const STYLE_VALUE = /^[a-zA-Z0-9\s.,%()#+\-*/]{1,80}$/;
 const STYLE_BANNED = /url|expression|image|attr|javascript/i;
@@ -58,34 +57,6 @@ export interface FigureHtml {
   scene?: { steps: { name: string; note: string }[] };
   /** 장면 머리 줄 오류. 있으면 장면 없이 그린다(점검기가 잡는다). */
   errors: string[];
-}
-
-/** 장면 상태 — data-on 의 값. */
-export const SCENE_STATES = ["accent", "dim", "hide", "strike"] as const;
-/** 단계 범위: `2`(그 단계), `2+`(2부터 끝까지), `2-3`(2부터 3까지). */
-const RANGE = String.raw`\d{1,2}(?:\+|-\d{1,2})?`;
-const STEP_ATTR = new RegExp(`^${RANGE}$`);
-const ON_ITEM = `${RANGE}:(?:${SCENE_STATES.join("|")})`;
-const ON_ATTR = new RegExp(`^${ON_ITEM}(?:\\|${ON_ITEM})*$`);
-const V_ATTR = /^\d{1,2}:-?\d+(?:\.\d+)?%?(?:\|\d{1,2}:-?\d+(?:\.\d+)?%?)*$/;
-const TEXT_ATTR = /^\d{1,2}:[^|&]{0,40}(?:\|\d{1,2}:[^|&]{0,40})*$/;
-
-/** 장면 HTML 의 단계 번호가 1~n 안에 있고 범위가 바로 섰는지. 어긋난 값을 돌려준다. */
-function badSteps(html: string, n: number): string[] {
-  const bad: string[] = [];
-  const ok = (k: number) => k >= 1 && k <= n;
-  const range = (r: string) => {
-    const m = r.match(/^(\d+)(?:\+|-(\d+))?$/);
-    return !!m && ok(Number(m[1])) && (!m[2] || (ok(Number(m[2])) && Number(m[2]) >= Number(m[1])));
-  };
-  for (const [, name, value] of html.matchAll(/data-(step|on|v|text)="([^"]*)"/g)) {
-    const good =
-      name === "step"
-        ? range(value)
-        : value.split("|").every((it) => (name === "on" ? range(it.split(":")[0]) : ok(Number(it.split(":")[0]))));
-    if (!good) bad.push(`data-${name}="${value}"`);
-  }
-  return bad;
 }
 
 const ENTITY = /&(?![a-zA-Z][a-zA-Z0-9]{1,31};|#\d{1,7};|#x[0-9a-fA-F]{1,6};)/g;
@@ -133,15 +104,13 @@ function cleanAttrs(tag: string, source: string, dropped: Set<string>): string {
     } else if ((name === "title" || name === "aria-label") && value.length <= 120) {
       out.push(`${name}="${escAttr(value)}"`);
     } else if (
-      (name === "data-anim" && (ANIMS as readonly string[]).includes(value)) ||
-      (name === "data-loop" && (LOOPS as readonly string[]).includes(value))
+      (name === "data-anim" && ANIMS.includes(value)) ||
+      (name === "data-loop" && LOOPS.includes(value))
     ) {
       out.push(`${name}="${value}"`);
-    } else if ((name === "data-step" && STEP_ATTR.test(value)) || (name === "data-on" && ON_ATTR.test(value)) || (name === "data-v" && V_ATTR.test(value))) {
-      // 장면 단계(figure 장면). 값 모양이 정해져 있어 그대로 둔다.
-      out.push(`${name}="${value}"`);
-    } else if (name === "data-text" && value.length <= 200 && TEXT_ATTR.test(value)) {
-      out.push(`data-text="${escAttr(value)}"`);
+    } else if (sceneAttr(name)?.valid(value)) {
+      // 장면 속성(figure 장면) — 모듈이 정한 값 모양만 통과하고, 늘 이스케이프해서 쓴다.
+      out.push(`${name}="${escAttr(value)}"`);
     } else if (name === "data-from" && /^-?\d+(\.\d+)?$/.test(value)) {
       out.push(`data-from="${value}"`);
     } else if (name === "aria-hidden" && value === "true") {
@@ -150,7 +119,8 @@ function cleanAttrs(tag: string, source: string, dropped: Set<string>): string {
       out.push("open");
     } else {
       // 모션 표기는 값이 틀린 것이라 값까지 보여 준다.
-      dropped.add(name === "data-anim" || name === "data-loop" ? `${name}="${value}"` : `${name}=`);
+      const shown = name === "data-anim" || name === "data-loop" || SCENE_ATTRS.some((a) => a.name === name);
+      dropped.add(shown ? `${name}="${value}"` : `${name}=`);
     }
   }
   return out.length ? ` ${out.join(" ")}` : "";
