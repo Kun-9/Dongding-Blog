@@ -31,7 +31,7 @@ description: Use when the user asks you directly (not through the admin "AI에�
 ## 단계마다
 
 - **2차 소스:** 공식 문서·PR·이슈를 읽고 확인한 사실에 링크를 단다. 직접 실행해 볼 수 있으면 해 보고 결과를 노트에 남긴다.
-- **자료:** **REQUIRED SUB-SKILL:** blog-figures 로 그림을 고른다(그림 블록은 쓰기만 하면 스크롤 애니메이션이 붙는다). 실제 화면이 필요하면 **REQUIRED SUB-SKILL:** blog-capture.
+- **자료:** 그림이 이 블로그의 차별점이다. **REQUIRED SUB-SKILL:** blog-figures 맨 앞 "그림이 글의 중심이다" 절을 따라, 글에서 이해가 막히는 지점(바뀐 동작·계산·순서·관계)마다 무엇을 그릴지 초안 전에 정하고 최대한 단순하게 그린다(그림 블록은 쓰기만 하면 스크롤 애니메이션이 붙는다). 실제 화면이 필요하면 **REQUIRED SUB-SKILL:** blog-capture.
   - 자세히(칸 아래 `> ` 줄, `data-detail`)는 달지 않는다. 그림 아래 패널이 열리며 글이 들쭉날쭉해지는 지금 방식은 교체 대기 중이다. 지시서의 쓰기 기준에는 아직 달라고 적혀 있지만 이쪽이 우선한다.
   - 글의 핵심 숫자 두세 개는 `stats` 카드로 모은다. 나중에 숫자 굴리기가 붙는 자리이니 다른 그림에 숫자 카드를 흩지 않는다.
 - **초안:**
