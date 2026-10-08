@@ -1,4 +1,3 @@
-@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css");
 @import "tailwindcss";
 
 /* Tailwind preflight leaves <button> with the OS default cursor. Restore the
@@ -185,7 +184,7 @@
   --color-inline-code: var(--inline-code-fg);
   --color-danger: var(--danger);
 
-  --font-sans: "Pretendard Variable", Pretendard, -apple-system,
+  --font-sans: "Pretendard Variable", var(--font-pretendard), Pretendard, -apple-system,
     BlinkMacSystemFont, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", var(--font-jetbrains-mono), "D2Coding",
     ui-monospace, SFMono-Regular, Menlo, monospace;

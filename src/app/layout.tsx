@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { JetBrains_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { Header } from "@/components/layout/Header";
@@ -13,6 +14,13 @@ const jetbrainsMono = JetBrains_Mono({
   variable: "--font-jetbrains-mono",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
+});
+
+// Pretendard v1.3.9 가변 글꼴. CDN 대신 이 사이트에서 내려준다(개인정보·캐시).
+const pretendard = localFont({
+  src: "./fonts/PretendardVariable.woff2",
+  weight: "45 920",
+  variable: "--font-pretendard",
 });
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -48,7 +56,7 @@ export default async function RootLayout({
   ]);
 
   return (
-    <html lang={site.lang} suppressHydrationWarning data-scroll-behavior="smooth" className={jetbrainsMono.variable}>
+    <html lang={site.lang} suppressHydrationWarning data-scroll-behavior="smooth" className={`${jetbrainsMono.variable} ${pretendard.variable}`}>
       <body className="scenic-glow min-h-screen">
         <ThemeProvider>
           <Header categories={categories} posts={posts} title={site.shortTitle} />

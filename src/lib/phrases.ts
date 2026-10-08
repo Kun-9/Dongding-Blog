@@ -30,9 +30,19 @@ export const AVOID: { pattern: RegExp; label: string; hint: string }[] = [
 ];
 
 /**
- * 이전 글을 읽었다고 가정하는 표현. 낱말이 이어지는 "이전 글자", "앞 편집기"는 아니다.
+ * 이전 글을 가리키는 표현. 낱말이 이어지는 "이전 글자", "앞 편집기"는 아니다.
+ * 가리키는 것 자체는 괜찮다. 같은 줄에서 요약하고 링크를 걸면 처음 온 독자도 따라온다.
  */
-const SEQUEL = /(지난번|지난|이전|앞|저번)\s?(글(?![자씨쓰꼴귀])|편(?![집리하지안])|포스트(?!잇))|\d+\s?편에서/;
+const SEQUEL = /(지난번|지난|이전|앞|저번)\s?(글(?![자씨쓰꼴귀])|편(?![집리하지안])|포스트(?!잇))|\d+\s?편\]?(에서|부터)/;
+
+/**
+ * 이전 글을 먼저 읽고 오라는 요구. 링크가 있어도 독자에게 숙제를 넘긴다.
+ * "처음부터 읽어 주세요", "로그를 읽고 오세요" 처럼 이전 글이 아닌 것은 SEQUEL 이 같은 줄에 있어야 잡는다.
+ */
+const READ_FIRST = /(먼저|부터)\s?(읽|보)(고\s?(오|와)|어\s?(주|보))|읽고\s?오(시|세|면)/;
+
+/** 링크가 남은 산문 줄 — proseLines 가 주소를 지워 `[글자]` 만 남긴다. */
+const LINKED = /\[[^\]]+\]|https?:\/\//;
 
 /** 도입부로 보는 산문 줄 수 — 요약 박스와 첫 문단 한두 개. 첫 H2 가 먼저 오면 거기까지. */
 const INTRO_LINES = 8;
@@ -78,13 +88,17 @@ export function lintPhrases(body: string, severity: Severity): Issue[] {
   // 도입부만 본다. 본문 중간에 이전 글을 가리키는 것은 괜찮다.
   for (const { n, text } of lines.slice(0, INTRO_LINES)) {
     if (/^##\s/.test(text)) break;
-    const m = text.match(SEQUEL);
+    const demand = SEQUEL.test(text) ? text.match(READ_FIRST) : null;
+    const bare = LINKED.test(text) ? null : text.match(SEQUEL);
+    const m = demand ?? bare;
     if (m) {
       out.push({
         rule: "sequel-intro",
         severity,
         line: n,
-        message: `도입부가 이전 글을 읽었다고 가정합니다. 필요한 부분을 이 글 안에서 한두 문장으로 요약하고, 이전 글 이야기는 본문으로 미루세요: "${excerpt(text, m.index)}"`,
+        message: demand
+          ? `도입부가 이전 글을 먼저 읽으라고 합니다. 필요한 부분을 여기서 한두 문장으로 요약하고, 링크는 더 읽을 거리로 두세요: "${excerpt(text, m.index)}"`
+          : `도입부가 이전 글을 링크 없이 가리킵니다. 그 글에서 필요한 부분을 이 문장에서 요약하고 요약에 링크를 거세요: "${excerpt(text, m.index)}"`,
       });
     }
   }

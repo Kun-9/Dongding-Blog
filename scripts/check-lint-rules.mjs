@@ -198,9 +198,16 @@ assert.equal(stats.images, 1);
   assert.ok(has("권한은 정책에 의해서는 안 바뀐다\n", "stock-phrase"), "에 의해서는·줄 끝");
   assert.ok(!has("```js\n// 결론적으로\n```\n", "stock-phrase"), "펜스 안은 제외");
 
-  assert.ok(has("지난 글에서 만든 테이블에 열을 더한다.\n\n## 가\n", "sequel-intro"), "지난 글에서");
+  assert.ok(has("지난 글에서 만든 테이블에 열을 더한다.\n\n## 가\n", "sequel-intro"), "링크 없는 지난 글에서");
   assert.ok(has("> [!INFO]\n> 이전 편에 이어 RLS를 다룬다.\n", "sequel-intro"), "요약 박스 안");
   assert.ok(has("3편에서 만든 버킷을 쓴다.\n", "sequel-intro"), "N편에서");
+  assert.ok(
+    !has("[지난 글](/posts/a)에서 posts 테이블에 RLS를 켰습니다. 이번에는 열을 더합니다.\n", "sequel-intro"),
+    "요약하고 링크를 건 도입은 통과",
+  );
+  assert.ok(has("먼저 [이전 글](/posts/a)을 읽고 오세요.\n", "sequel-intro"), "먼저 읽고 오라는 요구는 링크가 있어도");
+  assert.ok(has("[1편](/posts/a)부터 읽어 주세요.\n", "sequel-intro"), "N편부터 읽어 달라는 요구");
+  assert.ok(!has("처음부터 읽어 주세요. 로그를 읽고 오세요.\n", "sequel-intro"), "이전 글이 아닌 읽기 요청");
   assert.ok(!has("이전 글자를 지운다. 앞 편집기는 닫는다.\n", "sequel-intro"), "글자·편집은 낱말");
   assert.ok(!has("RLS를 켠다.\n\n## 가\n\n지난 글에서 만든 정책을 쓴다.\n", "sequel-intro"), "첫 H2 뒤는 본문");
 }
