@@ -76,7 +76,13 @@ async function assertWorkerPost(slug: string) {
 const Action = z.discriminatedUnion("action", [
   z.object({ action: z.literal("claim"), id: ID.optional() }),
   z.object({ action: z.literal("report"), id: ID, message: z.string().min(1).max(200) }),
-  z.object({ action: z.literal("finish"), id: ID, ok: z.boolean(), message: z.string().min(1).max(500) }),
+  z.object({
+    action: z.literal("finish"),
+    id: ID,
+    ok: z.boolean(),
+    message: z.string().min(1).max(500),
+    todo: z.string().max(300).optional(),
+  }),
   z.object({
     action: z.literal("notes"),
     id: ID,
@@ -159,7 +165,7 @@ export async function POST(req: Request) {
       case "report":
         return ok(withNext(await reportAi(input.id, input.message)));
       case "finish":
-        return ok(withNext(await finishAi(input.id, input.ok, input.message)));
+        return ok(withNext(await finishAi(input.id, input.ok, input.message, input.todo)));
       case "notes":
         return ok(withNext(await saveNotes(input.id, input.markdown, input.mode)));
       case "advance":

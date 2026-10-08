@@ -47,6 +47,8 @@ export interface TopicRow {
     startedAt: string | null;
     /** 이번 작업의 진행 로그. 오래된 것부터. */
     log: AiLogEntry[];
+    /** 마지막 작업이 남긴 사람 몫의 일. 그 뒤로 무슨 일이든 생기면 비운다. */
+    todo: string | null;
   };
   /** 작업 노트(markdown) — 조사 요약, 링크, 비교 표, 그림 목록. */
   notes: string;
@@ -58,6 +60,8 @@ export interface AiLogEntry {
   at: string;
   message: string;
   kind: "start" | "report" | "stage" | "done" | "fail";
+  /** done·fail 줄에만. 사람이 해야 할 남은 일. */
+  todo?: string;
 }
 
 /** 로그는 이 줄 수까지만 남긴다. 화면은 최근 것부터 본다. */
@@ -123,6 +127,11 @@ async function selectTopics(
 }
 
 function toRow(t: DbTopic, candidateIds: string[]): TopicRow {
+  const log = Array.isArray(t.ai_log) ? (t.ai_log as unknown as AiLogEntry[]) : [];
+  // 남은 일은 끝낸 줄이 로그의 마지막이고, 그 뒤로 주제가 바뀌지 않았을
+  // 때만 유효하다. 다시 맡기면 로그가 새로 시작되고, 사람이 단계를 넘기거나
+  // 되돌리거나 고치면 updated_at 이 끝낸 시각을 지나 저절로 사라진다.
+  const end = log[log.length - 1];
   return {
     id: t.id,
     title: t.title,
@@ -139,7 +148,11 @@ function toRow(t: DbTopic, candidateIds: string[]): TopicRow {
       message: t.ai_message ?? null,
       updatedAt: t.ai_updated_at ?? null,
       startedAt: t.ai_started_at ?? null,
-      log: Array.isArray(t.ai_log) ? (t.ai_log as unknown as AiLogEntry[]) : [],
+      log,
+      todo:
+        end && (end.kind === "done" || end.kind === "fail") && Date.parse(t.updated_at) <= Date.parse(end.at)
+          ? (end.todo ?? null)
+          : null,
     },
     notes: t.notes ?? "",
   };
@@ -324,6 +337,9 @@ export async function advanceTopic(
   await save(id, { stage: next.key, checks, post_slug: postSlug });
   if (topic.ai.status === "running") {
     await saveAi(id, { ai_message: `${next.label} 완료` }, { topic, kind: "stage", message: `${next.label} 단계 완료` });
+  } else if (topic.ai.status === "failed") {
+    // AI 가 멈춘 단계를 사람이 직접 끝냈다. 멈춤 표시를 거둔다.
+    await saveAi(id, { ai_status: null, ai_until: null });
   }
 
   // 발행하면 묶인 글감도 썼음으로 닫는다. 메모(어느 글에 쓸지)는 남긴다.
@@ -390,13 +406,13 @@ async function saveAi(
   id: number,
   patch: { ai_status?: AiStatus | null; ai_until?: AiUntil | null; ai_message?: string | null },
   /** 로그에 한 줄 덧붙인다. reset 이면 로그를 비우고 이 줄로 시작한다. */
-  log?: { topic: TopicRow; kind: AiLogEntry["kind"]; message: string; reset?: boolean },
+  log?: { topic: TopicRow; kind: AiLogEntry["kind"]; message: string; todo?: string; reset?: boolean },
 ) {
   const now = new Date().toISOString();
   const base = { ...patch, ai_updated_at: now };
   let extra: Record<string, unknown> = {};
   if (log) {
-    const entry: AiLogEntry = { at: now, kind: log.kind, message: log.message };
+    const entry: AiLogEntry = { at: now, kind: log.kind, message: log.message, ...(log.todo ? { todo: log.todo } : {}) };
     const next = log.reset ? [entry] : [...log.topic.ai.log, entry].slice(-LOG_LIMIT);
     extra = { ai_log: next, ...(log.reset ? { ai_started_at: now } : {}) };
   }
@@ -498,15 +514,18 @@ export async function reportAi(id: number, message: string): Promise<TopicRow> {
   return getTopic(id);
 }
 
-/** 작업을 끝낸다. ok 면 상태를 비우고, 아니면 failed 로 이유를 남긴다. */
-export async function finishAi(id: number, ok: boolean, message: string): Promise<TopicRow> {
+/**
+ * 작업을 끝낸다. ok 면 상태를 비우고, 아니면 failed 로 이유를 남긴다.
+ * todo 는 사람이 해야 할 남은 일 — 어드민 목록 둘째 줄에 보인다.
+ */
+export async function finishAi(id: number, ok: boolean, message: string, todo?: string): Promise<TopicRow> {
   const topic = await getTopic(id);
   await saveAi(
     id,
     ok
       ? { ai_status: null, ai_until: null, ai_message: message }
       : { ai_status: "failed", ai_message: message },
-    { topic, kind: ok ? "done" : "fail", message },
+    { topic, kind: ok ? "done" : "fail", message, todo: todo?.trim() || undefined },
   );
   return getTopic(id);
 }

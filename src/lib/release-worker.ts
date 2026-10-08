@@ -40,7 +40,7 @@ curl -sS -X POST "$APP/api/releases/worker/" -H "Authorization: Bearer $TOKEN" -
 | report | id, message | 진행 중 한 줄 상황(어드민 카드에 보임). 어드민에서 취소했으면 에러 |
 | notes | id, markdown, mode(append·replace) | 작업 노트에 쓴다 |
 | advance | id, note, postSlug? | 다음 단계를 끝냈다고 기록한다 |
-| finish | id, ok, message | 작업을 끝낸다. 반드시 마지막에 |
+| finish | id, ok, message, todo? | 작업을 끝낸다. 반드시 마지막에. todo 는 사람 몫의 남은 일 한 줄 |
 | candidates | ids | 묶인 릴리스 원문 |
 | taxonomy | — | 카테고리 id·태그 |
 | slugs | — | 이미 있는 글 slug 목록 |
@@ -61,6 +61,7 @@ curl -sS -X POST "$APP/api/releases/worker/" -H "Authorization: Bearer $TOKEN" -
    - 끝나면 \`advance\` 로 근거(note)를 남기고, 돌려받은 주제로 다음 단계를 정한다.
 4. 도구 호출이 권한 분류기에 거부되면 같은 결과를 다른 방법으로 우회하지 않는다. 주제를 집은 뒤라면 \`finish\` ok=false 로 거부된 호출과 이유를 남기고 끝낸다(그것도 막히면 그대로 끝낸다). 집은 채 두면 어드민에 2시간 동안 "작업 중"으로 남는다.
 5. 마지막에 반드시 \`finish\`. 성공이면 ok=true 와 한두 줄 요약, 막혔으면 ok=false 와 막힌 이유·남은 할 일. 추측으로 채우지 않는다.
+   사람이 해야 할 일(캡처 올리기, 미확인 사실 확인, 원문 대조 등)이 남았으면 \`todo\` 에 그것만 한 줄로 쓴다. 어드민 목록에 "남은 일"로 바로 보인다. 없으면 비운다.
 
 ## 단계별 할 일
 

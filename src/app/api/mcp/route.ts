@@ -518,14 +518,16 @@ const handler = createMcpHandler(
         title: "릴리스 AI 작업 끝내기",
         description:
           "작업을 끝낸다. ok=true 면 상태를 비우고 message 를 남긴다(무엇을 했는지 한두 줄). " +
-          "ok=false 면 failed 로 멈추고 message 에 막힌 이유와 남은 할 일을 쓴다. 성공이든 실패든 반드시 마지막에 부를 것.",
+          "ok=false 면 failed 로 멈추고 message 에 막힌 이유와 남은 할 일을 쓴다. 성공이든 실패든 반드시 마지막에 부를 것. " +
+          "todo 에는 사람이 해야 할 남은 일만 한 줄로 쓴다(예: '캡처 2장 올리기(todo-a.png, todo-b.png), 이전 단가 확인'). 어드민 목록에 '남은 일'로 보인다. 없으면 비운다.",
         inputSchema: z.object({
           id: z.number().int(),
           ok: z.boolean(),
           message: z.string().min(1).max(500),
+          todo: z.string().max(300).optional(),
         }),
       },
-      async ({ id, ok, message }) => topicCall(() => finishAi(id, ok, message)),
+      async ({ id, ok, message, todo }) => topicCall(() => finishAi(id, ok, message, todo)),
     );
 
     server.registerTool(
