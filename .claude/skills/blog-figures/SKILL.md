@@ -318,9 +318,9 @@ caption: 확인이 필요한 명령만 사용자에게 간다
 - 브라우저로 재려면 각 그림을 진행 0.02·0.5·1 위치로 스크롤한다(`scrollTo(top - (innerHeight - p * height))`, `scroll-behavior: auto`). 1 에서 `[data-anim]` 이 모두 opacity 1·transform 항등·clip 없음이면 맞다. `window.ViewTimeline` 을 지운 페이지로 한 번 더 재면 Firefox 경로다.
 - Motion 에 `transform` 끝값으로 `"none"` 을 주지 않는다. 상대 값의 0 으로 바뀌어 `scale(0.6) → none` 이 `scale(0)` 으로 끝난다. 끝값은 `scale(1)`·`translateY(0px)` 처럼 적는다.
 
-## 캡처 자리
+## 실제 화면
 
-실제 화면이 필요한 곳은 박스로 표시하지 말고 그 자리에 `![캡션](/posts/<slug>/todo-<이름>.png)` 를 넣는다. 본문에 "캡처 필요" 자리로 보이고, 남아 있으면 발행이 막힌다. 같은 경로로 실제 캡처를 올리면 채워진다.
+스크린샷·캡처가 필요하면 **blog-capture 스킬**을 따른다. 순서는 직접 뜨기(`capture.mjs` 한 줄) → 자료 조사 → 그림으로 다시 그리기이고, 셋 다 안 될 때만 그 자리에 `![캡션](/posts/<slug>/todo-<이름>.png)` 를 남긴다. 본문에 "캡처 필요" 자리로 보이고, 남아 있으면 발행이 막힌다.
 
 ## 확인
 
