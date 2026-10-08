@@ -82,9 +82,17 @@ function scan() {
         out.push(`그림 안에 세로 스크롤: ${name(el)} (내용 ${el.scrollHeight}px, 판 ${el.clientHeight}px)`);
       const e = el.getBoundingClientRect();
       if (e.width === 0 || e.height === 0) continue;
-      // 가로로 스크롤되는 칸(코드 블록·표) 안은 넘쳐도 된다.
-      if (el.closest("pre, table, [class*='overflow-x']") && el.closest("pre, table, [class*='overflow-x']") !== el) continue;
-      if (e.left < r.left - 1 || e.right > r.right + 1) out.push(`그림 판 밖으로 나감: ${name(el)} (${Math.round(e.left)}~${Math.round(e.right)}, 판 ${Math.round(r.left)}~${Math.round(r.right)})`);
+      // 판 안의 조상이 가로를 자르면(가로 스크롤 칸, timeline 슬라이드 띠 .sc-car) 잘린 뒤 보이는 범위로 본다.
+      let left = e.left;
+      let right = e.right;
+      for (let a = el.parentElement; a && a !== box; a = a.parentElement) {
+        if (getComputedStyle(a).overflowX === "visible") continue;
+        const c = a.getBoundingClientRect();
+        left = Math.max(left, c.left);
+        right = Math.min(right, c.right);
+      }
+      if (right <= left) continue;
+      if (left < r.left - 1 || right > r.right + 1) out.push(`그림 판 밖으로 나감: ${name(el)} (${Math.round(left)}~${Math.round(right)}, 판 ${Math.round(r.left)}~${Math.round(r.right)})`);
     }
   }
   // 공백에서 접힌 줄은 괜찮다. 공백 없는 낱말 하나가 두 줄에 걸쳤을 때만 잡는다.
@@ -116,6 +124,7 @@ if (selftest) {
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
   await page.setContent(`<article><figure style="width:300px;margin:0">
     <div style="margin-left:-40px;width:120px;height:20px">밖으로 나간 상자</div>
+    <div style="overflow:hidden;width:100px"><div style="margin-left:-60px;width:300px">가려진 슬라이드</div></div>
     <div style="overflow-x:auto;height:30px"><div style="height:46px">세로로 넘치는 판</div></div>
     <div class="fig-term-body" style="width:200px;font:12px/20px monospace"><div>{"sub":"user-42","role":"admin","jti":"d7853a97"}</div><div>Exception: error creating bean with name main</div></div>
   </figure><div style="width:600px;height:10px"></div></article>`);
@@ -125,6 +134,8 @@ if (selftest) {
   const miss = want.filter((w) => !got.some((g) => g.startsWith(w)));
   // 공백에서 접힌 줄은 잡지 않아야 한다.
   if (got.some((g) => g.includes("Exception"))) miss.push("공백에서 접힌 줄을 잘못 잡음");
+  // 판 안에서 일부러 가린 요소(timeline 슬라이드)는 잡지 않아야 한다.
+  if (got.some((g) => g.includes("가려진"))) miss.push("판 안에서 가린 요소를 잘못 잡음");
   console.log(miss.length ? `selftest 실패: ${miss.join(", ")}` : "selftest ok");
   process.exit(miss.length ? 1 : 0);
 }
