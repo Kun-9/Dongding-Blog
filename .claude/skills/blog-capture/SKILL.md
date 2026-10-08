@@ -32,6 +32,29 @@ node .claude/skills/blog-capture/capture.mjs --run "claude --model claude-sonnet
 | `--from` `--to` | 화면에서 자를 첫 줄·끝 줄에 들어 있는 글자. 행 번호는 쓰지 않는다 |
 | `--out` | SVG 경로. 이름에 `todo-` 를 넣지 않는다 |
 | `--upload-json <slug>` | 실행기 API 로 올릴 요청 본문을 `<out>.json` 으로 함께 만든다 |
+| `--plugin <폴더>` | 그 플러그인·mod 만 싣고 띄운다(`--setting-sources project --plugin-dir`). safe-mode 는 플러그인을 끄므로 mod 화면은 이걸로 뜬다. 여러 번 줄 수 있다 |
+| `--setup "<셸 명령>"` | 띄우기 전에 캡처 폴더에서 돈다. 예제가 다룰 파일을 만든다(지울 `build/`, 고칠 `greet.js` 등) |
+| `--wait <글자>` | `--keys` 사이에 끼운다. 그 글자가 화면에 뜰 때까지(최대 `--timeout`) 기다렸다가 다음 키를 보낸다. 턴이 끝난 뒤 명령을 칠 때 쓴다 |
+| `--timeout <초>` | 기다리는 상한(기본 40). 모델이 한 턴 일하는 화면은 120 안팎 |
+
+### 플러그인·mod 를 실제로 돌려 뜨기
+
+예제가 무엇을 하는지는 실제로 돌린 화면이 가장 빨리 전한다. 모델에게 일을 시켜야 뜨는 화면이면 프롬프트를 `--keys` 로 치고, 결과가 뜰 때까지 `--wait` 로 기다린다. 모델 호출이 한 번 드니 사용자 몫의 비용이라는 것을 알리고 뜬다.
+
+```bash
+# 턴에서 파일 셋을 고치게 한 뒤, 턴이 끝나면 /replay 로 pane 을 연다
+node .claude/skills/blog-capture/capture.mjs --timeout 150 \
+  --plugin ./claude-code/mods/replay-theater \
+  --setup 'printf "export const greet = (name) => \"hi \" + name\n" > greet.js && printf "# Notes\n" > README.md' \
+  --run "claude --model claude-sonnet-5-5" \
+  --keys "greet.js 의 hi 를 hello 로 바꾸고, README.md 에 사용법 한 줄을 더하고, greet.test.js 를 새로 만들어 줘" --keys Enter \
+  --wait "press r" --keys "/replay" --keys Enter --wait "step 1 of" \
+  --from "step 1 of" --to "Close" --out /tmp/replay-theater-pane.svg
+```
+
+- 띠·버튼의 글자 단축키(`press r` 같은)는 프롬프트에 글자로 들어갈 수 있다. 플러그인이 등록한 `/명령` 으로 연다.
+- 경고 표시처럼 그림 문자(픽토그램)가 든 줄은 `--from`/`--to` 로 범위에서 뺀다. 블로그는 이모지·픽토그램을 싣지 않는다.
+- 처음 뜰 때 범위를 모르면 `--from`/`--to` 를 짐작으로 주고, 끝 코드 5 가 보여 주는 화면을 보고 고친다.
 
 도구가 창 크기(100×60), 폴더 신뢰 확인, 화면이 멈출 때까지 기다리기, 세션·기록 정리를 모두 맡는다. 폴더 신뢰 기록은 캡처 전용 폴더 하나만 처음 한 번 `~/.claude.json` 에 남는다. 실행이 끝나면 띄운 프로그램의 버전과 잘라 낸 화면을 글자로 보여 준다. 그 글자를 읽고 본문에 쓸 사실을 고른다.
 

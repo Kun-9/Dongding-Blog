@@ -30,7 +30,7 @@ description: dongding 블로그 글 본문에 그림을 넣는 방법 — 그림
 
 - 그림은 그 내용을 설명하는 문단 **바로 다음**에, 앞뒤 빈 줄. 그림만 모은 섹션은 만들지 않는다.
 - 첫 줄 `caption: …` 이 그림 아래 캡션이 된다. 그림이 보여 주는 것을 **40자 안팎 명사구**로. 없으면 점검 경고.
-- 줄 끝 ` *` = 강조(지금 이야기하는 것), ` ~` = 흐리게(점선, 예정·선택). 강조는 그림마다 한두 곳만.
+- 줄 끝 ` *` = 강조(지금 이야기하는 것), ` ~` = 흐리게(점선, 예정·선택). 강조는 그림마다 한두 곳만. 왜 그 칸인지가 그림과 캡션만으로 읽혀야 한다. 대등하게 나란한 칸(예제 카드 셋 등) 중 하나만 강조하지 않는다. 독자에게는 이유 없는 하이라이트로 보인다.
 - 칸 줄 바로 아래 `> 내용` = 장면의 단계 설명. 장면이 아닌 그림에서는 그려지지 않으니 쓰지 않는다.
 - 칸은 `|` 로 가른다. 첫 칸이 제목, 뒤는 짧은 설명.
 - 그림 하나에 생각 하나. 칸 글자는 몇 단어로, 설명 문장은 본문이 한다.
@@ -51,7 +51,7 @@ description: dongding 블로그 글 본문에 그림을 넣는 방법 — 그림
 | 파일 구조, 계층 | `tree` |
 | 핵심 숫자 몇 개 | `stats` |
 | 수치 크기 비교 | `bars` |
-| 활용 예 두세 개(하는 일 × 쓰는 이벤트·명령) | ```figure 카드(아래 "활용 예 카드") |
+| 활용 예 두세 개(무엇을 하는지, 화면에 무엇이 뜨는지) | `timeline` 장면 + 직접 띄운 화면(아래 "활용 예") |
 
 글 전체에서 같은 종류만 반복하지 말고 내용에 맞게 섞는다. 비교는 `compare`·`matrix` 가 비교 표 요건도 채운다.
 
@@ -248,6 +248,31 @@ step: 줄어든 막대를 키워 보면 | zoom
 ```
 ````
 
+### 활용 예 — 장면으로 넘기고 실제 화면을 붙인다
+
+새 기능을 어디에 쓰는지는 공식 예제·샘플에서 고른 두세 개로 보여 준다. 이름과 이벤트만 적은 카드로 끝내면 독자는 무슨 예제인지 모른다. 2026-10-08 Mods 글에서 카드 셋 중 하나만 강조했다가 "왜 하나만 하이라이트인지, 무슨 예제인지 모르겠고, 인터랙티브하지도 않다"는 지적을 받았다.
+
+1. **timeline 장면으로 넘긴다.** 시점 자리에 예제 이름, 제목에 하는 일(몇 단어), `>` 설명에 화면에 무엇이 뜨는지와 쓰는 훅·명령을 한두 문장으로. 강조는 장면이 지금 단계에만 준다. 줄 끝 `*` 는 쓰지 않는다.
+2. **직접 띄운 화면을 장면 아래에 붙인다.** blog-capture 로 예제를 실제로 돌려 뜬다(플러그인·mod 는 `--plugin`, 준비할 파일은 `--setup`, 턴이 끝난 뒤 누를 키는 `--wait`). 예제마다 한 장, 문단에서 "직접 v2.1.292에서 ~해 보니"로 무엇을 시켰고 무엇이 떴는지 쓴다. 띄울 수 없는 예제는 장면 설명만으로 둔다.
+3. **따라 할 명령 한 줄**을 마지막에 붙인다(예: `claude --plugin-dir ./claude-code/mods/blast-radius`).
+
+````
+```timeline
+caption: 공식 예제 mod 셋이 화면에 띄우는 것
+scene: on
+replay-theater | 지난 턴의 편집 되감기
+> 턴이 끝나면 프롬프트 위에 `Replay: 3 edits`가 뜨고, `/replay`를 치면 파일 편집을 **diff 한 장씩** 넘겨 봅니다. `tool.call`은 적어 두기만 하고 늘 `next(e)`로 넘깁니다.
+token-weather | 컨텍스트 일기예보
+> 턴이 끝날 때마다 프롬프트 위 한 줄에 **컨텍스트가 몇 퍼센트 찼는지**를 날씨로 보여 줍니다. `turn.complete`에서 읽고 `ui.render`로 그립니다.
+blast-radius | 위험한 명령 붙잡기
+> `rm -rf`나 강제 푸시를 실행 직전에 멈추고 **지워질 파일**을 보여 줍니다. Proceed면 `next(e)`, Cancel이면 `deny`로 답합니다.
+```
+
+직접 v2.1.292에서 replay-theater를 불러온 뒤 Claude에게 파일 세 개를 고치게 하고 `/replay`를 치니, 첫 단계로 `greet.js`의 diff가 열렸습니다.
+
+![v2.1.292 replay-theater가 연 pane, 편집 3개 중 1단계](/posts/claude-code-mods/replay-theater-pane.svg)
+````
+
 ## ```figure — 디자인 키트 HTML
 
 조합은 자유, 생김새는 키트가 정한다. 렌더 전에 허용 목록으로 다시 쓴다.
@@ -285,36 +310,6 @@ caption: 분류기가 명령을 두 갈래로 나누는 방식
 <div class="fig-grid-3" style="margin-top: 14px">
   <div class="fig-box"><span class="fig-label">평균 대기</span><span class="fig-big">1.2s</span><span class="fig-bar" style="--v: 30%"></span></div>
   <div class="fig-box fig-accent"><span class="fig-label">자동 승인</span><span class="fig-big">86%</span><span class="fig-bar fig-accent" style="--v: 86%"></span></div>
-</div>
-```
-````
-
-### 활용 예 카드
-
-새 기능을 어디에 쓰는지는 공식 예제·샘플에서 고른 두세 개를 카드 한 줄로 보여 준다. 카드마다 `fig-label` 쓰임 갈래(지켜보기·그리기·붙잡기처럼 앞 그림의 말과 맞춘다), `fig-title fig-mono` 이름, `fig-sub` 하는 일 한 줄, `fig-chip` 쓰는 이벤트·명령. 덜 끼어드는 것부터 놓고, 본문에서 자세히 다룰 하나만 `fig-accent`. 칸 이름과 칩은 직접 확인한 것만 쓴다(예: `claude plugin validate` 의 `hooks:` 줄). 카드 뒤 문단에서 하나를 골라 동작을 풀고, 따라 할 명령 한 줄을 붙인다.
-
-````
-```figure
-caption: 공식 예제 mod 셋이 받는 이벤트와 하는 일
-<div class="fig-grid-3">
-  <div class="fig-box">
-    <span class="fig-label">지켜보기</span>
-    <span class="fig-title fig-mono">replay-theater</span>
-    <span class="fig-sub">지난 턴의 파일 편집을 /replay로 한 단계씩 되감기</span>
-    <span class="fig-chip">tool.call → next(e)</span>
-  </div>
-  <div class="fig-box">
-    <span class="fig-label">그리기</span>
-    <span class="fig-title fig-mono">token-weather</span>
-    <span class="fig-sub">턴이 끝날 때마다 컨텍스트 사용량을 프롬프트 위 띠에</span>
-    <span class="fig-chip">turn.complete · AbovePrompt</span>
-  </div>
-  <div class="fig-box fig-accent">
-    <span class="fig-label">붙잡기</span>
-    <span class="fig-title fig-mono">blast-radius</span>
-    <span class="fig-sub">rm -rf·강제 푸시를 멈추고 영향 범위를 pane에</span>
-    <span class="fig-chip">tool.call → deny 또는 next(e)</span>
-  </div>
 </div>
 ```
 ````

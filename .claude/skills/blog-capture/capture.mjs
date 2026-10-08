@@ -11,7 +11,10 @@
  * --ansi <파일> 을 주면 띄우지 않고 이미 뜬 화면(tmux capture-pane -e -p)만 바꾼다.
  * claude 는 --safe-mode --setting-sources project 로 띄운다 — 내 CLAUDE.md·플러그인·훅·MCP·
  * 상태줄·저장된 모델·effort 없이 기본 설치 화면이 나와야 어디서 떠도 같은 그림이다.
- * 꼭 내 구성이 보여야 하면 --no-safe-mode.
+ * 꼭 내 구성이 보여야 하면 --no-safe-mode. safe-mode 는 플러그인을 끄므로, mod·플러그인 화면은
+ * --plugin <폴더> 로 그 플러그인만 싣는다(--setting-sources project 는 그대로).
+ * --setup "<셸 명령>" 은 띄우기 전에 캡처 폴더에서 돈다(지울 파일 만들기 등). --wait <글자> 는
+ * --keys 사이에 끼워 그 글자가 화면에 뜰 때까지 기다린다(턴이 끝난 뒤 키 누르기).
  *
  * 끝 코드: 0 성공 · 1 사용법 · 2 개인 정보가 보임 · 3 띄우지 못함(설치·로그인)
  *          4 tmux 없음 · 5 --from/--to 를 화면에서 못 찾음
@@ -24,7 +27,7 @@ import { basename, join } from "node:path";
 /* ── 인자 ─────────────────────────────────────────────────────────────── */
 
 // /context 처럼 긴 출력도 위로 밀리지 않게 60행. 밀린 줄은 tmux 기록에도 안 남는다.
-const opt = { keys: [], allow: [], size: "100x60", timeout: 40, safe: true };
+const opt = { keys: [], allow: [], plugins: [], size: "100x60", timeout: 40, safe: true };
 const argv = process.argv.slice(2);
 for (let i = 0; i < argv.length; i++) {
   const k = argv[i];
@@ -32,6 +35,9 @@ for (let i = 0; i < argv.length; i++) {
   if (k === "--run") opt.run = v();
   else if (k === "--ansi") opt.ansi = v();
   else if (k === "--keys") opt.keys.push(v());
+  else if (k === "--wait") opt.keys.push({ wait: v() });
+  else if (k === "--plugin") opt.plugins.push(v());
+  else if (k === "--setup") opt.setup = v();
   else if (k === "--from") opt.from = v();
   else if (k === "--to") opt.to = v();
   else if (k === "--out") opt.out = v();
@@ -107,9 +113,13 @@ function shoot() {
     ...Object.keys(process.env).filter((k) => k.startsWith("CLAUDE_CODE_MESSAGING_"))];
   let run = opt.run;
   // 사용자 설정(~/.claude/settings.json)도 읽지 않는다. 저장된 모델·effort 가 화면에 보인다.
-  if (opt.safe && /^claude(\s|$)/.test(run) && !run.includes("--safe-mode")) run = run.replace(/^claude/, "claude --safe-mode --setting-sources project");
+  // safe-mode 는 --plugin-dir 도 끈다. 플러그인을 실을 때는 사용자 설정만 빼고 그 플러그인만 싣는다.
+  const plug = opt.plugins.map((p) => ` --plugin-dir '${realpathSync(p)}'`).join("");
+  if (/^claude(\s|$)/.test(run) && plug) run = run.replace(/^claude/, `claude --setting-sources project${plug}`);
+  else if (opt.safe && /^claude(\s|$)/.test(run) && !run.includes("--safe-mode")) run = run.replace(/^claude/, "claude --safe-mode --setting-sources project");
   // 명령이 끝나도 화면이 남도록 [exit] 를 찍고 기다린다.
-  const cmd = `env ${nested.map((k) => `-u ${k}`).join(" ")} TERM=xterm-256color COLORTERM=truecolor ${run}; echo "[blogcap exit $?]"; sleep 600`;
+  const setup = opt.setup ? `(${opt.setup}) && ` : "";
+  const cmd = `${setup}env ${nested.map((k) => `-u ${k}`).join(" ")} TERM=xterm-256color COLORTERM=truecolor ${run}; echo "[blogcap exit $?]"; sleep 600`;
   // 캡션에 적을 버전. 따로 `--version` 을 치면 띄운 실행 파일과 다를 수 있다.
   const bin = run.split(/\s+/)[0];
   const ver = spawnSync(bin, ["--version"], { encoding: "utf8", timeout: 15000 }).stdout?.trim().split("\n")[0];
@@ -137,6 +147,15 @@ function shoot() {
       screen = plain(settle(session, 2000));
     }
     for (const k of opt.keys) {
+      if (typeof k === "object") {
+        const end = Date.now() + opt.timeout * 1000;
+        let now = "";
+        while (!(now = plain(tmux("capture-pane", "-t", session, "-p").stdout ?? "")).includes(k.wait)) {
+          if (Date.now() > end) throw new Fail(5, `--wait "${k.wait}" 이 ${opt.timeout}초 안에 뜨지 않았다. 지금 화면:\n${now.trimEnd()}`);
+          sleep(500);
+        }
+        continue;
+      }
       if (KEY.test(k) || k === "Esc") tmux("send-keys", "-t", session, k === "Esc" ? "Escape" : k);
       else tmux("send-keys", "-t", session, "-l", k);
       sleep(400);
