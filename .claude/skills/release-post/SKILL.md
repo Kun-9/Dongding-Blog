@@ -10,7 +10,7 @@ description: Use when the user asks you directly (not through the admin "AI에�
 ## 시작
 
 1. 지시서를 읽는다: `curl -sS https://blog.dongding.dev/api/releases/worker/` (토큰 없이 열린다). "단계별 할 일"과 "쓰기 기준"이 이 작업의 규칙이다. "순서"의 claim·report·finish 는 실행기 전용이라 건너뛴다.
-2. `list_release_topics` 로 주제의 `stage` 와 `next` 를 본다. 요청이 지금 단계와 맞지 않으면(이미 점검까지 끝난 주제를 "처음부터" 등) 쓰기 전에 고르게 한다: 기존 초안 다듬기 / `update_release_topic` revert 로 되돌려 다시 쓰기 / 새 slug.
+2. `list_release_topics` 로 주제의 `stage` 와 `next` 를 본다. 요청이 지금 단계와 맞지 않으면(이미 점검까지 끝난 주제를 "처음부터" 등) 쓰기 전에 고르게 한다: 기존 초안 다듬기 / `update_release_topic` revert 로 되돌려 다시 쓰기 / 새 slug. revert 는 한 번에 한 단계만 내리고 그 단계의 근거만 지운다. 작업 노트·글·postSlug 는 남는다.
 3. `next` 단계부터 하나씩 한다. 단계를 건너뛰지 않는다.
 
 ## 대응표
@@ -33,7 +33,7 @@ description: Use when the user asks you directly (not through the admin "AI에�
 - **2차 소스:** 공식 문서·PR·이슈를 읽고 확인한 사실에 링크를 단다. 직접 실행해 볼 수 있으면 해 보고 결과를 노트에 남긴다.
 - **자료:** **REQUIRED SUB-SKILL:** blog-figures 로 그림을 고른다(그림 블록은 쓰기만 하면 스크롤 애니메이션이 붙는다). 실제 화면이 필요하면 **REQUIRED SUB-SKILL:** blog-capture.
 - **초안:**
-  - 요약 박스에 버전마다 `v2.1.280(2026년 9월 23일 배포)` 를 붙인다. 날짜는 `released` 를 그대로 쓴다.
+  - 요약 박스에 버전마다 `v2.1.280(2026년 9월 23일 배포)` 를 붙인다. 날짜는 `released` 를 그대로 쓴다. 공식 발표일(미국 기준)과 하루 다르더라도 배포일 하나만 쓴다. 배포일 값이 없는 버전(글감이 아닌 이전 버전)은 요약 박스에 쓰지 않는다.
   - 제목은 쓰기 기준대로 짓는다. 주제 이름을 그대로 쓰지 않는다.
   - 본문 통째(`body`)는 처음 만들 때와 초안 단계에서 다시 쓸 때만 쓴다. 그 뒤 수정은 `replacements`.
 - **점검:** `check_release_voice` 경고를 replacements 로 고쳐 다시 검사한다. 통과하면 `advance_release_topic`. 서버가 같은 기준으로 한 번 더 막는다.

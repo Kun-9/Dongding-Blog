@@ -27,6 +27,7 @@
 - advance note: 읽은 출처 수와 핵심 한두 줄.
 
 ### assets — 자료
+- 그림을 만들기 전에 `blog-figures` 스킬을 Skill 도구로 불러 읽는다(레포의 `.claude/skills/`). 아래 그림 규칙과 다르면 스킬을 따른다.
 - 글 slug 를 정한다. 영어 소문자·하이픈, 짧게 (예: `claude-code-auto-mode-default`). `list_posts` 로 겹치지 않는지 본다.
 - 비교·정리 표를 markdown 으로 만든다. 최소 하나는 전/후 또는 버전별 비교.
 - 처음 보는 사람이 무엇을 봐야 이해할지부터 정한다. 내용에 맞는 그림 블록 종류를 고른다 — 단계 flow, 반복 cycle, 전/후 compare, 기능×대상 matrix, 버전 흐름 timeline, 주고받는 순서 sequence, 포함·우선순위 layers, 파일·계층 tree, 핵심 숫자 stats, 수치 비교 bars(쓰기 기준의 "그림 블록 문법", 최소 하나). 본문에 그대로 쓰면 블로그가 그린다.

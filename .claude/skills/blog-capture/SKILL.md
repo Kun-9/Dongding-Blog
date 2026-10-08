@@ -43,6 +43,8 @@ node .claude/skills/blog-capture/capture.mjs --run "claude --model claude-sonnet
 | 4 | tmux 가 없다. 2단계로 |
 | 5 | `--from`/`--to` 글자가 화면에 없다. 출력된 화면을 보고 글자나 `--keys` 를 고친다 |
 
+도구가 출력한 버전이 글이 다루는 버전보다 낮으면 그 변경은 화면에 없다. 사용자 동의를 받아 `claude update` 뒤에 뜨거나, 2단계로 간다(클라우드 루틴은 보통 최신이다).
+
 화면이 바뀌는 선택은 하지 않는다. `/model` 같은 선택기에서 항목을 고르는 Enter 는 사용자 기본값을 저장한다. 선택기는 여는 데까지만 키를 보낸다.
 
 ## 올리기
