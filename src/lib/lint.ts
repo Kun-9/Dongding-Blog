@@ -8,7 +8,8 @@
  *
  * 오타·문장 품질은 여기서 다루지 않는다. 규칙으로 잡히는 게 아니라서 MCP 쪽
  * 모델이 본문을 읽고 판단하고, 이 모듈은 그 수정이 렌더를 깨뜨리지 않았는지
- * 되받아 확인하는 역할을 맡는다.
+ * 되받아 확인하는 역할을 맡는다. 예외는 정해진 표현으로 잡히는 글쓰기 습관
+ * (상투구, 후속편 도입, lib/phrases)뿐이고 info 로만 알린다.
  */
 import BananaSlug from "github-slugger";
 import readingTime from "reading-time";
@@ -16,6 +17,7 @@ import readingTime from "reading-time";
 // 거치므로 `@/` alias 가 풀리지 않는다. 이 모듈만 상대 경로 + 확장자로 쓴다.
 import { CARD_LINE_RE, cardSlug } from "./link-cards.ts";
 import { MAX_PX } from "./image-blocks.ts";
+import { lintPhrases } from "./phrases.ts";
 
 export type Severity = "error" | "warning" | "info";
 
@@ -586,6 +588,7 @@ export function lintPost(post: LintablePost, ctx: LintContext = {}): PostLint {
   lintSyntax(s, issues);
   lintReferences(s, ctx, issues);
   lintMeta(post, stats, ctx, issues);
+  issues.push(...lintPhrases(post.body, "info"));
 
   issues.sort((a, b) => (a.line ?? 0) - (b.line ?? 0));
   return {

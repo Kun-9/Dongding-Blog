@@ -190,4 +190,19 @@ assert.equal(stats.images, 1);
   assert.equal(linkKey("https://a.com/x"), linkKey("http://a.com/x/"), "캐시 키 정규화");
 }
 
+// ── 글쓰기 습관 (lib/phrases, 직접 쓴 글에는 info) ────────────────────────
+{
+  const sev = (body, rule) => lintPost({ ...base, body }).issues.find((i) => i.rule === rule)?.severity;
+  assert.equal(sev("결론적으로 캐시가 빠르다.\n", "stock-phrase"), "info", "상투구는 info");
+  assert.ok(has("요청은 프록시에 의해 막힌다.\n", "stock-phrase"), "에 의해");
+  assert.ok(has("권한은 정책에 의해서는 안 바뀐다\n", "stock-phrase"), "에 의해서는·줄 끝");
+  assert.ok(!has("```js\n// 결론적으로\n```\n", "stock-phrase"), "펜스 안은 제외");
+
+  assert.ok(has("지난 글에서 만든 테이블에 열을 더한다.\n\n## 가\n", "sequel-intro"), "지난 글에서");
+  assert.ok(has("> [!INFO]\n> 이전 편에 이어 RLS를 다룬다.\n", "sequel-intro"), "요약 박스 안");
+  assert.ok(has("3편에서 만든 버킷을 쓴다.\n", "sequel-intro"), "N편에서");
+  assert.ok(!has("이전 글자를 지운다. 앞 편집기는 닫는다.\n", "sequel-intro"), "글자·편집은 낱말");
+  assert.ok(!has("RLS를 켠다.\n\n## 가\n\n지난 글에서 만든 정책을 쓴다.\n", "sequel-intro"), "첫 H2 뒤는 본문");
+}
+
 console.log("lint 규칙 자체 점검 통과");

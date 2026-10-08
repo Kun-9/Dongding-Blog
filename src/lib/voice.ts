@@ -13,27 +13,12 @@
 import type { Issue } from "./lint";
 import { findDiagrams, findFences } from "./diagram";
 import { parseFigureHtml } from "./html-figure";
+import { AVOID, excerpt, lintPhrases, proseLines } from "./phrases";
 
 /* ── 기준 ─────────────────────────────────────────────────────────────── */
 
-/** 피할 표현. 사람이 잘 안 쓰고 생성 모델이 즐겨 쓰는 상투구. */
-export const AVOID: { pattern: RegExp; label: string; hint: string }[] = [
-  { pattern: /결론부터 말하(면|자면)/, label: "결론부터 말하면", hint: "결론을 그냥 첫 문장에 쓰세요" },
-  { pattern: /핵심은\s/, label: "핵심은 ~", hint: "무엇이 핵심인지 바로 말하세요" },
-  { pattern: /단순히\s.{1,20}(이|가)\s?아니라/, label: "단순히 ~가 아니라", hint: "비교 대상을 구체적으로" },
-  { pattern: /의 모든 것/, label: "~의 모든 것", hint: "다루는 범위를 그대로 쓰세요" },
-  { pattern: /완벽\s?(가이드|정리)/, label: "완벽 가이드/정리", hint: "과장 빼기" },
-  { pattern: /(살펴|알아|정리해)\s?보(겠습니다|도록 하겠습니다|겠어요|도록 할게요)/, label: "~살펴보겠습니다", hint: "예고하지 말고 바로 보여주세요" },
-  { pattern: /이 글(은|에서는?|에서)\s.{0,40}(정리|다룹|다루|살펴|소개|알아)/, label: "이 글은 ~를 정리합니다", hint: "글 소개 대신 바로 본론" },
-  { pattern: /주목할 만한/, label: "주목할 만한", hint: "왜 중요한지를 쓰세요" },
-  { pattern: /게임\s?체인저|혁신적인|획기적인/, label: "게임 체인저·혁신적", hint: "무엇이 달라졌는지로 대신" },
-  { pattern: /라고 할 수 있(습니다|어요|다)/, label: "~라고 할 수 있다", hint: "단정하거나 근거를 붙이세요" },
-  { pattern: /것이 중요(합니다|해요|하다)/, label: "~것이 중요하다", hint: "왜 중요한지 한 줄로" },
-  { pattern: /요약하자면|한마디로 (말하면|정리하면)|정리하면|결론적으로|요컨대/, label: "정리하면·결론적으로", hint: "맺음 문단에서 그냥 말하세요" },
-  { pattern: /마무리하며|맺으며/, label: "마무리하며", hint: "소제목은 내용으로" },
-  { pattern: /되어지|되어집니다|되어져/, label: "이중 피동(되어지다)", hint: "~됩니다" },
-  { pattern: /을 볼 수 있(습니다|어요|다)|를 볼 수 있(습니다|어요|다)/, label: "~를 볼 수 있다", hint: "번역투, 그냥 서술하세요" },
-];
+/** 피할 표현. 목록과 검사는 lib/phrases 에 있다 — 직접 쓴 글의 점검(lintPost)도 같은 목록을 쓴다. */
+export { AVOID };
 
 /**
  * 릴리스 배포일 — GitHub 릴리스 공개 시각(UTC)의 한국 날짜. 글감 응답의 `released` 와
@@ -45,7 +30,7 @@ export function releaseDay(iso: string): string {
 
 /** 글 한 편에 꼭 있어야 하는 구성 요소. 차별점이 여기서 나온다. */
 export const REQUIRED_PARTS = [
-  { key: "summary-box", label: "도입 요약 박스", how: "첫머리 `> [!INFO]` 에 무엇이·언제부터·누구에게 바뀌는지를 두세 문장 산문으로. 버전마다 실제 배포일을 `v2.1.280(2026년 9월 23일 배포)` 꼴로 붙인다. 배포일은 GitHub 릴리스 공개 시각의 한국 날짜(글감의 `released`), 글감이 없으면 공식 발표일. 굵은 라벨 불릿 금지" },
+  { key: "summary-box", label: "도입 요약 박스", how: "첫머리 `> [!INFO]` 에 두세 문장 산문으로. 첫 문장은 누가 읽으면 무엇이 달라지는지(예: \"회사 계정이나 Bedrock으로 Claude Code를 쓴다면 업데이트 뒤 첫 세션부터 권한을 묻는 횟수가 줄어듭니다.\"), 다음 문장부터 무엇이·언제부터 바뀌는지. 버전마다 실제 배포일을 `v2.1.280(2026년 9월 23일 배포)` 꼴로 붙이되 첫 문장에는 넣지 않는다. 배포일은 GitHub 릴리스 공개 시각의 한국 날짜(글감의 `released`), 글감이 없으면 공식 발표일. 굵은 라벨 불릿 금지" },
   { key: "table", label: "비교 표", how: "꼭 필요한 비교 하나(전/후, 버전별). markdown 표나 ```compare·```matrix 블록. 글 전체 두 개까지" },
   { key: "visual", label: "본문 속 그림", how: "설명하는 문단 바로 아래에 그림 블록(```flow 등 10종)·```figure 또는 단독 줄 `![캡션](경로)`. 캡처 자리(todo-)만으로는 안 되고 직접 만든 그림이 하나 이상. 글에서 이해가 막히는 지점(바뀐 동작·계산·순서·관계)에 둔다" },
   { key: "source", label: "출처 링크", how: "본문 문장 안 링크로. 끝에 목록으로 몰지 않는다" },
@@ -59,7 +44,7 @@ export type PostKind = "release" | "concept";
  * 쓰는 법만 다르다 — 점검기가 같은 판정으로 본다.
  */
 export const CONCEPT_PARTS = [
-  { key: "summary-box", label: "도입 요약 박스", how: "첫머리 `> [!INFO]` 에 무엇이 헷갈리는지와 한 줄 답을 두세 문장 산문으로. 날짜·버전은 쓰지 않는다(특정 버전의 동작을 말할 때만 본문에 밝힌다)" },
+  { key: "summary-box", label: "도입 요약 박스", how: "첫머리 `> [!INFO]` 에 두세 문장 산문으로. 첫 문장은 누가 어떤 장면에서 헷갈리는지(예: 면접에서 MVC와 MVVM의 차이를 질문받은 백엔드 개발자), 다음 문장은 한 줄 답. 날짜·버전은 쓰지 않는다(특정 버전의 동작을 말할 때만 본문에 밝힌다)" },
   { key: "table", label: "비교 표", how: "헷갈리는 두세 개념의 차이 하나. markdown 표나 ```compare·```matrix 블록. 글 전체 두 개까지" },
   { key: "visual", label: "본문 속 그림", how: "설명하는 문단 바로 아래에 그림 블록(```flow 등 10종)·```figure 또는 단독 줄 `![캡션](경로)`. 흐름·구조·순서를 그림으로" },
   { key: "source", label: "출처 링크", how: "표준·공식 문서(RFC, MDN, 언어·프레임워크 문서, 원전) 링크를 본문 문장 안에. 끝에 목록으로 몰지 않는다" },
@@ -85,10 +70,13 @@ export const VOICE_RULES = [
  * 릴리스 노트를 옮겨 적으면 아는 사람만 읽힌다.
  */
 export const CLARITY_RULES = [
-  "독자는 이 기능을 처음 보는 사람이다. 릴리스 노트의 용어를 그대로 옮기지 않고 풀어 쓴다",
-  "새 용어는 처음 나올 때 한 문장으로 무엇인지 설명한다. 예: \"mod는 Claude Code의 동작 사이에 끼워 넣는 작은 스크립트입니다.\"",
+  "기준 독자 한 명을 정하고 쓴다. 릴리스 글은 Claude Code를 쓰지만 이 기능은 처음 보는 개발자, 개념 글은 그 개념을 이름만 들어 본 주니어 개발자다. 릴리스 노트의 용어를 그대로 옮기지 않고 풀어 쓴다",
+  "새 용어는 처음 나올 때 한 문장으로 무엇인지 설명한다. 예: \"mod는 Claude Code의 동작 사이에 끼워 넣는 작은 스크립트입니다.\" 2차 소스 노트에 기준 독자가 모를 용어 목록을 만들고, 초안을 다시 읽으며 목록의 용어가 풀이 없이 나온 곳을 고친다",
   "섹션은 '무엇이 달라지나 → 그래서 나에게 어떤 차이인가' 순서로. 변경 사항보다 그 결과를 먼저 말한다",
   "추상적인 설명 바로 뒤에 구체적인 예(명령, 설정 한 줄, 화면, 숫자)를 붙인다",
+  "비유는 기준 독자가 이미 아는 것에만 댄다. \"Express나 Koa의 미들웨어와 같은 모양\"처럼 그 독자가 모를 수 있는 것에 빗대면 비유를 또 설명해야 한다",
+  "링크는 더 읽을 거리다. 링크를 누르지 않아도 이 글만으로 이해되게, 링크를 단 문장 안에서 필요한 만큼 풀어 쓴다",
+  "이전 글을 읽었다고 가정하지 않는다. 도입을 '지난 글에서'로 시작하지 않고, 이전 글이 필요하면 이 글에 필요한 부분을 한두 문장으로 요약한 뒤 링크한다",
   "순서·구조·전후 차이는 글로 길게 풀기 전에 그림 블록으로 먼저 보여 주고, 문단은 그림이 못 하는 이유를 말한다",
   "한 문단에 새 개념은 하나만. 개념이 둘이면 문단을 나눈다",
   "새 기능·개념은 어디에 쓰는지 보여 준다. 활용 예 두세 개(무엇을 하는지와 그때 쓰는 설정·이벤트·명령)와 독자가 바로 따라 할 최소 예제(명령·설정·코드) 하나를 붙인다. 공식 예제·샘플 저장소·문서 예시에서 고르고, 직접 돌려 보거나 출처를 단다. 이름·이벤트만 적은 카드로 끝내지 말고, 예제가 화면에 띄우는 것을 보여 준다. 예: Mods 글이면 공식 샘플 mod 셋이 띄우는 화면(편집 되감기 pane, 컨텍스트 날씨 띠, rm -rf 를 붙잡은 pane)을 figure 장면의 터미널로 차례로 재현하고 `--plugin-dir` 로 불러오는 명령 한 줄",
@@ -366,28 +354,6 @@ export interface VoiceReport {
   parts: Record<(typeof REQUIRED_PARTS)[number]["key"], boolean>;
 }
 
-/** 산문 줄만 남긴다. 코드 펜스·표·HTML 주석은 문체 검사 대상이 아니다. */
-function proseLines(body: string): { n: number; text: string }[] {
-  const out: { n: number; text: string }[] = [];
-  let fenced = false;
-  body.split("\n").forEach((raw, i) => {
-    if (/^\s*(```|~~~)/.test(raw)) {
-      fenced = !fenced;
-      return;
-    }
-    if (fenced) return;
-    const t = raw.trim();
-    if (!t || t.startsWith("|") || t.startsWith("<!--") || /^!\[/.test(t)) return;
-    // callout 첫 줄의 [!INFO] 표기와 링크 주소는 지운다.
-    const text = t
-      .replace(/^>\s?(\[![A-Za-z]+\][^\n]*)?/, "")
-      .replace(/\]\([^)]*\)/g, "]")
-      .trim();
-    if (text) out.push({ n: i + 1, text });
-  });
-  return out;
-}
-
 /**
  * 문장 끝을 해요체·합니다체·서술체로 가른다. 명사로 끝나는 불릿·제목은
  * 판정하지 않는다(null).
@@ -399,11 +365,6 @@ function endingOf(sentence: string): "haeyo" | "hamnida" | "plain" | null {
   // 서술체: ~다/~까 로 끝나되 위 둘이 아닌 것. "~이다/~했다/~한다/~된다".
   if (/(다|는가|을까|ㄴ가)$/.test(s)) return "plain";
   return null;
-}
-
-function excerpt(text: string, at = 0): string {
-  const s = text.slice(Math.max(0, at - 12), at + 28);
-  return s.length < text.length ? `…${s}…` : s;
 }
 
 export function checkVoice(post: VoiceInput, kind: PostKind = "release"): VoiceReport {
@@ -453,20 +414,8 @@ export function checkVoice(post: VoiceInput, kind: PostKind = "release"): VoiceR
     }
   }
 
-  // 상투구.
-  for (const { n, text } of lines) {
-    for (const a of AVOID) {
-      const m = text.match(a.pattern);
-      if (m) {
-        issues.push({
-          rule: "stock-phrase",
-          severity: "warning",
-          line: n,
-          message: `"${a.label}" — ${a.hint}: "${excerpt(text, m.index)}"`,
-        });
-      }
-    }
-  }
+  // 상투구, 후속편 도입.
+  issues.push(...lintPhrases(post.body, "warning"));
 
   // 영어·코드 뒤 띄어 쓴 조사. "mode 가", "`x` 를".
   const particle = /([A-Za-z0-9)\]`]) (가|이|를|을|는|은|의|와|과|로|으로|에서|에게|에|도|만)(?=[\s.,!?]|$)/;
