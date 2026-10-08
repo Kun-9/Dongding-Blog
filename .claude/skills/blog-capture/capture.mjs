@@ -49,10 +49,19 @@ function fail(code, msg) {
   console.error(`capture: ${msg}`);
   process.exit(code);
 }
+/** 띄운 뒤의 실패. process.exit 는 finally 를 건너뛰어 세션이 남으므로 던져서 정리부터 한다. */
+class Fail extends Error {
+  constructor(code, msg) {
+    super(msg);
+    this.code = code;
+  }
+}
 
 /* ── 띄우고 뜨기 ──────────────────────────────────────────────────────── */
 
-const tmux = (...a) => spawnSync("tmux", a, { encoding: "utf8" });
+// 실행마다 전용 tmux 서버(소켓)와 빈 설정으로 띄운다. 사용자의 tmux 서버를 같이 쓰면 그 서버의
+// 전역 환경·설정이 섞여 기계마다 다른 화면이 나온다. 마지막 세션을 닫으면 서버도 끝난다.
+const tmux = (...a) => spawnSync("tmux", ["-L", `blogcap-${process.pid}`, "-f", "/dev/null", ...a], { encoding: "utf8" });
 const sleep = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 const plain = (s) => s.replace(/\x1b\[[0-9;:]*m/g, "");
 
@@ -75,7 +84,7 @@ function settle(session, ms = 1200) {
 const KEY = /^(Enter|Escape|Tab|BTab|Up|Down|Left|Right|Space|BSpace|PageUp|PageDown|Home|End|F\d{1,2}|[CM]-.)$/;
 
 function shoot() {
-  if (tmux("-V").error) fail(4, "tmux 가 없다. 자료 조사로 넘어간다(SKILL.md 2단계).");
+  if (tmux("-V").error) throw new Fail(4, "tmux 가 없다. 자료 조사로 넘어간다(SKILL.md 2단계).");
   const [w, h] = opt.size.split("x");
   // 늘 같은 빈 폴더에서 띄운다. 새 폴더마다 Claude Code 가 신뢰 기록을 ~/.claude.json 에 쌓는다.
   const dir = join(tmpdir(), "blogcap-screen");
@@ -88,30 +97,38 @@ function shoot() {
   const session = `blogcap-${process.pid}`;
   // Claude Code 안에서 Claude Code 를 띄우면 중첩 실행 검사에 걸린다. 지금 세션을 가리키는
   // 변수만 뺀다. 로그인 변수(…_OAUTH_TOKEN, ANTHROPIC_*)는 남겨야 클라우드에서도 뜬다.
+  // 색을 정하는 변수도 고정한다. 터미널마다 다르면 같은 화면이 다른 색으로 뜬다.
   const nested = ["CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "CLAUDE_CODE_SSE_PORT", "CLAUDE_CODE_SESSION_ID", "CLAUDE_CODE_CHILD_SESSION", "CLAUDE_PID",
-    ...Object.keys(process.env).filter((k) => k.startsWith("CLAUDE_CODE_MESSAGING_"))];
+    "FORCE_COLOR", "NO_COLOR", ...Object.keys(process.env).filter((k) => k.startsWith("CLAUDE_CODE_MESSAGING_"))];
   let run = opt.run;
   if (opt.safe && /^claude(\s|$)/.test(run) && !run.includes("--safe-mode")) run = run.replace(/^claude/, "claude --safe-mode");
   // 명령이 끝나도 화면이 남도록 [exit] 를 찍고 기다린다.
-  const cmd = `env ${nested.map((k) => `-u ${k}`).join(" ")} ${run}; echo "[blogcap exit $?]"; sleep 600`;
+  const cmd = `env ${nested.map((k) => `-u ${k}`).join(" ")} TERM=xterm-256color COLORTERM=truecolor ${run}; echo "[blogcap exit $?]"; sleep 600`;
   // 캡션에 적을 버전. 따로 `--version` 을 치면 띄운 실행 파일과 다를 수 있다.
   const bin = run.split(/\s+/)[0];
   const ver = spawnSync(bin, ["--version"], { encoding: "utf8", timeout: 15000 }).stdout?.trim().split("\n")[0];
   if (ver) console.error(`버전: ${ver}`);
   const started = tmux("new-session", "-d", "-s", session, "-x", w, "-y", h, "-c", dir, cmd);
-  if (started.status !== 0) fail(3, `tmux 세션을 못 열었다: ${started.stderr.trim()}`);
+  if (started.status !== 0) throw new Fail(3, `tmux 세션을 못 열었다: ${started.stderr.trim()}`);
   try {
+    // 처음 실행하는 환경(클라우드 루틴 등)은 첫 실행 화면이 차례로 뜬다. 아는 화면만 넘기고,
+    // 설정을 바꾸는 제안은 건너뛴다. 모르는 화면이면 그대로 두어 --from 검사(끝 코드 5)가 알린다.
     let screen = plain(settle(session, 2000));
-    // 방금 만든 빈 폴더라 신뢰해도 된다. 고른 줄이 Yes 가 아니면 한 칸 내린다.
-    if (/trust this folder/i.test(screen)) {
-      const picked = screen.split("\n").find((l) => l.includes("❯")) ?? "";
-      if (!/Yes, I trust/.test(picked)) tmux("send-keys", "-t", session, "Down");
-      sleep(300);
-      tmux("send-keys", "-t", session, "Enter");
+    for (let step = 0; step < 8; step++) {
+      const key = (k) => tmux("send-keys", "-t", session, k);
+      if (/\[blogcap exit \d+\]/.test(screen) || /Select login method|Please run \/login|Invalid API key|not logged in/i.test(screen)) {
+        throw new Fail(3, `명령이 화면을 띄우지 못했다(설치·로그인 확인). 마지막 화면:\n${screen.trimEnd().split("\n").slice(-8).join("\n")}`);
+      }
+      if (/trust this folder/i.test(screen)) {
+        // 캡처 전용 빈 폴더라 신뢰해도 된다. 고른 줄이 Yes 가 아니면 한 칸 내린다.
+        const picked = screen.split("\n").find((l) => l.includes("❯")) ?? "";
+        if (!/Yes, I trust/.test(picked)) key("Down");
+        sleep(300);
+        key("Enter");
+      } else if (/terminal setup/i.test(screen)) key("Escape"); // 내 터미널 설정을 바꾸는 제안
+      else if (/Choose the text style|Press Enter to continue/i.test(screen)) key("Enter"); // 테마 기본값, 안내문
+      else break;
       screen = plain(settle(session, 2000));
-    }
-    if (/\[blogcap exit \d+\]/.test(screen) || /Select login method|Please run \/login|Invalid API key|not logged in/i.test(screen)) {
-      fail(3, `명령이 화면을 띄우지 못했다(설치·로그인 확인). 마지막 화면:\n${screen.trimEnd().split("\n").slice(-8).join("\n")}`);
     }
     for (const k of opt.keys) {
       if (KEY.test(k) || k === "Esc") tmux("send-keys", "-t", session, k === "Esc" ? "Escape" : k);
@@ -130,7 +147,13 @@ function shoot() {
 
 /* ── 자르기·검사 ──────────────────────────────────────────────────────── */
 
-const ansi = opt.ansi ? readFileSync(opt.ansi, "utf8") : shoot();
+let ansi;
+try {
+  ansi = opt.ansi ? readFileSync(opt.ansi, "utf8") : shoot();
+} catch (e) {
+  if (e instanceof Fail) fail(e.code, e.message);
+  throw e;
+}
 const lines = ansi.replace(/\n+$/, "").split("\n");
 const text = lines.map(plain);
 let from = 0;
