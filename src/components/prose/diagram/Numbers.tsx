@@ -8,7 +8,7 @@ export function Stats({ items }: { items: Stat[] }) {
   return (
     <ul className="grid grid-cols-[repeat(auto-fit,minmax(9.5rem,1fr))] gap-3">
       {items.map((s, i) => (
-        <li key={i} data-anim="rise" className={cx("flex flex-col rounded-xl border px-4 py-4", tone(s))} style={step(i)}>
+        <li key={i} data-anim="rise" data-detail={s.detail} className={cx("flex flex-col rounded-xl border px-4 py-4", tone(s))} style={step(i)}>
           {s.before ? (
             <span className="mb-1 font-mono text-[12px] tabular-nums text-ink-muted">
               <span className="line-through decoration-ink-subtle">{s.before}</span>
@@ -46,6 +46,7 @@ export function Bars({ items, unit }: { items: Bar[]; unit?: string }) {
         <li
           key={i}
           data-anim="rise"
+          data-detail={b.detail}
           className="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-1.5 sm:col-span-3 sm:grid-cols-subgrid"
           style={step(i)}
         >

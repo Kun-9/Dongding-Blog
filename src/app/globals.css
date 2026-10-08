@@ -503,6 +503,39 @@ svg [data-anim]:not([transform]) {
   }
 }
 @keyframes dg-breathe-svg { 50% { opacity: 0.55; } }
+
+/* 자세히(lib/figure-detail) — data-detail 이 달린 칸만 누를 수 있다. 점선이 그 표시. */
+[data-detail]:not(svg *) {
+  cursor: pointer;
+  outline: 1.5px dashed color-mix(in oklab, var(--callout-tip-glyph) 45%, transparent);
+  outline-offset: 3px;
+  transition: outline-color 0.15s;
+}
+[data-detail]:not(svg *):hover { outline-color: var(--callout-tip-glyph); }
+[data-detail]:not(svg *)[aria-expanded="true"],
+[data-detail]:not(svg *):focus-visible { outline: 2px solid var(--callout-tip-glyph); }
+svg [data-detail] { cursor: pointer; }
+svg [data-detail]:hover,
+svg [data-detail][aria-expanded="true"],
+svg [data-detail]:focus-visible { filter: drop-shadow(0 0 3px var(--callout-tip-glyph)); outline: none; }
+.dg-detail {
+  margin: 10px 0 0;
+  padding: 9px 12px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  line-height: 1.55;
+  word-break: keep-all;
+}
+.dg-detail[data-state="hint"] {
+  border: 1px dashed var(--border-strong);
+  color: var(--ink-muted);
+  font-size: 12.5px;
+}
+.dg-detail[data-state="open"] {
+  border: 1px solid var(--callout-tip-glyph);
+  background: var(--callout-tip-bg);
+  color: var(--callout-tip-ink);
+}
 @media (prefers-reduced-motion: no-preference) {
   [data-live] [data-loop="orbit"] { animation: dg-orbit 2310s linear infinite; }
   [data-live] .dg-accent,

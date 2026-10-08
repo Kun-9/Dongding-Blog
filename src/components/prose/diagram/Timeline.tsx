@@ -31,6 +31,7 @@ export function Timeline({ points }: { points: TimelinePoint[] }) {
           <li
             key={i}
             data-anim="rise"
+            data-detail={p.detail}
             className={cx(
               "relative grid grid-cols-[18px_1fr] gap-x-3.5 pb-5 last:pb-0",
               wide && "sm:flex sm:min-w-0 sm:flex-1 sm:flex-col sm:items-center sm:px-2 sm:pb-0 sm:text-center",
@@ -121,7 +122,7 @@ function Lanes({ actors, messages }: { actors: string[]; messages: Message[] }) 
           const width = center(hi) - left;
           const color = m.accent ? "text-[var(--callout-tip-glyph)]" : m.muted ? "text-ink-subtle" : "text-ink-muted";
           return (
-            <div key={k} data-anim="fade" className="relative h-[60px]" style={step(k)}>
+            <div key={k} data-anim="fade" data-detail={m.detail} className="relative h-[60px]" style={step(k)}>
               {self ? (
                 <span
                   data-anim="pop"
@@ -180,7 +181,7 @@ export function Sequence({ actors, messages }: { actors: string[]; messages: Mes
       {fold && (
         <ol className="flex flex-col gap-2 sm:hidden">
           {messages.map((m, k) => (
-            <li key={k} data-anim="rise" className="flex items-start gap-3" style={step(k)}>
+            <li key={k} data-anim="rise" data-detail={m.detail} className="flex items-start gap-3" style={step(k)}>
               <Badge m={m} n={k + 1} />
               <span className="min-w-0 text-[13.5px] leading-[1.5]">
                 <span className="font-semibold text-ink">{actors[m.from]}</span>

@@ -2330,6 +2330,10 @@ function MarkdownCheatsheet() {
                 label="그림 모션(figure·SVG) — data-anim rise·fade·pop·draw·draw-back·grow·count·none / data-loop orbit·pulse / 순서 --i"
               />
               <CheatsheetRow
+                syntax={'v2.1.280 | opus가 Opus 5.5로 *\n> 2026년 9월 23일 배포\n<div class="fig-box" data-detail="…">'}
+                label="자세히(선택) — 그림 블록은 칸 아래 `> 내용`, figure·SVG 는 data-detail. 누르거나 마우스를 올리면 열림, 200자"
+              />
+              <CheatsheetRow
                 syntax={"> [!INFO] 제목\n> 본문 줄들\n> 계속"}
                 label="Callout — INFO / WARNING / TIP / NOTE"
               />

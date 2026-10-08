@@ -9,6 +9,7 @@
  * 공통: 머리 줄 `caption: …` 은 그림 아래 캡션. 종류별 옵션도 머리 줄에
  *       `key: value` 로 둔다(layout·actors·unit·center).
  *       줄 끝 `*` = 강조, `~` = 흐리게(점선). `|` 로 칸을 가른다.
+ *       칸 줄 바로 아래 `> 내용` = 그 칸의 자세히(누르거나 마우스를 올리면 열린다. 선택).
  *
  * next 에 의존하지 않는 순수 모듈이다 — 점검기와 스크립트에서도 쓴다.
  */
@@ -36,6 +37,8 @@ export interface Mark {
   accent: boolean;
   /** 줄 끝 `~` */
   muted: boolean;
+  /** 바로 아래 `> 내용` 줄 — 누르면 열리는 자세히. */
+  detail?: string;
 }
 
 /** 제목 + 짧은 설명. flow·cycle·layers 의 칸. */
@@ -169,15 +172,32 @@ function matrixCell(raw: string): MatrixCell {
 
 const ARROW_RE = /^(.+?)\s*(-->|->|→|⇢)\s*(.+?)$/;
 
+/** 자세히 한 줄의 글자 수 상한. 길면 본문이 할 일이다. */
+export const DETAIL_MAX = 200;
+
 export function parseDiagram(kind: DiagramKind, source: string): ParseResult {
   const errors: string[] = [];
   const opts: Record<string, string> = {};
   /** 들여쓰기를 살린 줄 — tree 가 쓴다. */
   const raw: string[] = [];
 
+  /** raw 의 몇 번째 줄에 붙은 자세히인가. */
+  const details = new Map<number, string>();
   let head = true;
   for (const line of source.split("\n")) {
     if (!line.trim()) continue;
+    const more = line.trim().match(/^>\s?(.*)$/);
+    if (more && !head) {
+      const at = raw.length - 1;
+      const text = more[1].trim();
+      if (details.has(at)) details.set(at, `${details.get(at)} ${text}`);
+      else details.set(at, text);
+      continue;
+    }
+    if (more) {
+      errors.push("자세히(`> 내용`) 줄은 칸 줄 바로 아래에 둡니다");
+      continue;
+    }
     const opt = head ? line.trim().match(OPTION_RE) : null;
     if (opt) {
       opts[opt[1].toLowerCase()] = opt[2].trim();
@@ -194,18 +214,23 @@ export function parseDiagram(kind: DiagramKind, source: string): ParseResult {
   }
   const body = raw.map((l) => l.trim());
   const caption = opts.caption || undefined;
+  for (const [, d] of details) {
+    if (d.length > DETAIL_MAX) errors.push(`자세히 "${short(d, 20)}" 가 깁니다(${DETAIL_MAX}자까지). 긴 설명은 본문으로`);
+  }
+  /** i 번째 줄에서 만든 칸에 자세히를 붙인다. */
+  const at = <T extends Mark>(x: T, i: number): T => (details.has(i) ? { ...x, detail: details.get(i) } : x);
   const done = (d: Diagram): ParseResult => ({ diagram: errors.length ? null : d, errors });
 
   switch (kind) {
     case "flow": {
-      const nodes = body.map(item);
+      const nodes = body.map((l, i) => at(item(l), i));
       count(errors, "flow", nodes.length, 2, 8, "단계");
       lengths(errors, "flow", nodes.map((n) => n.label), 24);
       return done({ kind, caption, nodes });
     }
 
     case "cycle": {
-      const nodes = body.map(item);
+      const nodes = body.map((l, i) => at(item(l), i));
       count(errors, "cycle", nodes.length, 3, 6, "단계");
       lengths(errors, "cycle", nodes.map((n) => n.label), 14);
       return done({ kind, caption, nodes, center: opts.center || undefined });
@@ -214,7 +239,7 @@ export function parseDiagram(kind: DiagramKind, source: string): ParseResult {
     case "compare": {
       let columns: [string, string] = ["이전", "이후"];
       const rows: CompareRow[] = [];
-      for (const line of body) {
+      for (const [i, line] of body.entries()) {
         if (line.startsWith("|")) {
           const [a, b] = cells(line.replace(/^\|/, "").replace(/\|$/, ""));
           if (a && b) columns = [a, b];
@@ -227,7 +252,7 @@ export function parseDiagram(kind: DiagramKind, source: string): ParseResult {
           errors.push(`compare 줄은 \`항목 | 이전 | 이후\` 세 칸입니다: "${short(line, 30)}"`);
           continue;
         }
-        rows.push({ item: c[0], before: c[1], after: c[2], accent: m.accent, muted: m.muted });
+        rows.push(at({ item: c[0], before: c[1], after: c[2], accent: m.accent, muted: m.muted }, i));
       }
       count(errors, "compare", rows.length, 1, 10);
       return done({ kind, caption, columns, rows });
@@ -236,7 +261,7 @@ export function parseDiagram(kind: DiagramKind, source: string): ParseResult {
     case "matrix": {
       let columns: string[] = [];
       const rows: MatrixRow[] = [];
-      for (const line of body) {
+      for (const [i, line] of body.entries()) {
         if (line.startsWith("|")) {
           columns = cells(line.replace(/^\|/, "").replace(/\|$/, "")).filter(Boolean);
           continue;
@@ -251,7 +276,7 @@ export function parseDiagram(kind: DiagramKind, source: string): ParseResult {
           errors.push(`matrix "${short(name)}" 줄은 칸이 ${columns.length}개여야 합니다(지금 ${rest.length})`);
           continue;
         }
-        rows.push({ item: name, cells: rest.map(matrixCell), accent: m.accent, muted: m.muted });
+        rows.push(at({ item: name, cells: rest.map(matrixCell), accent: m.accent, muted: m.muted }, i));
       }
       count(errors, "matrix", columns.length, 1, 5, "열");
       count(errors, "matrix", rows.length, 1, 12);
@@ -259,10 +284,10 @@ export function parseDiagram(kind: DiagramKind, source: string): ParseResult {
     }
 
     case "timeline": {
-      const points = body.map((line) => {
+      const points = body.map((line, i) => {
         const m = marks(line);
         const [when, ...rest] = cells(m.text);
-        return { when, what: rest.join(" | "), accent: m.accent, muted: m.muted };
+        return at({ when, what: rest.join(" | "), accent: m.accent, muted: m.muted }, i);
       });
       count(errors, "timeline", points.length, 2, 10);
       points.forEach((p, i) => {
@@ -285,7 +310,7 @@ export function parseDiagram(kind: DiagramKind, source: string): ParseResult {
         return actors.length - 1;
       };
       const messages: Message[] = [];
-      for (const line of body) {
+      for (const [i, line] of body.entries()) {
         const m = marks(line);
         const [route, ...rest] = cells(m.text);
         const a = route.match(ARROW_RE);
@@ -293,14 +318,14 @@ export function parseDiagram(kind: DiagramKind, source: string): ParseResult {
           errors.push(`sequence 줄은 \`보내는 쪽 -> 받는 쪽 | 내용\` 꼴입니다: "${short(line, 30)}"`);
           continue;
         }
-        messages.push({
+        messages.push(at({
           from: indexOf(a[1].trim()),
           to: indexOf(a[3].trim()),
           label: rest.join(" | "),
           reply: a[2] === "-->" || a[2] === "⇢",
           accent: m.accent,
           muted: m.muted,
-        });
+        }, i));
       }
       count(errors, "sequence", actors.length, 2, 5, "명(참여자)");
       count(errors, "sequence", messages.length, 1, 12);
@@ -312,7 +337,7 @@ export function parseDiagram(kind: DiagramKind, source: string): ParseResult {
     }
 
     case "layers": {
-      const items = body.map(item);
+      const items = body.map((l, i) => at(item(l), i));
       const layout = opts.layout === "stack" ? "stack" : "nest";
       count(errors, "layers", items.length, 2, layout === "nest" ? 5 : 8, "겹");
       lengths(errors, "layers", items.map((n) => n.label), 28);
@@ -323,13 +348,13 @@ export function parseDiagram(kind: DiagramKind, source: string): ParseResult {
       const roots: TreeNode[] = [];
       const stack: { indent: number; node: TreeNode }[] = [];
       let total = 0;
-      for (const line of raw) {
+      for (const [i, line] of raw.entries()) {
         // ascii 트리(├── └── │)와 불릿(- )도 받는다. 깊이는 글자가 시작하는 칸.
         const cleaned = line.replace(/[│├└┃┣┗]|─+|-{2,}(?=\s)/g, (s) => " ".repeat(s.length));
         const m = cleaned.match(/^(\s*)(?:[-*+]\s+)?(.*)$/)!;
         const indent = m[1].length;
         if (!m[2].trim()) continue;
-        const node: TreeNode = { ...item(m[2]), children: [] };
+        const node: TreeNode = at({ ...item(m[2]), children: [] }, i);
         while (stack.length && stack[stack.length - 1].indent >= indent) stack.pop();
         if (stack.length) stack[stack.length - 1].node.children.push(node);
         else roots.push(node);
@@ -342,18 +367,18 @@ export function parseDiagram(kind: DiagramKind, source: string): ParseResult {
     }
 
     case "stats": {
-      const items: Stat[] = body.map((line) => {
+      const items: Stat[] = body.map((line, i) => {
         const m = marks(line);
         const [value, label = "", ...rest] = cells(m.text);
         const change = value.split(/\s*(?:→|->)\s*/);
-        return {
+        return at({
           value: change.length === 2 ? change[1] : value,
           before: change.length === 2 ? change[0] : undefined,
           label,
           note: rest.join(" | ") || undefined,
           accent: m.accent,
           muted: m.muted,
-        };
+        }, i);
       });
       count(errors, "stats", items.length, 1, 6, "개");
       items.forEach((s, i) => {
@@ -365,7 +390,7 @@ export function parseDiagram(kind: DiagramKind, source: string): ParseResult {
 
     case "bars": {
       const items: Bar[] = [];
-      for (const line of body) {
+      for (const [i, line] of body.entries()) {
         const m = marks(line);
         const [label, num, display] = cells(m.text);
         const value = Number((num ?? "").replace(/[,\s]/g, ""));
@@ -373,7 +398,7 @@ export function parseDiagram(kind: DiagramKind, source: string): ParseResult {
           errors.push(`bars 줄은 \`이름 | 숫자 | 표시(선택)\` 꼴입니다: "${short(line, 30)}"`);
           continue;
         }
-        items.push({ label, value, display: display || undefined, accent: m.accent, muted: m.muted });
+        items.push(at({ label, value, display: display || undefined, accent: m.accent, muted: m.muted }, i));
       }
       count(errors, "bars", items.length, 2, 10);
       if (items.length && items.every((b) => b.value === 0)) errors.push("bars 값이 모두 0 입니다");

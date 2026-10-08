@@ -8,7 +8,7 @@
  * - 태그는 글 구조용만(div·span·ul·table…). 링크·이미지·스크립트·SVG 없음
  * - class 는 `fig-` 로 시작하는 것만
  * - style 은 배치 속성(grid·flex·gap·폭·정렬)만. 색·글꼴·위치는 지운다
- * - 모션은 `data-anim`·`data-loop` 의 정해진 값과 숫자 `data-from` 만
+ * - 모션은 `data-anim`·`data-loop` 의 정해진 값과 숫자 `data-from`, 자세히는 `data-detail`(200자) 만
  *
  * 받은 문자열을 거르는 대신 토큰을 읽어 허용된 것만 새로 쓴다. 지운 것은
  * `dropped` 로 돌려줘 점검기가 알린다.
@@ -105,6 +105,9 @@ function cleanAttrs(tag: string, source: string, dropped: Set<string>): string {
       (name === "data-loop" && (LOOPS as readonly string[]).includes(value))
     ) {
       out.push(`${name}="${value}"`);
+    } else if (name === "data-detail" && value.trim() && value.length <= 200) {
+      // 누르면 열리는 자세히. 글자로만 쓰인다(lib/figure-detail).
+      out.push(`data-detail="${escAttr(value.trim())}"`);
     } else if (name === "data-from" && /^-?\d+(\.\d+)?$/.test(value)) {
       out.push(`data-from="${value}"`);
     } else if (name === "aria-hidden" && value === "true") {

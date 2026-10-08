@@ -26,6 +26,7 @@ export function Compare({ columns, rows }: { columns: [string, string]; rows: Co
             <li
               key={i}
               data-anim="rise"
+              data-detail={r.detail}
               className={cx("grid grid-cols-1 gap-x-4 gap-y-1 border-t border-border-token px-4 py-3 first:border-t-0 sm:items-center", COLS)}
               style={step(i)}
             >
@@ -107,6 +108,7 @@ export function Matrix({ columns, rows }: { columns: string[]; rows: MatrixRow[]
             <tr
               key={i}
               data-anim="rise"
+              data-detail={r.detail}
               className={cx(
                 "border-t border-border-token first:border-t-0",
                 r.accent && "bg-[var(--callout-tip-bg)]/55",

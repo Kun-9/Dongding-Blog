@@ -14,6 +14,7 @@ function Nest({ items, i }: { items: Item[]; i: number }) {
   return (
     <div
       data-anim="fade"
+      data-detail={it.detail}
       className={cx(
         "rounded-xl border px-3.5 pt-3 sm:px-4",
         inner ? "pb-3.5" : "pb-3.5 sm:pb-4",
@@ -45,6 +46,7 @@ function Stack({ items }: { items: Item[] }) {
           <li
             key={i}
             data-anim="rise"
+            data-detail={it.detail}
             className={cx("flex items-center gap-3 rounded-lg border px-3.5 py-2.5", tone(it))}
             style={step(i)}
           >
@@ -107,7 +109,7 @@ function Branch({ nodes, depth, order }: { nodes: TreeNode[]; depth: number; ord
               n.muted && depth > 0 && "before:border-dashed after:border-dashed",
             )}
           >
-            <div data-anim="rise" className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 py-[3px]" style={step(order.get(n) ?? 0)}>
+            <div data-anim="rise" data-detail={n.detail} className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 py-[3px]" style={step(order.get(n) ?? 0)}>
               <span
                 className={cx(
                   "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-[5px] text-[13.5px] leading-[1.45]",
