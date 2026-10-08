@@ -168,7 +168,8 @@ export async function PostView({
             </p>
             <div className="flex flex-wrap items-center gap-3.5 border-t border-border-token pt-4">
               <Avatar size={36} />
-              <div className="flex-1 text-[13.5px]">
+              {/* 메타는 한 줄 폭을 기준으로 잡는다. 0 에서 시작하면 태그가 자리를 먼저 차지해 날짜·조회수가 줄마다 쪼개진다. */}
+              <div className="flex-auto text-[13.5px]">
                 <div className="font-medium text-ink">{site.author}</div>
                 <div className="mt-px flex flex-wrap items-center gap-1.5 font-mono tabular-nums text-ink-muted">
                   <span>{fmtDate(post.meta.date)}</span>
@@ -182,7 +183,7 @@ export async function PostView({
                   )}
                 </div>
               </div>
-              <div className="flex gap-1.5">
+              <div className="flex flex-wrap gap-1.5">
                 {post.meta.tags.map((tag) => (
                   <TagChip key={tag} tag={tag} size="sm" />
                 ))}
