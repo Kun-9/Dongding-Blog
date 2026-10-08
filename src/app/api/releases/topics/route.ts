@@ -19,6 +19,7 @@ import {
   getTopics,
   revertTopic,
 } from "@/lib/release-topics";
+import { STAGES, type StageKey } from "@/lib/release-stages";
 
 const Title = z.string().trim().min(1).max(120);
 const Angle = z.string().trim().max(300).nullable();
@@ -36,6 +37,8 @@ const PatchSchema = z.discriminatedUnion("action", [
     id: z.number().int(),
     note: z.string().trim().min(1, "근거를 남겨주세요").max(2000),
     postSlug: z.string().trim().min(1).max(120).nullable().optional(),
+    /** 넘어갈 단계. 다르면 거절한다 — 띄워 둔 화면에서 엉뚱한 단계를 넘기지 않게. */
+    expect: z.enum(STAGES.map((s) => s.key) as [StageKey, ...StageKey[]]).optional(),
   }),
   z.object({ action: z.literal("revert"), id: z.number().int() }),
   z.object({

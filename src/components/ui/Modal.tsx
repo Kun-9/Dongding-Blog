@@ -56,13 +56,19 @@ export function Modal({
   const panel = useRef<HTMLDivElement>(null);
   const confirmRef = useRef<HTMLButtonElement>(null);
   const titleId = useId();
+  // 호출부가 렌더마다 새 onClose 를 넘겨도 아래 effect 가 다시 돌지 않게 한다.
+  // 다시 돌면 창 안에서 버튼을 누를 때마다 포커스가 첫 입력칸으로 튄다.
+  const close = useRef(onClose);
+  useEffect(() => {
+    close.current = onClose;
+  });
 
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.preventDefault();
-        onClose();
+        close.current();
       }
     };
     window.addEventListener("keydown", onKey);
@@ -77,7 +83,7 @@ export function Modal({
       document.body.style.overflow = prev;
       window.clearTimeout(id);
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open || !mounted) return null;
 

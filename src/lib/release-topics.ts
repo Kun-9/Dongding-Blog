@@ -162,7 +162,8 @@ function toRow(t: DbTopic, candidateIds: string[]): TopicRow {
           ? (end.todo ?? null)
           : null,
       local: t.ai_local ?? false,
-      prompt: t.ai_prompt ?? null,
+      // 끝났거나 취소된 고치기의 지시는 남은 지시로 읽히지 않게 가린다.
+      prompt: t.ai_status ? (t.ai_prompt ?? null) : null,
     },
     notes: t.notes ?? "",
   };
@@ -282,7 +283,8 @@ export async function editTopic(
  */
 export async function advanceTopic(
   id: number,
-  input: { note: string; postSlug?: string | null },
+  /** expect: 넘어갈 단계. 화면을 띄운 뒤 단계가 바뀌었으면 엉뚱한 칸을 넘기지 않게 거절한다. */
+  input: { note: string; postSlug?: string | null; expect?: StageKey },
   /**
    * 발행까지 넘길 수 있는가. 발행은 글을 실제로 공개하므로 어드민 버튼만
    * true 로 부른다. MCP(실행기 포함)는 false — AI 가 공개하는 길을 막는다.
@@ -295,6 +297,9 @@ export async function advanceTopic(
   }
   const next = nextStage(topic.stage);
   if (!next) throw new TopicError("이미 발행까지 끝난 주제다");
+  if (input.expect && next.key !== input.expect) {
+    throw new TopicError(`단계가 바뀌었다(지금 ${next.label} 차례). 화면을 새로 고친 뒤 다시 할 것`);
+  }
 
   const postSlug = input.postSlug ?? topic.postSlug;
   if (next.key === "draft" && !postSlug) {
@@ -469,17 +474,20 @@ export async function queueAi(
   } else if (stageIndex(topic.stage) >= stageIndex(until)) {
     throw new TopicError(`이미 ${until} 단계를 지났다`);
   }
+  // 지시는 고치기일 때와 지난 지시를 지울 때만 쓴다. 컬럼 마이그레이션 전에
+  // 배포돼도 일반 맡기기는 살아 있다(그때 읽은 prompt 는 늘 null 이다).
+  const promptPatch = prompt || topic.ai.prompt ? { ai_prompt: prompt } : {};
   if (local) {
     await saveAi(id, {
       ai_status: "queued",
       ai_until: until,
       ai_local: true,
-      ai_prompt: prompt,
+      ...promptPatch,
       ai_message: "예약함 — 로컬 CLI 에서 집으면 시작",
     });
     return getTopic(id);
   }
-  await saveAi(id, { ai_status: "queued", ai_until: until, ai_local: false, ai_prompt: prompt, ai_message: null });
+  await saveAi(id, { ai_status: "queued", ai_until: until, ai_local: false, ...promptPatch, ai_message: null });
 
   // 루틴을 바로 깨운다. 깨운 세션은 이 주제만 집는다(지시서 0단계).
   // 실패해도 요청은 queued 로 남아 정기 실행이 집어 간다.

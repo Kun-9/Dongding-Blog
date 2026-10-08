@@ -207,6 +207,7 @@ export interface ChoiceGroup {
 /**
  * 화살표 하나로 여러 값을 고르는 메뉴 — 묶음마다 제목을 두고 하나씩 고른다.
  * 하나를 고르면 닫힌다. 키보드는 Select 와 같다(묶음을 넘어 ↑↓).
+ * 좁은 화면에선 가장 가까운 relative 조상의 왼쪽 끝에, md 부터 트리거 오른쪽 끝에 붙는다.
  */
 export function ChoiceMenu({
   label,
@@ -261,7 +262,7 @@ export function ChoiceMenu({
   }
 
   return (
-    <div ref={root} className="relative inline-flex">
+    <div ref={root} className="inline-flex md:relative">
       <button
         type="button"
         disabled={disabled}

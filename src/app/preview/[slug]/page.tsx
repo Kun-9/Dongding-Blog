@@ -33,7 +33,9 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
   // 발행 대기 = 점검까지 끝나 발행만 남은 주제. AI 가 맡은 일이 있으면 발행을 막는다.
   const topic = published
     ? undefined
-    : (await getTopics()).find((t) => t.postSlug === slug && t.stage === "review" && t.droppedReason === null);
+    : (await getTopics().catch(() => [])).find(
+        (t) => t.postSlug === slug && t.stage === "review" && t.droppedReason === null,
+      );
   const aiBusy = topic?.ai.status === "queued" || topic?.ai.status === "running";
 
   const tone = published
@@ -70,7 +72,7 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
             </Link>
             {topic &&
               (aiBusy ? (
-                <span className="whitespace-nowrap opacity-80">AI 작업 중이라 발행을 잠시 막았습니다</span>
+                <span className="whitespace-nowrap opacity-80">AI 에게 맡긴 일이 있어 발행을 잠시 막았습니다</span>
               ) : (
                 <PreviewPublish id={topic.id} slug={slug} title={post.meta.title} todo={topic.ai.todo} />
               ))}

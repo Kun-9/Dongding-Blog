@@ -34,7 +34,7 @@ export function PreviewPublish({
       const res = await fetch(API.releaseTopics, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ action: "advance", id, note: note.trim() || "발행", postSlug: slug }),
+        body: JSON.stringify({ action: "advance", id, note: note.trim() || "발행", postSlug: slug, expect: "published" }),
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {

@@ -261,7 +261,9 @@ export function TopicBoard({ topics, onTopicsChange, candidates, onQueued }: Pro
       )}
       {/* md 부터 판 전체가 한 grid 다. 행마다 subgrid 로 같은 칸(점·제목·진행바·칩·버튼·펼치기)을
           써서 진행바·칩·버튼이 구역을 넘어 같은 세로줄에 선다. 칸 폭은 보이는 행 중 가장 긴 것이 정한다. */}
-      <div className="md:grid md:grid-cols-[14px_minmax(0,1fr)_auto_auto_auto_auto] md:gap-x-3">{rows}</div>
+      {/* 첫 칸 31px = 행 테두리 1 + 왼쪽 여백 16 + 점 칸 14. subgrid 의 테두리·여백은 첫 칸
+          항목의 바깥 여백으로만 들어가고 고정 칸을 늘리지 않아서, 판에서 미리 더해 둔다. */}
+      <div className="md:grid md:grid-cols-[31px_minmax(0,1fr)_auto_auto_auto_auto] md:gap-x-3">{rows}</div>
     </section>
   );
 }
@@ -498,7 +500,7 @@ function chipOf(t: TopicRow): { label: string; tone: ChipTone } {
   if (t.droppedReason !== null) return { label: "접음", tone: "muted" };
   if (t.ai.status === "running") return { label: t.ai.prompt ? "고치는 중" : `${next?.label ?? ""} 쓰는 중`, tone: "tip" };
   if (t.ai.status === "queued") {
-    return { label: t.ai.local ? (t.ai.prompt ? "고치기 예약" : "예약") : "AI 대기", tone: "muted" };
+    return { label: t.ai.prompt ? (t.ai.local ? "고치기 예약" : "고치기 대기") : t.ai.local ? "예약" : "AI 대기", tone: "muted" };
   }
   if (!next) {
     const at = t.checks.published?.at;
@@ -1081,7 +1083,9 @@ function TopicItem({
         error={dialog === "publish" ? error : null}
         onClose={() => setDialog(null)}
         onConfirm={() =>
-          patch({ action: "advance", note: note.trim() || "발행", postSlug: topic.postSlug }).then((ok) => ok && setNote(""))
+          patch({ action: "advance", note: note.trim() || "발행", postSlug: topic.postSlug, expect: "published" }).then(
+            (ok) => ok && setNote(""),
+          )
         }
       >
         {topic.postSlug && (
@@ -1232,7 +1236,7 @@ function AiLaunch({
     "transition-colors hover:bg-[color-mix(in_oklab,var(--callout-tip-glyph)_14%,transparent)] disabled:opacity-40";
   const verb = local ? (retry ? "다시 예약" : "예약") : retry ? "다시 맡기기" : "맡기기";
   return (
-    <div className="inline-flex items-stretch rounded-full border border-[color-mix(in_oklab,var(--callout-tip-glyph)_45%,var(--border))] bg-[color-mix(in_oklab,var(--callout-tip-bg)_70%,var(--surface))] text-[var(--callout-tip-ink)] md:flex-1">
+    <div className="relative inline-flex items-stretch rounded-full border border-[color-mix(in_oklab,var(--callout-tip-glyph)_45%,var(--border))] bg-[color-mix(in_oklab,var(--callout-tip-bg)_70%,var(--surface))] text-[var(--callout-tip-ink)] md:flex-1">
       <button
         type="button"
         disabled={busy}
