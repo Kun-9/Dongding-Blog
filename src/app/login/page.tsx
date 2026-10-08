@@ -6,6 +6,7 @@ import { signIn } from "./actions";
 
 export const metadata = {
   title: "Login",
+  robots: { index: false },
 };
 
 const FIELD =

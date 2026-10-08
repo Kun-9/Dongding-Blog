@@ -30,6 +30,8 @@ export interface PostMeta {
   category: string;
   tags: string[];
   date: string;
+  /** 마지막 수정 시각(DB updated_at). sitemap lastmod·dateModified 에 쓴다. */
+  updated?: string;
   readTime: number;
   featured?: boolean;
   visibility: Visibility;

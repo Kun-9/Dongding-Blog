@@ -36,7 +36,7 @@ export const VisibilitySchema = z.enum([
  * 쿼리에서 body 를 빼면 된다.
  */
 const COLUMNS =
-  "slug, title, summary, category_id, tags, date, read_time, featured, visibility, series_id, series_order, thumbnail, body";
+  "slug, title, summary, category_id, tags, date, read_time, featured, visibility, series_id, series_order, thumbnail, body, updated_at";
 
 interface Row {
   slug: string;
@@ -52,6 +52,7 @@ interface Row {
   series_order: number | null;
   thumbnail: string | null;
   body: string;
+  updated_at: string;
 }
 
 function toPost(row: Row): { meta: PostMeta; body: string } {
@@ -66,6 +67,7 @@ function toPost(row: Row): { meta: PostMeta; body: string } {
       category: row.category_id,
       tags: row.tags,
       date: row.date,
+      updated: row.updated_at,
       readTime:
         row.read_time ?? Math.max(1, Math.round(readingTime(row.body).minutes)),
       featured: row.featured || undefined,
@@ -180,6 +182,12 @@ export async function getPostsByCategory(
   const ids = await categoryIds(categoryId);
   return (await getAllPosts()).filter((p) => ids.has(p.category));
 }
+
+/**
+ * 글이 이보다 적은 태그 페이지는 noindex 이고 sitemap 에서도 빠진다.
+ * 글 한 편짜리 태그 목록은 그 글과 겹치는 얇은 페이지라 사이트 품질 평가만 깎는다.
+ */
+export const MIN_INDEXED_TAG_POSTS = 2;
 
 export async function getPostsByTag(tag: string): Promise<PostMeta[]> {
   return (await getAllPosts()).filter((p) => p.tags.includes(tag));

@@ -21,7 +21,10 @@ export async function generateMetadata({
   const s = await getSeriesByIdWithPosts(id);
   return {
     title: s ? s.title : "Series",
+    description: s?.desc || undefined,
     alternates: { canonical: `/series/${id}` },
+    // 발행된 글이 아직 없는 시리즈는 빈 칸뿐이라 색인하지 않는다.
+    ...(s?.posts.length === 0 && { robots: { index: false, follow: true } }),
   };
 }
 
