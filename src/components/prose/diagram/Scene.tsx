@@ -8,7 +8,7 @@
  * 서버는 첫 단계가 다 된 모습을 그린다. 붙은 뒤 화면 밖이면 시작 전으로 바로 돌려 두고,
  * 들어오면 첫 단계로 움직인다. 움직임 줄이기 설정이면 단계만 바뀌고 움직이지 않는다.
  */
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { BarScene, TimelinePoint } from "@/lib/diagram";
 import { SCENE_ATTRS, type SceneCtx } from "@/lib/figure/scene-attrs";
 import { cx } from "./parts";
@@ -457,6 +457,10 @@ export function FigureScene({ caption, html, steps }: { caption?: string; html: 
   const first = useRef(new WeakMap<Element, { v: string; text: string }>());
   const timers = useRef(new WeakMap<Element, number>());
   const [ready, setReady] = useState(false);
+  // React 19 는 이 객체를 동일성으로 비교한다. 렌더마다 새로 만들면 setReady 뒤 다시 그릴 때
+  // innerHTML 을 통째로 다시 써서 첫 paint 가 입힌 단계 상태가 지워지고, 다음 단계가 올 때까지
+  // fig-layer 의 화면들이 한꺼번에 겹쳐 보인다(2026-10-09 Haiku 5.5 글).
+  const inner = useMemo(() => ({ __html: html }), [html]);
   const paint = (s: number, instant: boolean) => {
     const root = box.current;
     if (!root) return;
@@ -480,7 +484,7 @@ export function FigureScene({ caption, html, steps }: { caption?: string; html: 
       notes={steps.map((x) => ({ k: x.name, text: x.note }))}
       onStep={paint}
     >
-      <div ref={box} className="fig-html sc-html" data-ready={ready ? "" : undefined} dangerouslySetInnerHTML={{ __html: html }} />
+      <div ref={box} className="fig-html sc-html" data-ready={ready ? "" : undefined} dangerouslySetInnerHTML={inner} />
     </Stage>
   );
 }
