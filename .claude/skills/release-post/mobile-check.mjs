@@ -4,7 +4,7 @@
  * 라이트·다크 두 번 끝까지 내려 본다. 장면은 박자마다 넘어가게 반 화면씩 내린다.
  *
  * 잡는 것: 문서 가로 넘침, 그림 판(figure·장면 무대) 밖으로 나간 요소,
- * 터미널 줄이 공백 없는 긴 토큰 중간에서 끊긴 곳.
+ * 터미널 줄이 공백 없는 긴 토큰 중간에서 끊긴 곳, 한 칸에 겹쳐 둔 단계 화면(fig-layer)이 둘 이상 보이는 곳.
  *
  *   node .claude/skills/release-post/mobile-check.mjs <slug> [--base https://blog.dongding.dev]
  *
@@ -95,6 +95,14 @@ function scan() {
       if (left < r.left - 1 || right > r.right + 1) out.push(`그림 판 밖으로 나감: ${name(el)} (${Math.round(left)}~${Math.round(right)}, 판 ${Math.round(r.left)}~${Math.round(r.right)})`);
     }
   }
+  // 한 칸에 겹쳐 둔 단계 화면(fig-layer)은 한 번에 하나만 보여야 한다. 둘 이상 보이면 글자가 포개진다
+  // (2026-10-09 FigureScene 이 다시 그려지며 단계 상태가 지워졌을 때). 그 상태는 판이 화면에 막 들어오는
+  // 짧은 구간에서만 눈에 띄어 반 화면 걸음이 건너뛰므로, 화면 밖의 판도 본다.
+  for (const layer of document.querySelectorAll(".fig-layer")) {
+    if (layer.getBoundingClientRect().height === 0) continue;
+    const shown = [...layer.children].filter(visible);
+    if (shown.length > 1) out.push(`겹친 단계 화면이 함께 보임: ${name(layer)} (${shown.length}개)`);
+  }
   // 공백에서 접힌 줄은 괜찮다. 공백 없는 낱말 하나가 두 줄에 걸쳤을 때만 잡는다.
   for (const line of document.querySelectorAll(".fig-term-body div")) {
     if (line.querySelector("div") || !visible(line)) continue;
@@ -127,15 +135,19 @@ if (selftest) {
     <div style="overflow:hidden;width:100px"><div style="margin-left:-60px;width:300px">가려진 슬라이드</div></div>
     <div style="overflow-x:auto;height:30px"><div style="height:46px">세로로 넘치는 판</div></div>
     <div class="fig-term-body" style="width:200px;font:12px/20px monospace"><div>{"sub":"user-42","role":"admin","jti":"d7853a97"}</div><div>Exception: error creating bean with name main</div></div>
+    <div class="fig-layer"><div>화면 하나</div><div>화면 둘</div></div>
+    <div class="fig-layer"><div>보이는 화면</div><div style="opacity:0">숨은 화면</div></div>
   </figure><div style="width:600px;height:10px"></div></article>`);
   const got = await page.evaluate(scan);
   await browser.close();
-  const want = ["문서 가로 넘침", "그림 판 밖으로 나감", "터미널 줄이 토큰 중간에서 끊김", "그림 안에 세로 스크롤"];
+  const want = ["문서 가로 넘침", "그림 판 밖으로 나감", "터미널 줄이 토큰 중간에서 끊김", "그림 안에 세로 스크롤", "겹친 단계 화면이 함께 보임"];
   const miss = want.filter((w) => !got.some((g) => g.startsWith(w)));
   // 공백에서 접힌 줄은 잡지 않아야 한다.
   if (got.some((g) => g.includes("Exception"))) miss.push("공백에서 접힌 줄을 잘못 잡음");
   // 판 안에서 일부러 가린 요소(timeline 슬라이드)는 잡지 않아야 한다.
   if (got.some((g) => g.includes("가려진"))) miss.push("판 안에서 가린 요소를 잘못 잡음");
+  // 하나만 보이는 겹친 칸은 잡지 않아야 한다.
+  if (got.some((g) => g.startsWith("겹친") && g.includes("보이는"))) miss.push("하나만 보이는 겹친 칸을 잘못 잡음");
   console.log(miss.length ? `selftest 실패: ${miss.join(", ")}` : "selftest ok");
   process.exit(miss.length ? 1 : 0);
 }
