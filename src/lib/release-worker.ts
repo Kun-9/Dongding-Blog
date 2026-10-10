@@ -108,6 +108,7 @@ curl -sS -X POST "$APP/api/releases/worker/" -H "Authorization: Bearer $TOKEN" -
 
 ### review — 점검
 - \`check\` (slug). 경고가 있으면 \`post_get\` 으로 원문을 보고 \`post_update\` 의 replacements 로 최소 범위만 고친다. 다시 검사. 세 번까지.
+- \`check\` 는 사실을 보지 않는다. 경고가 없어도 \`post_get\` 으로 본문을 한 번 끝까지 읽는다. "미확인", "문서에 없습니다", "아직 초안"으로 적은 사실은 그새 바뀌었을 수 있으니 공식 문서를 다시 찾아 맞춘다. 여러 언어·도구로 넓혀 말한 문장("예외는 다른 스레드로 번지지 않습니다")은 확인한 범위로 좁힌다.
 - 통과하면 \`advance\` (서버가 한 번 더 검사). 세 번 뒤에도 경고가 남으면 finish ok=false 로 남은 경고를 그대로 적는다.
 - 점검은 화면을 보지 않는다. 이 환경은 운영 미리보기를 열 수 없으니, 끝낼 때 finish 의 \`todo\` 에 "모바일 확인(node .claude/skills/release-post/mobile-check.mjs <slug>)"을 남긴다. 사람이나 로컬 세션이 발행 전에 돌린다.
 
