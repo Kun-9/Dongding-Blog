@@ -1,6 +1,6 @@
 ---
 name: blog-figures
-description: dongding 블로그 글 본문에 그림을 넣는 방법 — 그림 블록 10종(```flow·cycle·compare·matrix·timeline·sequence·layers·tree·stats·bars), ```figure 디자인 키트 HTML, SVG 의 문법과 고르는 기준, 그림 애니메이션 표준(data-anim·data-loop, Motion), 장면(`scene: on` — 화면에 붙어 스크롤 박자마다 넘어가는 그림. 그림 블록 전부와 figure, 터미널 화면 재현)과 숫자 굴리기. 블로그 글(특히 릴리스 글)을 쓰거나 고치다가 흐름·비교·구조·숫자를 그림으로 보여 줘야 할 때, 그림에 애니메이션·인터랙션을 넣거나 고칠 때, 또는 점검에서 diagram-error·figure-dropped·figure-no-caption 경고가 났을 때 쓴다.
+description: dongding 블로그 글 본문에 그림을 넣는 방법 — 그림 블록 11종(```flow·cycle·compare·matrix·timeline·sequence·layers·tree·stats·bars·grid), ```figure 디자인 키트 HTML, SVG 의 문법과 고르는 기준, 핵심 장면을 움직임 동사(옮겨 간다·복사된다·덮어쓴다·번진다·바뀐다 등)로 고르는 표, 그림 애니메이션 표준(data-anim·data-loop, Motion), 장면(`scene: on` — 화면에 붙어 스크롤 박자마다 넘어가는 그림. 그림 블록 전부와 figure, 자리 이동 data-at, 터미널 화면·diff 재현)과 숫자 굴리기. 블로그 글(특히 릴리스 글)을 쓰거나 고치다가 흐름·비교·구조·숫자를 그림으로 보여 줘야 할 때, 그림에 애니메이션·인터랙션을 넣거나 고칠 때, 또는 점검에서 diagram-error·figure-dropped·figure-no-caption 경고가 났을 때 쓴다.
 ---
 
 # 블로그 그림 넣기
@@ -14,19 +14,42 @@ description: dongding 블로그 글 본문에 그림을 넣는 방법 — 그림
 - **움직임이 이해를 돕게:** 칸은 이야기 순서대로 쓴다. 모션이 그 순서로 나타난다. 지금 이야기하는 칸 한두 곳만 강조(`*`)하고, 예정·선택은 흐리게(`~`) 한다. 전/후는 compare, 크기 차이는 bars 처럼 움직임 자체가 변화를 보여 주는 종류를 고른다.
 - **확인:** 본문을 가리고 그림과 캡션만 훑어도 섹션의 요점이 읽히는지 본다.
 
-글의 핵심 그림 하나는 장면으로 만든다(아래 "장면"). 단계를 따라 바뀌는 이야기(버전마다 바뀐 것, 계산이 단계마다 달라지는 것)가 장면에 맞는다. 누르는 인터랙션은 없다.
+글의 핵심 그림 하나는 장면으로 만든다(아래 "장면"). 누르는 인터랙션은 없다. 어떤 장면을 쓸지는 아래 "핵심 장면 고르기"의 동사로 정한다.
+
+## 핵심 장면 고르기 — 무엇이 일어나는가
+
+2026-10-11 그림이 든 11편을 세어 보니 장면 18개 중 9개가 터미널 화면을 통째로 바꾸는 장면이었고, 나머지도 대부분 "지금 칸 빛내기"였다. 어디를 읽을지만 알려 주고, 값이 어디로 가고 무엇이 복사되고 무엇이 덮이는지는 문장이 혼자 설명했다. 그래서 핵심 장면은 그림 종류가 아니라 **내용에서 일어나는 움직임**으로 고른다.
+
+1. 이 글에서 독자가 머릿속에 그려야 하는 움직임을 한 동사로 적는다(토큰이 공격자에게 "복사된다", 두 스레드가 같은 값을 "덮어쓴다").
+2. 아래 표에서 그 동사의 그림으로 핵심 장면을 만든다. 표에 맞는 동사가 없으면 blog-figure-extend 로 어휘를 더하고 이 표(`src/lib/figure/verbs.ts`)에 한 줄 더한다.
+3. 터미널 화면 장면은 증거 자리다. 직접 돌린 결과나 활용 예를 보여 주되 글의 유일한 장면이 되지 않게 한다. 점검이 `scene-evidence-only` 로 잡는다.
+4. 바로 앞 글들과 그림 순서가 거의 같으면 점검이 `shape-repeat`(정보)로 알린다. 뼈대(쓰기 기준의 "글 뼈대")나 핵심 장면 동사를 바꿔 본다.
+
+<!-- figure:verbs -->
+| 움직임 | 그림 | 이런 내용일 때 | 쓰는 법 |
+| --- | --- | --- | --- |
+| 옮겨 간다 | figure 장면 + data-at | 토큰·요청·메시지가 참여자 사이를 오간다(JWT, 쿠키, 이벤트, 큐) | 참여자 칸에 data-spot, 옮겨 다니는 칩에 data-at |
+| 복사된다 | figure 장면 + data-at(from>to) | 값이나 상태가 복사돼 따로 놀거나 공유된다(fork, 값·참조, 빈 범위) | 복사본에 data-step 과 `2:원본>새자리`, 꺼지는 쪽은 data-on 의 bad |
+| 덮어쓴다 | figure 장면(레인) + data-at·data-text | 동시에 도는 것이 같은 값을 덮는다(경쟁 상태, 동시 요청, 캐시 무효화) | 레인마다 data-spot, 값 칩이 메모리로 가고 data-text 로 값이 바뀐다 |
+| 번진다 | grid 장면 | 칸이 차례로 찬다(BFS·DFS, DP 표, 시뮬레이션) | `step:` 마다 격자 전체, 바뀐 칸이 숫자 순서로 차오른다 |
+| 바뀐다 | figure 장면의 터미널 diff | 무엇을 무엇으로 바꾸나(설정 값, 모델 이름, 마이그레이션) | 옛 줄에 `data-on="2+:strike"`, 새 줄은 `fig-t-add` 에 `data-step="2"`. 파일마다 fig-layer |
+| 늘고 준다 | bars 장면 | 조건마다 숫자가 달라진다(가격, 성능, 한도) | `step:` 마다 행 값, 필요하면 `zoom` |
+| 시점이 온다 | timeline 장면 | 버전·날짜마다 동작이 바뀐다(기본값 전환, 은퇴 일정) | 시점마다 `>` |
+| 차례로 지난다 | flow·sequence 장면 | 하나가 정해진 단계를 차례로 지난다. 오가는 물건이 중요하면 '옮겨 간다'로 | 칸마다 `>` |
+| 화면이 뜬다(증거 자리) | figure 장면의 터미널 | 활용 예의 실제 화면, 직접 돌린 코드와 결과 | fig-layer 에 단계마다 화면 하나 |
+<!-- /figure:verbs -->
 
 ## 넣는 방법
 
 본문(markdown)에 그림을 넣는 세 가지 방법이 있다. 앞 단계로 되면 뒤로 가지 않는다.
 
-1. **그림 블록** — 코드 펜스 언어로 종류를 고르고 내용만 줄로 쓴다. 모양·테마 색·모바일 배치·등장 애니메이션은 블로그가 정한다. 대부분 여기서 끝난다.
+1. **그림 블록**(11종) — 코드 펜스 언어로 종류를 고르고 내용만 줄로 쓴다. 모양·테마 색·모바일 배치·등장 애니메이션은 블로그가 정한다. 대부분 여기서 끝난다.
 2. **```figure** — 그림 블록으로 안 되는 구성(두 갈래로 나뉘는 흐름, 숫자 카드와 흐름을 한 그림에 등)만. `fig-*` 키트 클래스를 조합한 HTML.
 3. **SVG** — 위 둘로도 안 되는 모양만. 올려서 `![캡션](/posts/<slug>/<이름>.svg)` 로 넣는다. 양식은 쓰기 기준(GUIDE)의 "SVG 그림 양식".
 
-구현 위치: 파서 `src/lib/diagram.ts`, 렌더 `src/components/prose/Diagram.tsx`·`diagram/*`, figure 필터 `src/lib/html-figure.ts`, 키트·모션·장면 속성 모듈 `src/lib/figure/`(kits·anims·scene-attrs), 모션 런타임 `src/lib/figure-motion.ts`·`diagram/Motion.tsx`, 점검 `src/lib/voice.ts`.
+구현 위치: 파서 `src/lib/diagram.ts`, 렌더 `src/components/prose/Diagram.tsx`·`diagram/*`, figure 필터 `src/lib/html-figure.ts`, 키트·모션·장면 속성 모듈 `src/lib/figure/`(kits·anims·scene-attrs), 장면 동사 표 `src/lib/figure/verbs.ts`, 모션 런타임 `src/lib/figure-motion.ts`·`diagram/Motion.tsx`, 점검 `src/lib/voice.ts`.
 
-지금 어휘로 그릴 수 없는 그림이면 흉내 내지 말고 **blog-figure-extend** 스킬로 키트·모션·장면 속성을 더한다. 이 문서의 키트·모션·장면 속성 표는 모듈 목록에서 만들어진다(`<!-- figure:… -->` 자리, 손으로 고치지 않는다).
+지금 어휘로 그릴 수 없는 그림이면 흉내 내지 말고 **blog-figure-extend** 스킬로 키트·모션·장면 속성을 더한다. 이 문서의 장면 동사·키트·모션·장면 속성 표는 모듈 목록에서 만들어진다(`<!-- figure:… -->` 자리, 손으로 고치지 않는다).
 
 ## 공통 규칙
 
@@ -53,6 +76,7 @@ description: dongding 블로그 글 본문에 그림을 넣는 방법 — 그림
 | 파일 구조, 계층 | `tree` |
 | 핵심 숫자 몇 개 | `stats` |
 | 수치 크기 비교 | `bars` |
+| 격자(미로·BFS 거리·DP 표·2차원 배열) | `grid` |
 | 활용 예 두세 개(무엇을 하는지, 화면에 무엇이 뜨는지) | figure 장면으로 화면 재현(아래 "활용 예") |
 | 나란한 방법·선택지 두세 개(무엇이 다르고 언제 고르나) | figure 카드: `fig-grid-3` 안에 칸마다 `fig-num`·`fig-title`·`fig-sub`·`fig-chip`. "첫째, 둘째, 셋째"로 문단에 잇지 않는다 |
 
@@ -191,6 +215,21 @@ bypass | 0 | 0회(확인 없음) ~
 ```
 ````
 
+### grid — 12×12 칸, 칸 4자
+
+줄마다 격자 한 줄, 칸은 공백으로 가른다. `#` 은 벽, `.` 은 빈 칸, 그 밖은 4자까지의 글자(숫자·`S`·`INF`). 칸 끝 `*` 은 강조(지나온 길 등), `~` 은 흐리게. 머리 줄 `axis: on` 이면 위와 왼쪽에 1부터 센 줄·칸 번호가 붙는다. 줄마다 칸 수가 같아야 한다.
+
+````
+```grid
+caption: 백준 2178 예제 미로의 BFS 거리
+axis: on
+1* # 9* 10* 11* 12
+2* # 8* # 12* #
+3* # 7* # 13* 14*
+4* 5* 6* # 14 15*
+```
+````
+
 ## 장면 — 스크롤 박자마다 넘어가는 그림
 
 그림 블록이나 ```figure 에 머리 줄 `scene: on` 을 쓰면 장면이 된다. 그림과 설명이 화면 가운데 무대로 붙고, 스크롤은 다음 단계로 넘어가라는 신호로만 쓰인다. 단계가 바뀌면 그림이 0.8초 동안 다음 상태로 가서 멈추고, 설명은 아래에서 올라오며 바뀐 뒤 `**굵게**` 부분에 형광펜이 칠해진다. 스크롤을 놓으면 단계 자리에 맞춰 선다. 아래 점 표시줄이 지금 단계와 다음 단계까지 남은 거리를 보여 준다.
@@ -205,8 +244,9 @@ bypass | 0 | 0회(확인 없음) ~
 | --- | --- | --- |
 | timeline | 시점마다 `>` | 버전 슬라이드가 넘어가고 레일이 찬다 |
 | bars | `step:` 줄마다 그 단계의 값 | 막대가 자라고·줄고·축이 당겨진다 |
+| grid | `step:` 줄마다 그 단계의 격자 | 바뀐 칸이 숫자 순서로 차오른다(BFS 면 거리 순서로 번진다) |
 | flow·cycle·compare·matrix·sequence·layers·tree·stats | `>` 가 달린 칸마다 | 지금 칸이 빛나고, 아직 안 온 칸은 흐리다. 설명 없는 칸은 앞 단계와 함께 나온다 |
-| figure | `step:` 줄마다, 요소에 단 `data-step`·`data-on`·`data-v`·`data-text` | 정한 대로 나타나고·강조되고·값과 글자가 바뀐다. 화면 재현 같은 자유 구성 |
+| figure | `step:` 줄마다, 요소에 단 `data-step`·`data-on`·`data-v`·`data-text`·`data-at` | 정한 대로 나타나고·강조되고·값과 글자가 바뀌고·자리를 옮긴다. 화면 재현, 토큰 이동, 레인 같은 자유 구성 |
 
 ### timeline 장면 — 2~6줄
 
@@ -259,6 +299,36 @@ step: 줄어든 막대를 키워 보면 | zoom
 ```
 ````
 
+### grid 장면 — 2~8단계
+
+`step: 이름` 줄마다 바로 아래 `> 설명` 과 그 단계의 격자 전체를 쓴다. 격자를 비운 단계는 앞 단계 격자를 그대로 쓴다(설명만 바뀐다). 바뀐 칸만 움직이고, 숫자 칸은 작은 값부터 0.07초씩 늦게 차오른다. 시작 전에는 벽만 보인다. 단계는 "거리 몇까지"처럼 묶어서 다섯 안팎으로 줄인다.
+
+````
+```grid
+caption: 백준 2178 예제 미로를 BFS로 채우는 순서
+scene: on
+axis: on
+step: 시작
+> (1, 1)에 **1**을 적고 큐에 넣습니다.
+1 # . . . .
+. # . # . #
+. # . # . .
+. . . # . .
+step: 거리 2~4
+> 오른쪽이 벽이라 **아래로만** 번집니다.
+1 # . . . .
+2 # . # . #
+3 # . # . .
+4 . . # . .
+step: 도착
+> (4, 6)에 처음 닿을 때 적힌 **15**가 최소 칸 수입니다.
+1* # 9* 10* 11* 12
+2* # 8* # 12* #
+3* # 7* # 13* 14*
+4* 5* 6* # 14 15*
+```
+````
+
 ### 그 밖의 그림 블록 장면 — 설명이 달린 칸이 단계
 
 flow·cycle·compare·matrix·sequence·layers·tree·stats 는 `>` 설명이 달린 칸마다 한 단계다(2~8단계). 그림 모양은 정지 그림과 같고, 지금 칸이 빛나며 커지고 아직 안 온 칸은 흐리다.
@@ -284,13 +354,76 @@ sec-default | 내장 가드
 | 속성 | 뜻 |
 | --- | --- |
 | `data-step="2"` | 2단계에 나타나 끝까지 남는다. `"2-3"` 은 2~3단계에만 보인다 |
-| `data-on="2:accent\|3+:dim"` | 그 단계에 상태를 입힌다: `accent`·`dim`·`hide`·`strike`(빛남·흐림·숨김·취소선). `2` 는 그 단계만, `3+` 는 3부터, `2-3` 은 범위 |
+| `data-on="2:accent\|3+:dim"` | 그 단계에 상태를 입힌다: `accent`·`dim`·`hide`·`strike`·`bad`(빛남·흐림·숨김·취소선·실패). `2` 는 그 단계만, `3+` 는 3부터, `2-3` 은 범위 |
 | `data-v="1:90%\|2:12%"` | 단계마다 `--v` 를 바꾼다(`fig-bar` 길이). 그 단계까지 마지막 값 |
 | `data-text="1:$2.06\|2:$0.16"` | 단계마다 글자를 바꾼다. 앞뒤 글자가 같은 숫자끼리면 센다 |
+| `data-spot="server"` | 자리 이름. `data-at` 이 요소를 이 자리 한가운데로 옮긴다. 자리에는 높이를 준다(떠 있는 요소는 자리를 차지하지 않는다) |
+| `data-at="1:server>browser\|3:attacker"` | 요소가 판 위에 떠서 단계마다 그 자리(`data-spot`)로 미끄러진다. `from>to` 는 그 단계에 from 에서 출발한다(복사본이 원본 자리에서 나오는 모양) |
 <!-- /figure:scene-attrs -->
 
 - 단계마다 바뀌는 화면은 `fig-layer` 안에 겹쳐 두고 `data-step="1-1"`·`"2-2"` 로 하나씩 보인다. 높이는 가장 큰 화면이 정해 흔들리지 않는다.
 - 터미널 화면은 `fig-term`(어두운 판) 안에 `fig-term-bar`(머리줄, 점 셋은 자동)와 `fig-term-body` 를 둔다. 머리줄 오른쪽 `fig-term-tag` 칩에 지금 움직이는 훅·명령을 `data-text` 로 바꿔 넣는다. 줄은 `div` 하나씩, 색은 `fig-t-dim`·`fig-t-ok`·`fig-t-bad`·`fig-t-warn`, 안쪽 상자 `fig-t-box`, 버튼·배지 `fig-t-key`, 위 구분선 `fig-t-sep`.
+
+### 옮겨 가는 장면 — `data-spot`·`data-at`
+
+토큰·메시지·값이 참여자 사이를 오가는 이야기(동사 "옮겨 간다·복사된다·덮어쓴다")는 화살표를 빛내지 말고 그 물건을 옮긴다.
+
+- 참여자 칸(또는 레지스터·메모리 칸)에 `data-spot="이름"` 을 달고 높이를 준다(`style="min-height: 52px"`). 옮겨 다니는 요소는 판 위에 떠서 자리를 차지하지 않는다.
+- 옮겨 다니는 칩(`fig-chip`·`fig-t-key` 등)에 `data-at="1:browser|4:server"` 를 단다. 단계마다 그 자리 한가운데로 0.8초 동안 미끄러진다. 칩은 HTML 에서 첫 자리 안에 둔다. JS 가 없으면 거기 보인다.
+- 복사·출생은 `from>to`: `data-step="2" data-at="2:browser>attacker"` 면 2단계에 원본 자리에서 나와 공격자 자리로 간다. 원본을 지우는 단계는 원본에 `data-on="3+:strike"`, 실패·꺼짐은 상자에 `data-on="4:bad"`.
+- 값이 바뀌는 칸(메모리 `count`)은 `data-text="1:5|3:6|4:6|5:7"`. 숫자끼리는 센다.
+- 자리 이름이 없으면 점검의 `diagram-error` 가 "data-at 이 가리키는 자리가 없습니다"로 잡는다.
+
+````
+```figure
+caption: 로그아웃한 뒤에도 복사된 JWT가 통과하는 길
+scene: on
+step: 로그인
+> 서버가 JWT를 만들어 내주고 **아무것도 저장하지 않습니다**.
+step: XSS
+> 공격자 스크립트가 토큰 **사본**을 가져갑니다.
+step: 로그아웃
+> 로그아웃 버튼은 브라우저의 **원본만** 지웁니다.
+step: 사본으로 요청
+> 서버는 서명과 exp만 보므로 사본을 **200 OK**로 통과시킵니다.
+<div class="fig-grid-3">
+  <div class="fig-box"><span class="fig-title">브라우저</span><div data-spot="browser" style="min-height: 52px">
+    <span class="fig-chip" data-at="1:server>browser" data-on="3+:strike">JWT</span></div></div>
+  <div class="fig-box"><span class="fig-title">공격자</span><div data-spot="attacker" style="min-height: 52px">
+    <span class="fig-chip" data-step="2" data-at="2:browser>attacker|4:server">사본</span></div></div>
+  <div class="fig-box"><span class="fig-title">서버</span><div data-spot="server" style="min-height: 52px"></div>
+    <span class="fig-sub">기억하는 것: 없음</span><span class="fig-chip" data-step="4" data-on="4:accent">200 OK</span></div>
+</div>
+```
+````
+
+### 바꾸는 줄 — 터미널 diff
+
+"무엇을 무엇으로 바꾸나"(동사 "바뀐다")는 카드에 위치만 적지 말고 편집기 판에서 줄을 바꾼다. 옛 줄에 `data-on="2+:strike"`(터미널 안의 취소선은 붉은 바탕 지운 줄이 된다), 새 줄은 `fig-t-add` 에 `data-step="2"`. 새 줄 자리는 처음부터 잡혀 있어 높이가 흔들리지 않는다. 파일이 여럿이면 파일마다 `fig-layer` 화면 하나, 머리줄 칩에 `data-text` 로 파일 이름. 정지 그림에서는 `fig-t-del`·`fig-t-add` 를 그대로 쓴다.
+
+````
+```figure
+caption: gpt-5.5를 gpt-6-sol로 바꿀 자리
+scene: on
+step: 설정 파일
+> `config.toml`의 `model`을 **gpt-6-sol**로 바꿉니다.
+step: 스크립트·CI
+> `-m`으로 박아 둔 이름도 같이 바꿉니다.
+<div class="fig-term">
+  <div class="fig-term-bar">편집<span class="fig-term-tag" data-text="1:~/.codex/config.toml|2:CI">~/.codex/config.toml</span></div>
+  <div class="fig-term-body fig-layer">
+    <div data-step="1-1">
+      <div data-on="1:strike">model = "gpt-5.5"</div>
+      <div class="fig-t-add" data-step="1">model = "gpt-6-sol"</div>
+    </div>
+    <div data-step="2-2">
+      <div data-on="2:strike">codex exec -m gpt-5.5 "$TASK"</div>
+      <div class="fig-t-add" data-step="2">codex exec -m gpt-6-sol "$TASK"</div>
+    </div>
+  </div>
+</div>
+```
+````
 
 ### 활용 예 — 실제 화면을 장면으로 재현한다
 
@@ -353,7 +486,7 @@ step: blast-radius · 실행 직전
 | 조각 | `fig-arrow`(→, `fig-down` 을 더하면 ↓) `fig-num`(번호 배지) `fig-chip`(알약) `fig-dot` `fig-ok`(✓) `fig-no`(–) `fig-part`(반쯤) `fig-bar`(막대, `style="--v: 70%"`, `fig-accent` 면 강조색) |
 | 글자 | `fig-label`(작은 대문자 머리말) `fig-title`(굵은 제목) `fig-sub`(보조 설명) `fig-big`(큰 숫자) `fig-mono` |
 | 겹치기 | `fig-layer`(자식이 한 칸에 겹친다)<br>장면에서 단계마다 바뀌는 화면을 한 칸에 겹쳐 둔다. 높이는 가장 큰 화면이 정해 흔들리지 않는다 |
-| 터미널 | `fig-term`(어두운 판) `fig-term-bar`(머리줄, 점 셋은 자동) `fig-term-tag`(머리줄 오른쪽 칩. 장면에서 지금 움직이는 훅·명령을 data-text 로) `fig-term-body`(본문. 줄은 div 하나씩) `fig-t-dim` `fig-t-ok` `fig-t-bad` `fig-t-warn`(줄 색) `fig-t-box`(안쪽 상자) `fig-t-key`(버튼·배지) `fig-t-sep`(위 구분선)<br>활용 예의 실제 화면을 다시 그릴 때. 두 테마 모두 어두운 판이고, 문구는 실제 화면·README·소스에서 옮긴다 |
+| 터미널 | `fig-term`(어두운 판) `fig-term-bar`(머리줄, 점 셋은 자동) `fig-term-tag`(머리줄 오른쪽 칩. 장면에서 지금 움직이는 훅·명령을 data-text 로) `fig-term-body`(본문. 줄은 div 하나씩) `fig-t-dim` `fig-t-ok` `fig-t-bad` `fig-t-warn`(줄 색) `fig-t-box`(안쪽 상자) `fig-t-key`(버튼·배지) `fig-t-sep`(위 구분선) `fig-t-add`(넣는 줄(초록 바탕)) `fig-t-del`(지우는 줄(붉은 바탕·취소선). 장면에서는 옛 줄에 data-on 의 strike 를 걸면 같은 모양이 된다)<br>활용 예의 실제 화면, 직접 돌린 코드와 결과, 설정 파일의 바꿀 줄(diff)을 그릴 때. 두 테마 모두 어두운 판이고, 문구는 실제 화면·README·소스에서 옮긴다 |
 <!-- /figure:kits -->
 
 `code`·`kbd`·`mark`·`table`·`details` 는 클래스 없이도 키트 모양이 입혀진다.
@@ -441,6 +574,7 @@ caption: 분류기가 명령을 두 갈래로 나누는 방식
 | tree | 위에서 아래로 rise |
 | stats | 카드 rise, 값 roll(`14회 → 2회` 는 바뀐 뒤 값 2회가 구른다) |
 | bars | 행 rise, 막대 grow, 값 count |
+| grid | 줄마다 차례로 rise(장면은 바뀐 칸만 숫자 순서로 튀어 오름) |
 
 새 종류를 만들면 이 표의 어휘 안에서 고르고 칸마다 `data-anim` 과 `step(i)`(`--i`)를 단다. 옛 `.dg-step`·`.dg-grow` 클래스는 없어졌다.
 

@@ -23,6 +23,10 @@ export interface SceneAttr {
   fits(value: string, n: number): boolean;
   /** 단계 n(1부터)에 요소를 맞춘다. 브라우저에서만 부른다. */
   apply(el: HTMLElement, n: number, ctx: SceneCtx): void;
+  /** 요소 자리를 화면에서 재는 속성 — 판 크기가 바뀌면 지금 단계로 다시 입힌다. */
+  layout?: boolean;
+  /** 거른 HTML 전체를 보는 점검(다른 요소를 가리키는 값이 실제로 있나). 문제마다 한 줄. */
+  check?(html: string): string[];
   /** 쓰기 기준·스킬 표의 설명. 예시 값을 함께. */
   doc: { example: string; meaning: string };
 }

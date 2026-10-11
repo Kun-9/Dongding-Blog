@@ -3,7 +3,9 @@
  * (lib/html-figure), 단계 적용(components/prose/diagram/Scene 의 FigureScene), 쓰기 기준과
  * 스킬 표가 이 목록을 따라간다.
  */
+import { at } from "./at";
 import { on } from "./on";
+import { spot } from "./spot";
 import { step } from "./step";
 import { text } from "./text";
 import type { SceneAttr } from "./types";
@@ -12,7 +14,7 @@ import { value } from "./value";
 export type { SceneAttr, SceneCtx } from "./types";
 export { STATES } from "./on";
 
-export const SCENE_ATTRS: SceneAttr[] = [step, on, value, text];
+export const SCENE_ATTRS: SceneAttr[] = [step, on, value, text, spot, at];
 
 export const sceneAttr = (name: string) => SCENE_ATTRS.find((a) => a.name === name);
 
@@ -28,3 +30,6 @@ export function badSteps(html: string, n: number): string[] {
   }
   return bad;
 }
+
+/** 속성 모듈의 HTML 전체 점검(`check`) 결과. */
+export const sceneChecks = (html: string): string[] => SCENE_ATTRS.flatMap((a) => a.check?.(html) ?? []);

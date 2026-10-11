@@ -652,7 +652,7 @@ html.sc-snap { scroll-snap-type: y proximity; }
 .sc-spot .sc-cur { filter: drop-shadow(0 6px 16px color-mix(in oklab, var(--callout-tip-glyph) 50%, transparent)); }
 
 @media (prefers-reduced-motion: reduce) {
-  .sc-spot [style*="--i"], .sc-html [data-step], .sc-html [data-on], .sc-html .fig-bar::after { transition: none; }
+  .sc-spot [style*="--i"], .sc-html [data-step], .sc-html [data-on], .sc-html[data-ready] [data-at], .sc-html .fig-bar::after { transition: none; }
 }
 
 /* ============================================================
@@ -678,4 +678,32 @@ html.sc-snap { scroll-snap-type: y proximity; }
 .pop-in { animation: pop-in 0.16s cubic-bezier(0.2, 0.8, 0.2, 1); transform-origin: top; }
 @media (prefers-reduced-motion: reduce) {
   .modal-fade, .modal-pop, .pop-in { animation: none; }
+}
+
+/* ============================================================
+   grid 그림(diagram/Grid) — 미로·BFS·DP 표. 칸은 정사각형, 글자는 고정폭.
+   ============================================================ */
+.dg-grid { display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 46px)); gap: 5px; justify-content: center; }
+.dg-gx { display: grid; place-items: center; font: 600 10.5px/1 var(--font-mono); color: var(--ink-muted); }
+.dg-gc {
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  font: 700 clamp(10.5px, 3.4vw, 14px)/1 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  transition: background-color 0.35s, color 0.35s, border-color 0.35s;
+}
+.dg-gc.is-empty { background: color-mix(in oklab, var(--ink) 4%, var(--surface)); border-color: color-mix(in oklab, var(--ink) 14%, transparent); }
+.dg-gc.is-full { background: color-mix(in oklab, var(--callout-tip-glyph) 16%, var(--surface)); border-color: color-mix(in oklab, var(--callout-tip-glyph) 40%, transparent); color: var(--callout-tip-ink); }
+.dg-gc.is-wall { background: color-mix(in oklab, var(--ink) 62%, var(--surface)); border-color: transparent; }
+.dg-gc.is-acc { background: var(--callout-tip-glyph); border-color: var(--callout-tip-glyph); color: var(--surface); }
+.dg-gc.is-mut { border-style: dashed; border-color: var(--border-strong); background: transparent; color: var(--ink-muted); }
+.dg-gc.is-new { animation: dg-cell-in 0.45s cubic-bezier(0.3, 1.5, 0.5, 1) var(--d, 0ms) both; }
+@keyframes dg-cell-in { from { opacity: 0; transform: scale(0.6); } }
+.sc-grid { padding-block: 4px; }
+@media (prefers-reduced-motion: reduce) {
+  .dg-gc { transition: none; }
+  .dg-gc.is-new { animation: none; }
 }

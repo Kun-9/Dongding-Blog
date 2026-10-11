@@ -49,3 +49,6 @@
 .fig-t-box { margin-top: 6px; padding: 8px 10px; border: 1px solid color-mix(in oklab, var(--code-ink) 18%, transparent); border-radius: 8px; }
 .fig-t-key { display: inline-block; margin-right: 8px; padding: 0 6px; border: 1px solid color-mix(in oklab, var(--code-ink) 22%, transparent); border-radius: 5px; }
 .fig-t-sep { margin-top: 8px; padding-top: 8px; border-top: 1px solid color-mix(in oklab, var(--code-ink) 12%, transparent); }
+/* diff 줄 — 무엇을 무엇으로 바꾸는지. 줄 바탕만 칠하고 글자 색은 그대로 둔다. */
+.fig-t-add { background: color-mix(in oklab, var(--code-string) 15%, transparent); }
+.fig-t-del { background: color-mix(in oklab, var(--code-number) 16%, transparent); text-decoration: line-through; text-decoration-color: var(--code-number); opacity: 0.75; }

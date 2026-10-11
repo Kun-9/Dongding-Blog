@@ -26,13 +26,15 @@ description: Use when a dongding 블로그 글에 필요한 그림·애니메이
 | 등장 모션 | `anims/<이름>.ts`(길이·준비·재생) | `anims/index.ts` 의 `ANIM_MODULES` | `scaffold.mjs anim <이름>` |
 | 장면 속성 | `scene-attrs/<이름>.ts`(값 검사·단계 점검·적용) + 상태 CSS 는 `states.css` | `scene-attrs/index.ts` 의 `SCENE_ATTRS` | `scaffold.mjs scene-attr <이름>` |
 | 장면 상태(`data-on` 값) | `scene-attrs/on.ts` 의 `STATES` + `states.css` 의 `.sc-html .is-<상태>` | — | 손으로 |
-| 그림 블록 종류 | `lib/diagram.ts`(파서·`sceneCells`) + `components/prose/diagram/*.tsx` + `Diagram.tsx` | `DIAGRAM_LANGS` | 손으로. 드물다 |
+| 그림 블록 종류 | `lib/diagram.ts`(파서·`sceneCells`) + `components/prose/diagram/*.tsx` + `Diagram.tsx` | `DIAGRAM_LANGS` | 손으로. 드물다(2026-10-11 `grid`) |
+| 장면 동사(핵심 장면 고르기 표) | `figure/verbs.ts` 의 한 줄(동사·그림·이런 내용일 때·쓰는 법) | `SCENE_VERBS` | 손으로. 새 어휘를 더하면 그 어휘가 그리는 움직임 동사를 같이 더한다 |
 
 스크립트는 저장소(워크트리) 뿌리에서 `node .claude/skills/blog-figure-extend/<스크립트>` 로 부른다. `.ts` 는 `node_modules/.bin/jiti` 로.
 
 - 모듈은 서로 모른다. 공통 조각은 같은 폴더의 도우미(`anims/keyframes.ts`, `scene-attrs/range.ts`)에서 가져온다.
 - 모션 모듈은 Motion 을 import 하지 않는다. `prepare(el, rt, timing)` 의 `rt.animate` 로 받는다 — 그래서 목록을 서버·점검기도 읽는다.
-- 장면 속성의 `apply` 만 DOM 을 쓴다. `valid`·`fits` 는 순수 함수. 통과한 값은 거를 때 늘 이스케이프된다.
+- 장면 속성의 `apply` 만 DOM 을 쓴다. `valid`·`fits`·`check` 는 순수 함수. 통과한 값은 거를 때 늘 이스케이프된다(`check` 가 보는 HTML 에서 `>` 는 `&gt;`).
+- 다른 요소를 가리키는 속성(`data-at` → `data-spot`)은 `check(html)` 로 가리키는 것이 있는지 본다. 화면에서 자리를 재는 속성은 `layout: true` 로 두면 판 크기가 바뀔 때 지금 단계로 다시 입힌다(FigureScene 의 ResizeObserver).
 - 키트의 `motion` 은 목록 순서대로 먼저 맞는 선택자가 이긴다(`KITS` 순서가 우선순위).
 - 키트에 `live`(화면에 있을 때 반복)를 쓰면 같은 키트 CSS 에 `[data-live] <선택자>` 반복 규칙을 둔다(`box.css` 참고, 키프레임 `dg-breathe` 는 globals.css 공용). sync-docs 가 빠진 것을 잡는다.
 

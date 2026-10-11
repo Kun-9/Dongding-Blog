@@ -17,6 +17,7 @@ import {
   type LintContext,
   type PostLint,
 } from "@/lib/lint";
+import { checkVoice, shapeRepeat, type PostKind, type VoiceInput, type VoiceReport } from "@/lib/voice";
 
 const COLUMNS =
   "slug, title, summary, category_id, tags, date, visibility, featured, series_id, series_order, body";
@@ -72,6 +73,22 @@ export async function loadPost(slug: string): Promise<LintablePost | null> {
     .maybeSingle();
   if (error) throw new Error(`글 조회 실패: ${error.message}`);
   return data ? toLintable(data as unknown as Row) : null;
+}
+
+/** 비교할 최근 글 수 — 그림 순서 되풀이 점검(shapeRepeat). */
+const RECENT_SHAPES = 8;
+
+/**
+ * 쓰기 기준 점검 + 최근 글과 그림 순서가 거의 같은지(정보). 점검 단계의 서버 관문(release-topics)은
+ * 글 하나만 보는 checkVoice 를 그대로 쓰고, 사람·실행기가 부르는 점검(MCP·worker check)만 이것을 쓴다.
+ */
+export async function checkVoiceWithHistory(post: VoiceInput & { slug?: string }, kind?: PostKind): Promise<VoiceReport> {
+  const report = checkVoice(post, kind);
+  const { data } = await dbAdmin().from("posts").select("slug, title, body").order("date", { ascending: false }).limit(RECENT_SHAPES + 1);
+  const others = ((data ?? []) as { slug: string; title: string; body: string }[]).filter((p) => p.slug !== post.slug).slice(0, RECENT_SHAPES);
+  const repeat = shapeRepeat(post.body, others);
+  if (repeat) report.issues.push(repeat);
+  return report;
 }
 
 export interface Taxonomy {

@@ -6,7 +6,8 @@
 //   화면 넷  — 데스크톱 다크·모바일 다크·데스크톱 라이트·모바일 움직임 줄이기에서
 //     기준    같은 화면 크기로 JS 없이 떠서 적고, figure 장면이 1단계 화면만 보이는지
 //     런타임  처음 열었을 때 화면 아래 그림 칸이 기준과 다르게(재생 대기로) 숨어 있는지
-//     장면    박자마다 설명이 그 단계로 바뀌는지, 무대 판 높이가 단계마다 같은지
+//     장면    박자마다 설명이 그 단계로 바뀌는지, 무대 판 높이가 단계마다 같은지,
+//             떠 있는 요소(data-at)가 그 단계의 자리(data-spot) 한가운데에 섰는지
 //     끝 모습 끝까지 내린 뒤 장면 밖 그림 칸이 모두 기준과 같은지(투명도·잘림·변형·막대 채움·글자)
 //     공통    가로 넘침, 페이지 오류
 // 키트 선택자를 따로 적지 않아서 새 키트·모션도 그대로 검사된다.
@@ -105,7 +106,7 @@ for (const [label, opts] of VIEWS) {
 
   // 3) 장면
   const kinds = await page.evaluate(() =>
-    [...document.querySelectorAll(".sc")].map((s) => (s.querySelector(".sc-html") ? "figure" : s.querySelector(".sc-spot") ? "spot" : s.querySelector(".sc-car") ? "timeline" : "bars")),
+    [...document.querySelectorAll(".sc")].map((s) => (s.querySelector(".sc-html") ? "figure" : s.querySelector(".sc-spot") ? "spot" : s.querySelector(".sc-car") ? "timeline" : s.querySelector(".sc-grid") ? "grid" : "bars")),
   );
   for (let i = 0; i < kinds.length; i++) {
     const n = await page.evaluate((i) => document.querySelectorAll(".sc")[i].querySelectorAll(".sc-note").length, i);
@@ -117,13 +118,32 @@ for (const [label, opts] of VIEWS) {
         scrollTo({ top: s.getBoundingClientRect().top + scrollY + k * s.querySelector(".sc-beat").offsetHeight, behavior: "instant" });
       }, [i, k]);
       await page.waitForTimeout(900);
-      const r = await page.evaluate((i) => {
+      const r = await page.evaluate(([i, k]) => {
         const s = document.querySelectorAll(".sc")[i];
-        return { note: [...s.querySelectorAll(".sc-note")].findIndex((x) => x.classList.contains("on")), h: s.querySelector(".sc-board").offsetHeight };
-      }, i);
+        // 떠 있는 요소가 이 단계의 자리 한가운데에 섰나(보이는 것만, 4px 까지).
+        const off = [];
+        for (const el of s.querySelectorAll("[data-at]")) {
+          if (Number(getComputedStyle(el).opacity) < 0.5) continue;
+          let to = null;
+          let best = -1;
+          for (const it of el.dataset.at.split("|")) {
+            const [key, val] = [Number(it.slice(0, it.indexOf(":"))), it.slice(it.indexOf(":") + 1)];
+            if ((key <= k + 1 && key > best) || to === null) [best, to] = [key <= k + 1 ? key : best, val.split(">").pop()];
+          }
+          const spot = s.querySelector(`[data-spot="${to}"]`);
+          if (!spot) continue;
+          const a = el.getBoundingClientRect();
+          const b = spot.getBoundingClientRect();
+          const dx = a.left + a.width / 2 - (b.left + b.width / 2);
+          const dy = a.top + a.height / 2 - (b.top + b.height / 2);
+          if (Math.hypot(dx, dy) > 4) off.push(`${(el.textContent ?? "").trim().slice(0, 12)}→${to}(${Math.round(dx)},${Math.round(dy)})`);
+        }
+        return { note: [...s.querySelectorAll(".sc-note")].findIndex((x) => x.classList.contains("on")), h: s.querySelector(".sc-board").offsetHeight, off };
+      }, [i, k]);
       heights.add(r.h);
       steps.push(r.note);
       if (r.note !== k) fails.push(`${label} 장면${i}(${kinds[i]}) ${k}단계에서 설명이 ${r.note}단계`);
+      if (r.off.length) fails.push(`${label} 장면${i}(${kinds[i]}) ${k}단계에서 자리를 벗어난 요소: ${r.off.join(", ")}`);
       await page.screenshot({ path: join(out, `${label}-scene${i}-${kinds[i]}-${k}.png`) });
     }
     if (heights.size > 1) fails.push(`${label} 장면${i}(${kinds[i]}) 판 높이가 단계마다 다름: ${[...heights].join("/")}`);

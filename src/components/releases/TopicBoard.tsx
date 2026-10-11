@@ -16,7 +16,7 @@ import {
   stageLabel,
   type StageKey,
 } from "@/lib/release-stages";
-import { AVOID, CLARITY_RULES, OUTLINE, REQUIRED_PARTS, VOICE_RULES } from "@/lib/voice";
+import { AVOID, CLARITY_RULES, PLOTS, REQUIRED_PARTS, VOICE_RULES } from "@/lib/voice";
 import { CONCEPT_AREAS, type ConceptArea } from "@/lib/concept-areas";
 
 /**
@@ -453,20 +453,17 @@ function GuideCard() {
             </ul>
           </GuideColumn>
 
-          <GuideColumn title="권장 뼈대">
-            <ol className="m-0 list-none space-y-2 p-0">
-              {OUTLINE.map(([h, d], i) => (
-                <li key={h} className="flex gap-2.5">
-                  <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-surface-alt font-mono text-[10.5px] text-ink-muted">
-                    {i + 1}
-                  </span>
-                  <span className="text-[13px] leading-[1.5]">
-                    <span className="font-semibold text-ink">{h}</span>
-                    <span className="text-ink-muted"> · {d}</span>
-                  </span>
+          <GuideColumn title="글 뼈대(하나를 고른다)">
+            <ul className="m-0 list-none space-y-2.5 p-0">
+              {PLOTS.map((p) => (
+                <li key={p.id}>
+                  <div className="font-sans text-[13px] font-semibold text-ink">{p.name}</div>
+                  <div className="text-[12.5px] leading-[1.55] text-ink-muted">
+                    {p.when}. 핵심 장면: {p.verb}
+                  </div>
                 </li>
               ))}
-            </ol>
+            </ul>
           </GuideColumn>
 
           <div className="md:col-span-3">

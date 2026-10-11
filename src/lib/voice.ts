@@ -11,11 +11,12 @@
  * next 에 의존하지 않는 순수 모듈이다 — 스크립트에서도 그대로 돌린다.
  */
 import type { Issue } from "./lint";
-import { findDiagrams, findFences } from "./diagram";
+import { findDiagrams, findFences, isDiagramLang, parseDiagram } from "./diagram";
 import { parseFigureHtml } from "./html-figure";
 import { ANIMS, LOOPS } from "./figure/anims";
 import { KITS } from "./figure/kits";
 import { SCENE_ATTRS } from "./figure/scene-attrs";
+import { SCENE_VERBS } from "./figure/verbs";
 import { AVOID, excerpt, lintPhrases, proseLines } from "./phrases";
 
 /* ── 기준 ─────────────────────────────────────────────────────────────── */
@@ -47,7 +48,7 @@ export type PostKind = "release" | "concept";
  * 쓰는 법만 다르다 — 점검기가 같은 판정으로 본다.
  */
 export const CONCEPT_PARTS = [
-  { key: "summary-box", label: "도입 요약 박스", how: "첫머리 `> [!INFO]` 에 두 문장, 160자 안팎 산문으로. 첫 문장은 누가 어떤 장면에서 헷갈리는지(예: 면접에서 MVC와 MVVM의 차이를 질문받은 백엔드 개발자), 다음 문장은 한 줄 답. 날짜·버전은 쓰지 않는다(특정 버전의 동작을 말할 때만 본문에 밝힌다)" },
+  { key: "summary-box", label: "도입 요약 박스", how: "첫머리 `> [!INFO]` 에 두 문장, 160자 안팎 산문으로. 첫 문장은 독자가 실제로 겪는 증상이나 질문 하나를 구체적으로(예: 스레드 둘이 같은 변수를 10만 번씩 올렸는데 200000이 나오지 않는다), 다음 문장은 한 줄 답. '면접에서 ~ 막히는 개발자가 많습니다' 같은 틀 문장으로 열지 않는다. 날짜·버전은 쓰지 않는다(특정 버전의 동작을 말할 때만 본문에 밝힌다)" },
   { key: "table", label: "비교 표", how: "헷갈리는 두세 개념의 차이 하나. markdown 표나 ```compare·```matrix 블록. 글 전체 두 개까지" },
   { key: "visual", label: "본문 속 그림", how: "설명하는 문단 바로 아래에 그림 블록(```flow 등 10종)·```figure 또는 단독 줄 `![캡션](경로)`. 흐름·구조·순서를 그림으로" },
   { key: "source", label: "출처 링크", how: "표준·공식 문서(RFC, MDN, 언어·프레임워크 문서, 원전) 링크를 본문 문장 안에. 끝에 목록으로 몰지 않는다" },
@@ -113,7 +114,7 @@ export const VISUAL_RULES = [
   "강조(`*`)는 그림마다 지금 이야기하는 한두 곳만. 다 강조하면 아무것도 안 보인다",
   "그림 블록·figure 의 캡션은 첫 줄 `caption: …`, 이미지는 alt 자리에. 그림이 보여 주는 것을 40자 안팎 명사구로",
   "모션은 블로그가 정한다. 그림 블록은 아무것도 안 써도 칸이 화면의 읽는 높이에 오면 차례로 나타나고, figure 는 키트 기본 모션이 있다. figure·SVG 에서 바꾸거나 더할 때만 `data-anim`·`data-loop` 을 의미가 있는 곳에 단다. 모션이 없어도 읽히게 그린다",
-  "글의 핵심 그림 하나는 장면(`scene: on`)으로 만든다. 그림이 화면에 붙어 스크롤 박자마다 다음 단계로 넘어가고, 단계마다 `> ` 설명이 바뀐다. 버전 흐름은 timeline, 단계마다 바뀌는 계산은 bars, 순서·구조는 그 그림 블록, 실제 화면은 figure 장면의 터미널로. 한 글에 한두 개까지. 장면이 아닌 그림의 `> ` 줄은 그려지지 않으니 쓰지 않는다. 배포일·출처·계산 내역 같은 보충은 본문 문장이나 캡션에 쓴다",
+  "글의 핵심 그림 하나는 장면(`scene: on`)으로 만든다. 그림이 화면에 붙어 스크롤 박자마다 다음 단계로 넘어가고, 단계마다 `> ` 설명이 바뀐다. 무엇을 그릴지는 그림 종류가 아니라 내용에서 일어나는 움직임으로 고른다(아래 '핵심 장면 고르기' 표: 옮겨 간다·복사된다·덮어쓴다·번진다·바뀐다·늘고 준다·시점이 온다). 터미널 화면 장면은 직접 돌린 결과·활용 예를 보이는 증거 자리라 글의 유일한 장면이 되지 않게 한다(점검의 scene-evidence-only). 한 글에 한두 개까지. 장면이 아닌 그림의 `> ` 줄은 그려지지 않으니 쓰지 않는다. 배포일·출처·계산 내역 같은 보충은 본문 문장이나 캡션에 쓴다",
   "실제 화면은 사람 몫으로 남기지 않는다. blog-capture 스킬대로 ① 직접 뜬다: `node .claude/skills/blog-capture/capture.mjs --run \"claude\" --keys /model --keys Enter --from \"Select model\" --to \"Esc to cancel\" --out /tmp/<이름>.svg` 한 줄로 SVG 를 만들어 올리고, 본문에는 '직접 v2.1.292에서 열어 보니'처럼 버전과 함께 밝힌다 ② 띄울 수 없으면(끝 코드 3·4) 자료 조사: 공식 문서·릴리스·이슈의 같은 화면이나 출력 예시를 코드 블록으로 옮기고 출처를 단다 ③ 그것도 없으면 화면의 구조·숫자를 그림 블록·figure 로 다시 그리고 캡션에 실제 화면이 아니라 구성이라고 밝힌다",
   "셋 다 안 될 때만 그 자리에 `![캡션](/posts/<slug>/todo-<이름>.png)` 를 남기고 못 뜬 이유를 노트에 적는다. 본문에 '캡처 필요' 자리로 보이고, 남아 있으면 발행이 막힌다. 점검은 경로에 `/todo-` 가 있으면 캡처 대기로 보므로, 실제 캡처는 todo- 없는 이름으로 올리고 경로를 바꾼다",
   "터미널 화면에 JSON·긴 토큰을 한 줄로 두지 않는다. 공백 없는 긴 줄은 좁은 화면에서 토큰 중간에서 끊긴다. 실제 출력을 들여쓰기 형태(`JSON.stringify(x, null, 2)`)로 다시 받아 줄마다 div 로 나누고, 문자열은 `fig-t-ok`, 숫자는 `fig-t-bad` 로 코드 블록처럼 색을 입힌다",
@@ -170,7 +171,8 @@ export const DIAGRAM_SYNTAX = String.raw`코드 펜스 언어를 아래 종류�
 - tree — 파일·계층. 들여쓰기 두 칸이 한 단계, ${"`이름 | 설명`"}. ${"`폴더/`"}·${"`파일.ts`"} 는 아이콘이 붙는다. 40칸, 6단계
 - stats — 핵심 숫자. ${"`값 | 설명 | 출처(선택)`"}, 값에 ${"`14회 → 2회`"} 처럼 변화. 6개
 - bars — 수치 비교. ${"`이름 | 숫자 | 표시(선택)`"}, 머리 ${"`unit: 회`"}. 2~10줄
-- 장면 — 그림 블록에 머리 ${"`scene: on`"}. 화면에 붙는 무대가 스크롤 박자마다 다음 단계로 넘어가 멈춘다. flow·cycle·compare·matrix·sequence·layers·tree·stats 는 ${"`> 설명`"} 이 달린 칸마다 한 단계(2~8, 지금 칸이 빛나고 아직 안 온 칸은 흐리다). timeline 은 시점마다 바로 아래 ${"`> 설명`"}(2~6줄). bars 는 ${"`step: 단계 이름`"} 줄마다 바로 아래 ${"`> 설명`"} 과 그 단계의 값을 쓴다. 머리 ${"`parts: 조각1, 조각2`"} 면 값을 ${"`이름 | 2.00 + 0.02`"} 처럼 조각 합으로, ${"`ratio: A ÷ B`"} 면 첫 행 ÷ 둘째 행을 크게 보인다. ${"`unit: $`"} 처럼 통화 기호는 숫자 앞에 붙는다. 뒤 단계에서 빠진 행은 앞 값을 쓰고, ${"`step: 이름 | zoom`"} 이면 축을 그 단계 값에 맞게 당긴다. 2~5단계, 행 6개. 설명의 ${"`**굵게**`"} 는 형광펜이 칠해진다
+- grid — 격자(미로·BFS 거리·DP 표). 줄마다 칸을 공백으로 가른다. ${"`#`"} 벽, ${"`.`"} 빈 칸, 그 밖은 4자까지의 글자, 칸 끝 ${"`*`"} 강조·${"`~`"} 흐리게. 머리 ${"`axis: on`"} 이면 줄·칸 번호. 12×12칸, 줄마다 칸 수가 같게
+- 장면 — 그림 블록에 머리 ${"`scene: on`"}. 화면에 붙는 무대가 스크롤 박자마다 다음 단계로 넘어가 멈춘다. flow·cycle·compare·matrix·sequence·layers·tree·stats 는 ${"`> 설명`"} 이 달린 칸마다 한 단계(2~8, 지금 칸이 빛나고 아직 안 온 칸은 흐리다). timeline 은 시점마다 바로 아래 ${"`> 설명`"}(2~6줄). bars 는 ${"`step: 단계 이름`"} 줄마다 바로 아래 ${"`> 설명`"} 과 그 단계의 값을 쓴다. 머리 ${"`parts: 조각1, 조각2`"} 면 값을 ${"`이름 | 2.00 + 0.02`"} 처럼 조각 합으로, ${"`ratio: A ÷ B`"} 면 첫 행 ÷ 둘째 행을 크게 보인다. ${"`unit: $`"} 처럼 통화 기호는 숫자 앞에 붙는다. 뒤 단계에서 빠진 행은 앞 값을 쓰고, ${"`step: 이름 | zoom`"} 이면 축을 그 단계 값에 맞게 당긴다. 2~5단계, 행 6개. grid 는 ${"`step: 단계 이름`"} 줄마다 바로 아래 ${"`> 설명`"} 과 그 단계의 격자 전체(비우면 앞 단계 격자). 바뀐 칸이 숫자 순서로 차오른다. 2~8단계. 설명의 ${"`**굵게**`"} 는 형광펜이 칠해진다
 
 ${"````"}
 ${"```"}flow
@@ -238,7 +240,7 @@ export const FIGURE_KIT = String.raw`그림 블록으로 안 되는 구성(두 �
 - 태그: div span p ul ol li strong em code kbd mark small br hr table thead tbody tr th td details summary. 링크·이미지·스크립트·SVG 는 지워진다
 - class: ${"`fig-`"} 로 시작하는 것만 남는다. style: 배치(display, grid-template-columns, gap, flex, width, text-align, margin-top 등)만 남고 색·글꼴·위치는 지워진다. 지워진 게 있으면 점검에서 경고
 ${FIGURE_KIT_LINES}
-- 장면: HTML 앞 머리 줄에 ${"`scene: on`"} 과 단계마다 ${"`step: 이름`"}·바로 아래 ${"`> 설명`"}(2~8단계). 요소에 ${SCENE_ATTR_LINE}. 단계마다 바뀌는 화면은 ${"`fig-layer`"} 안에 겹쳐 둔다
+- 장면: HTML 앞 머리 줄에 ${"`scene: on`"} 과 단계마다 ${"`step: 이름`"}·바로 아래 ${"`> 설명`"}(2~8단계). 요소에 ${SCENE_ATTR_LINE}. 단계마다 바뀌는 화면은 ${"`fig-layer`"} 안에 겹쳐 둔다. 토큰·값이 오가면(옮겨 간다·복사된다·덮어쓴다) 참여자 칸에 ${"`data-spot`"} 과 높이(${"`style=\"min-height: 52px\"`"}), 칩에 ${"`data-at`"}, 복사는 ${"`2:원본>새자리`"}. 칩은 HTML 에서 첫 자리 안에 둔다. 바꾸는 줄(diff)은 옛 줄에 ${"`data-on=\"2+:strike\"`"}, 새 줄은 ${"`fig-t-add`"} 에 ${"`data-step`"}
 - 모션: 키트가 기본을 갖는다(상자·행 올라오기, 화살표 그려지기, 막대 자라기, 배지·체크 튀어나오기, ${"`fig-big`"} 숫자 세기, 강조 상자 숨쉬기). 바꿀 때만 ${ANIM_ATTR}(${"`roll`"} 은 숫자가 자리마다 굴러 멈춘다, 핵심 숫자 하나에만), 반복은 ${LOOP_ATTR}, 순서는 style ${"`--i: 2`"}, 세기 시작 값은 ${"`data-from=\"14\"`"}. 다른 값은 지워진다
 
 ${"````"}
@@ -257,23 +259,26 @@ caption: 분류기가 명령을 두 갈래로 나누는 방식
 ${"```"}
 ${"````"}`;
 
-/** 권장 흐름. 이름은 흐름일 뿐 소제목으로 쓰지 않는다. */
-export const OUTLINE = [
-  ["들어가기", "요약 박스(산문) 뒤 첫 문단. 새 기능을 독자가 이미 아는 것에 대어 한 문장으로 정의하고, 그것이 없을 때 어떻게 하고 있었는지 짧게. 다 쓴 뒤 이 문단을 지워 봐서 글이 그대로 읽히면 지운다"],
-  ["달라진 점", "무엇이 어떻게 바뀌었는지 문단으로, 필요하면 비교 표 하나와 흐름 그림"],
-  ["써 보기", "활용 예 두세 개와 따라 할 최소 예제 하나. 명령·코드·화면 캡처를 이야기 흐름 안에"],
-  ["배경", "PR·이슈·문서에서 읽은 이유와 제약"],
-  ["맺음", "한 문단: 조심할 점이나 남은 의문"],
-] as const;
+/**
+ * 글 뼈대 — 글 종류마다 하나로 굳은 흐름 대신 내용에 맞는 뼈대를 하나 고른다. 흐름의 이름은
+ * 소제목이 아니다. 2026-10-11 개념 글 셋이 같은 소제목 순서(정의 → 비교 → 코드와 결과 → 자주 하는
+ * 오해 → 언제 고르나)로, 릴리스 글은 전후 비교로 열고 지원 표로 닫는 순서로 굳어 독자가 다음
+ * 섹션을 예상하게 됐다. 뼈대마다 어울리는 핵심 장면 동사(lib/figure/verbs)가 따라온다.
+ */
+export const PLOTS: { id: string; name: string; kinds: PostKind[]; when: string; flow: string[]; verb: string }[] = [
+  { id: "trace", name: "하나를 끝까지 따라가기", kinds: ["release", "concept"], when: "토큰·요청·명령·메시지 하나가 여러 단계를 지난다", flow: ["무엇을 들고 출발하나", "정거장마다 한 섹션: 거기서 무엇이 바뀌나", "도착하지 못하는 경우와 막는 법"], verb: "옮겨 간다·차례로 지난다" },
+  { id: "symptom", name: "증상부터", kinds: ["release", "concept"], when: "독자가 놀랄 동작이나 틀린 결과가 있다(업데이트 뒤 달라진 동작, 예상과 다른 출력, 모델 은퇴)", flow: ["달라진 동작이나 틀린 결과를 재현한 화면·코드 한 줄", "왜 그런가(릴리스·PR·문서·원리)", "고치거나 되돌리는 법", "버전·환경마다 다른 점"], verb: "바뀐다·덮어쓴다·시점이 온다" },
+  { id: "measure", name: "직접 재 보기", kinds: ["release", "concept"], when: "가격·성능·한도처럼 숫자가 주인공이다", flow: ["흔한 믿음이나 예상", "계산 예·측정 하나를 끝까지 끌고 가며 조건을 하나씩 바꾸기", "뜻밖이었던 숫자와 이유", "언제 무엇을 고르나"], verb: "늘고 준다" },
+  { id: "ladder", name: "질문 사다리", kinds: ["concept"], when: "개념 하나를 독자가 묻는 순서대로 풀 수 있다", flow: ["첫 질문은 실제 증상(왜 200000이 아닌가)", "질문마다 한 섹션, 소제목을 질문으로", "마지막 질문의 답이 결론. '자주 하는 오해'·'언제 고르나'를 따로 세우지 않는다"], verb: "복사된다·덮어쓴다" },
+  { id: "tour", name: "써 보며 익히기", kinds: ["release"], when: "새 기능·명령이 생겨 무엇을 할 수 있는지가 핵심이다", flow: ["가장 작은 예제를 바로 실행", "활용 예 두세 개를 화면으로", "어디까지 되고 무엇이 안 되나"], verb: "차례로 지난다(화면이 뜬다는 증거로)" },
+  { id: "replay", name: "풀이 중계", kinds: ["concept"], when: "알고리즘 풀이·자료구조. 예제 입력 하나로 끝까지 돌려 볼 수 있다", flow: ["예제 입력과 기대 출력", "예제를 장면으로 끝까지 돌리기", "단계마다 코드 조각", "틀리기 쉬운 경계"], verb: "번진다" },
+];
 
-/** 개념 글의 권장 흐름. */
-export const CONCEPT_OUTLINE = [
-  ["들어가기", "요약 박스(산문) 뒤에 이 개념이 헷갈리는 실제 장면 하나(면접 질문, 코드 리뷰, 버그). 개념을 독자가 이미 아는 것에 대어 정의하고, 이 개념이 없을 때 코드가 어떻게 되는지 짧게 보여 준다(예: DI 글이면 서비스가 저장소를 직접 new 하는 코드). 다 쓴 뒤 이 문단을 지워 봐서 글이 그대로 읽히면 지운다"],
-  ["한 줄 정의", "각 개념을 한 문장으로. 비유는 하나만, 정의 바로 뒤에"],
-  ["갈리는 지점", "무엇이 같고 어디서 갈리는지. 비교 표 하나와 흐름·구조 그림"],
-  ["코드로 보기", "같은 일을 두 방식으로 쓴 짧은 코드. 언어는 독자가 가장 많이 쓰는 것으로(예: Java·Spring, JavaScript)"],
-  ["자주 하는 오해", "Stack Overflow 상위 질문 같은 실제 오해 두세 개와 바로잡는 근거"],
-  ["맺음", "한 문단: 언제 무엇을 고르면 되는지"],
+/** 어느 뼈대든 지키는 것. */
+export const PLOT_COMMON = [
+  "2차 소스 노트에 \"뼈대: 이름 / 핵심 장면: 동사\"를 적고 쓴다. list_posts 로 최근 글을 보고, 바로 앞 글들과 같은 뼈대·같은 핵심 장면이 이어지지 않게 고른다",
+  "요약 박스 뒤 첫 문단은 독자가 이미 아는 것에 대어 한 문장으로 정의하고, 그것이 없을 때 어떻게 하고 있었는지 짧게. 다 쓴 뒤 이 문단을 지워 봐서 글이 그대로 읽히면 지운다",
+  "끝은 한 문단: 조심할 점이나 남은 의문. 어느 글에나 붙는 틀 섹션(정리·출처·자주 하는 오해 셋)은 내용이 있을 때만",
 ] as const;
 
 /** 사람과 모델이 같이 읽는 기준 문서. MCP 가 그대로 내보낸다. */
@@ -286,7 +291,7 @@ const TITLE_EXAMPLES: Record<PostKind, string> = {
 
 /** 사람과 모델이 같이 읽는 기준 문서. 종류마다 제목 예시·구성·흐름만 다르다. */
 export function guide(kind: PostKind = "release"): string {
-  const outline = kind === "concept" ? CONCEPT_OUTLINE : OUTLINE;
+  const plots = PLOTS.filter((p) => p.kinds.includes(kind));
   return `# ${kind === "concept" ? "개념" : "릴리스"} 글 쓰기 기준
 
 ## 문체
@@ -303,6 +308,9 @@ ${FORMAT_RULES.map((v) => `- ${v}`).join("\n")}
 
 ## 그림
 ${VISUAL_RULES.map((v) => `- ${v}`).join("\n")}
+
+### 핵심 장면 고르기 (내용에서 일어나는 움직임)
+${SCENE_VERBS.map((v) => `- ${v.verb}${v.evidence ? "(증거 자리, 핵심 장면으로 쓰지 않는다)" : ""} — ${v.use}. ${v.figure}: ${v.how}`).join("\n")}
 
 배치 예시 (설명 문단 바로 다음 줄, 앞뒤 빈 줄)
 
@@ -345,14 +353,79 @@ ${AVOID.map((a) => `- ${a.label} → ${a.hint}`).join("\n")}
 ## 구성 (필수)
 ${PARTS[kind].map((p) => `- ${p.label}: ${p.how}`).join("\n")}
 
-## 권장 흐름 (소제목 이름이 아니다)
-${outline.map(([h, d], i) => `${i + 1}. ${h} — ${d}`).join("\n")}
+## 글 뼈대 (하나를 고른다, 흐름 이름은 소제목이 아니다)
+${plots.map((p) => `- ${p.name} — ${p.when}. 흐름: ${p.flow.join(" → ")}. 핵심 장면: ${p.verb}`).join("\n")}
+
+${PLOT_COMMON.map((v) => `- ${v}`).join("\n")}
 `;
 }
 
 export const GUIDE = guide("release");
 
 /* ── 점검 ─────────────────────────────────────────────────────────────── */
+
+/** 터미널 화면만 바꾸는 figure — 직접 돌린 결과·활용 예. 자리 이동이나 diff 가 있으면 아니다. */
+const isEvidence = (html: string) => html.includes("fig-term") && !/data-at=|fig-t-add|fig-t-del/.test(html);
+
+/**
+ * 그림 순서 지문 — 그림 블록은 종류, figure 는 move(자리 이동)·diff·term(터미널)·cards·figure.
+ * 장면은 끝에 `*`. 최근 글과 견줘 같은 순서가 되풀이되는지 본다(shapeRepeat).
+ */
+export function figureShape(body: string): string[] {
+  const out: string[] = [];
+  for (const f of findFences(body)) {
+    if (f.file) continue;
+    if (isDiagramLang(f.lang)) {
+      out.push(f.lang + (parseDiagram(f.lang, f.source).diagram?.scene ? "*" : ""));
+    } else if (f.lang === "figure") {
+      const fig = parseFigureHtml(f.source);
+      const h = fig.html;
+      const k = /data-at=/.test(h) ? "move" : /fig-t-add|fig-t-del/.test(h) ? "diff" : h.includes("fig-term") ? "term" : /fig-grid-[234]/.test(h) ? "cards" : "figure";
+      out.push(k + (fig.scene ? "*" : ""));
+    }
+  }
+  return out;
+}
+
+/** 가장 긴 공통 부분열의 길이. */
+function lcs(a: string[], b: string[]): number {
+  const dp = new Array<number>(b.length + 1).fill(0);
+  for (const x of a) {
+    let prev = 0;
+    for (let j = 1; j <= b.length; j++) {
+      const keep = dp[j];
+      dp[j] = x === b[j - 1] ? prev + 1 : Math.max(dp[j], dp[j - 1]);
+      prev = keep;
+    }
+  }
+  return dp[b.length];
+}
+
+/** 겹침이 이 비율 이상이면 같은 순서로 본다. 그림 넷 중 셋이 같은 차례면 걸린다. */
+const SHAPE_SIMILAR = 0.75;
+
+/**
+ * 최근 글과 그림 순서가 거의 같으면 알린다(정보, 막지 않는다). 2026-10-11 그림이 든 11편이
+ * 전후 비교 → 터미널 장면 → 카드 → 지원 표 순서로 굳었다. others 는 비교할 다른 글(최근순).
+ */
+export function shapeRepeat(body: string, others: { title: string; body: string }[]): Issue | null {
+  const me = figureShape(body);
+  if (me.length < 3) return null;
+  let best: { title: string; sim: number; shape: string[] } | null = null;
+  for (const o of others) {
+    const sh = figureShape(o.body);
+    if (sh.length < 3) continue;
+    const sim = lcs(me, sh) / Math.max(me.length, sh.length);
+    if (sim >= SHAPE_SIMILAR && (!best || sim > best.sim)) best = { title: o.title, sim, shape: sh };
+  }
+  return best
+    ? {
+        rule: "shape-repeat",
+        severity: "info",
+        message: `최근 글 "${best.title}"와 그림 순서가 거의 같습니다(이 글 ${me.join(" ")} / 그 글 ${best.shape.join(" ")}). 쓰기 기준의 '글 뼈대'나 핵심 장면 동사를 바꿔 보세요`,
+      }
+    : null;
+}
 
 export interface VoiceInput {
   title: string;
@@ -496,21 +569,35 @@ export function checkVoice(post: VoiceInput, kind: PostKind = "release"): VoiceR
 
   // figure 블록 — 거른 것, 캡션.
   const htmlFigures = findFences(post.body).filter((f) => f.lang === "figure" && !f.file);
-  for (const f of htmlFigures) {
-    const fig = parseFigureHtml(f.source);
+  const parsedFigures = htmlFigures.map((f) => ({ line: f.line, fig: parseFigureHtml(f.source) }));
+  for (const { line, fig } of parsedFigures) {
     if (fig.errors.length) {
-      issues.push({ rule: "diagram-error", severity: "warning", line: f.line, message: `figure 장면을 그릴 수 없습니다: ${fig.errors.join(" / ")}` });
+      issues.push({ rule: "diagram-error", severity: "warning", line, message: `figure 장면을 그릴 수 없습니다: ${fig.errors.join(" / ")}` });
     }
     if (fig.dropped.length) {
-      issues.push({ rule: "figure-dropped", severity: "warning", line: f.line, message: `figure 블록에서 지워진 것: ${fig.dropped.slice(0, 8).join(", ")}. fig-* 클래스와 배치 style 만 씁니다` });
+      issues.push({ rule: "figure-dropped", severity: "warning", line, message: `figure 블록에서 지워진 것: ${fig.dropped.slice(0, 8).join(", ")}. fig-* 클래스와 배치 style 만 씁니다` });
     }
     if (!fig.html.trim()) {
-      issues.push({ rule: "figure-empty", severity: "warning", line: f.line, message: "figure 블록이 비었습니다" });
+      issues.push({ rule: "figure-empty", severity: "warning", line, message: "figure 블록이 비었습니다" });
     } else if (!fig.caption) {
-      issues.push({ rule: "figure-no-caption", severity: "warning", line: f.line, message: "figure 블록에 캡션이 없습니다. 첫 줄에 `caption: …` 을 40자 안팎으로" });
+      issues.push({ rule: "figure-no-caption", severity: "warning", line, message: "figure 블록에 캡션이 없습니다. 첫 줄에 `caption: …` 을 40자 안팎으로" });
     } else if (fig.caption.length > 60) {
-      issues.push({ rule: "figure-long-caption", severity: "warning", line: f.line, message: `캡션이 깁니다(${fig.caption.length}자). 40자 안팎으로: "${excerpt(fig.caption)}"` });
+      issues.push({ rule: "figure-long-caption", severity: "warning", line, message: `캡션이 깁니다(${fig.caption.length}자). 40자 안팎으로: "${excerpt(fig.caption)}"` });
     }
+  }
+
+  // 핵심 장면 — 장면이 터미널 화면(증거 자리)뿐이면 잡는다. 결과만 보이고 움직임은 문장에 남는다.
+  const scenes = [
+    ...drawn.filter((d) => d.result.diagram?.scene).map((d) => ({ line: d.line, evidence: false })),
+    ...parsedFigures.filter(({ fig }) => fig.scene).map(({ line, fig }) => ({ line, evidence: isEvidence(fig.html) })),
+  ];
+  if (scenes.length && scenes.every((s) => s.evidence)) {
+    issues.push({
+      rule: "scene-evidence-only",
+      severity: "warning",
+      line: scenes[0].line,
+      message: `장면이 터미널 화면(증거 자리)뿐입니다. 이 글에서 일어나는 움직임 하나(${SCENE_VERBS.filter((v) => !v.evidence).map((v) => v.verb).join("·")})로 핵심 장면을 만드세요. 쓰기 기준의 '핵심 장면 고르기'`,
+    });
   }
 
   const captures = figures.filter((f) => /\/todo-[^/]*$/.test(f[2]));

@@ -14,7 +14,8 @@ import { Compare, Matrix } from "./diagram/Compare";
 import { Cycle, Flow } from "./diagram/Flow";
 import { Bars, Stats } from "./diagram/Numbers";
 import { Shell } from "./diagram/parts";
-import { BarsScene, FigureScene, SpotScene, TimelineScene } from "./diagram/Scene";
+import { GridBoard } from "./diagram/Grid";
+import { BarsScene, FigureScene, GridScene, SpotScene, TimelineScene } from "./diagram/Scene";
 import { spotPlan } from "@/lib/diagram";
 import { Layers, Tree } from "./diagram/Structure";
 import { Sequence, Timeline } from "./diagram/Timeline";
@@ -41,6 +42,8 @@ function Body({ d }: { d: DiagramData }) {
       return <Stats items={d.items} />;
     case "bars":
       return <Bars items={d.items} unit={d.unit} />;
+    case "grid":
+      return <GridBoard rows={d.rows} axis={d.axis} />;
   }
 }
 
@@ -60,6 +63,7 @@ export function Diagram({ diagram }: { diagram: DiagramData }) {
   if (diagram.scene) {
     if (diagram.kind === "timeline") return <TimelineScene key={sig} caption={diagram.caption} points={diagram.points} />;
     if (diagram.kind === "bars" && diagram.barScene) return <BarsScene key={sig} caption={diagram.caption} unit={diagram.unit} scene={diagram.barScene} />;
+    if (diagram.kind === "grid" && diagram.steps) return <GridScene key={sig} caption={diagram.caption} axis={diagram.axis} steps={diagram.steps} />;
     const { notes, cellStep } = spotPlan(diagram);
     return (
       <SpotScene key={sig} caption={diagram.caption} notes={notes} cellStep={cellStep}>

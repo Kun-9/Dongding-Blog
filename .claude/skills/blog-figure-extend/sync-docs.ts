@@ -14,6 +14,7 @@ if (!existsSync(join(fig, "kits/index.ts"))) {
 const { KITS } = await import(join(fig, "kits/index.ts"));
 const { ANIM_MODULES, LOOPS, LOOP_DOCS } = await import(join(fig, "anims/index.ts"));
 const { SCENE_ATTRS, STATES } = await import(join(fig, "scene-attrs/index.ts"));
+const { SCENE_VERBS } = await import(join(fig, "verbs.ts"));
 const check = process.argv.includes("--check");
 const problems: string[] = [];
 
@@ -32,6 +33,7 @@ for (const k of KITS) {
 for (const d of dup(ANIM_MODULES.map((a: { name: string }) => a.name))) problems.push(`모션 이름이 겹칩니다: ${d}`);
 for (const a of ANIM_MODULES) if (!/^[a-z][a-z-]*$/.test(a.name)) problems.push(`모션 이름 ${a.name} 은 소문자와 - 만 씁니다`);
 for (const d of dup(SCENE_ATTRS.map((a: { name: string }) => a.name))) problems.push(`장면 속성이 겹칩니다: ${d}`);
+for (const d of dup(SCENE_VERBS.map((v: { verb: string }) => v.verb))) problems.push(`장면 동사가 겹칩니다: ${d}`);
 const states = readFileSync(join(fig, "scene-attrs/states.css"), "utf8");
 for (const st of STATES) if (!states.includes(`.is-${st}`)) problems.push(`장면 상태 ${st}: states.css 에 .is-${st} 가 없습니다`);
 // 모듈 폴더의 .css 는 모두 figure.css 에서 불러야 한다.
@@ -70,6 +72,14 @@ const blocks: Record<string, string> = {
     "| --- | --- |",
     ...SCENE_ATTRS.map((a: { doc: { example: string; meaning: string } }) => `| ${tick(a.doc.example)} | ${cell(a.doc.meaning)} |`),
   ].join("\n"),
+  verbs: [
+    "| 움직임 | 그림 | 이런 내용일 때 | 쓰는 법 |",
+    "| --- | --- | --- | --- |",
+    ...SCENE_VERBS.map(
+      (v: { verb: string; figure: string; use: string; how: string; evidence?: boolean }) =>
+        `| ${cell(v.verb)}${v.evidence ? "(증거 자리)" : ""} | ${cell(v.figure)} | ${cell(v.use)} | ${cell(v.how)} |`,
+    ),
+  ].join("\n"),
 };
 
 const skill = join(root, ".claude/skills/blog-figures/SKILL.md");
@@ -96,4 +106,4 @@ if (problems.length) {
   console.error(problems.map((p) => `- ${p}`).join("\n"));
   process.exit(1);
 }
-console.log(`모듈 점검 통과: 키트 ${KITS.length}·모션 ${ANIM_MODULES.length}·장면 속성 ${SCENE_ATTRS.length}`);
+console.log(`모듈 점검 통과: 키트 ${KITS.length}·모션 ${ANIM_MODULES.length}·장면 속성 ${SCENE_ATTRS.length}·장면 동사 ${SCENE_VERBS.length}`);

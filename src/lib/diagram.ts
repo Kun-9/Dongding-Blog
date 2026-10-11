@@ -13,7 +13,8 @@
  * 장면: 머리 줄 `scene: on` 이면 그림이 화면에 붙는 무대가 되어 스크롤 박자마다 다음 단계로
  *       넘어간다(components/prose/diagram/Scene). 단계 설명은 `> 내용` 줄이다.
  *       timeline 은 시점마다 `>` 한 줄(버전 슬라이드), bars 는 `step: 이름` 줄마다 `>` 와 그 단계의
- *       값(자라고·줄고·축 당기기). 나머지 종류는 `>` 가 달린 칸마다 한 단계 — 지금 칸이 빛나고
+ *       값(자라고·줄고·축 당기기), grid 는 `step: 이름` 줄마다 `>` 와 그 단계의 격자(바뀐 칸이 값
+ *       순서로 차오른다). 나머지 종류는 `>` 가 달린 칸마다 한 단계 — 지금 칸이 빛나고
  *       아직 안 온 칸은 흐리다(지난 칸은 그대로). 장면이 아닌 그림의 `>` 줄은 그리지 않는다.
  *
  * next 에 의존하지 않는 순수 모듈이다 — 점검기와 스크립트에서도 쓴다.
@@ -30,6 +31,7 @@ export const DIAGRAM_LANGS = [
   "tree",
   "stats",
   "bars",
+  "grid",
 ] as const;
 export type DiagramKind = (typeof DIAGRAM_LANGS)[number];
 
@@ -110,6 +112,21 @@ export interface BarScene {
   steps: { name: string; note: string; zoom: boolean; values: number[][] }[];
 }
 
+/** grid 칸 하나. `#` 은 벽, `.` 은 빈 칸(글자 ""). */
+export interface GridCell {
+  text: string;
+  wall: boolean;
+  accent: boolean;
+  muted: boolean;
+}
+
+/** grid 장면의 단계 — 단계마다 격자 전체. 바뀐 칸만 움직인다. */
+export interface GridStep {
+  name: string;
+  note: string;
+  rows: GridCell[][];
+}
+
 export type Diagram = { caption?: string; scene?: boolean } & (
   | { kind: "flow"; nodes: Item[] }
   | { kind: "cycle"; nodes: Item[]; center?: string }
@@ -121,6 +138,7 @@ export type Diagram = { caption?: string; scene?: boolean } & (
   | { kind: "tree"; roots: TreeNode[] }
   | { kind: "stats"; items: Stat[] }
   | { kind: "bars"; unit?: string; items: Bar[]; barScene?: BarScene }
+  | { kind: "grid"; axis: boolean; rows: GridCell[][]; steps?: GridStep[] }
 );
 
 export interface ParseResult {
@@ -172,7 +190,10 @@ function lengths(errors: string[], kind: string, labels: string[], max: number, 
   });
 }
 
-const OPTION_RE = /^(caption|layout|actors|unit|center|scene|parts|ratio)\s*:\s*(.*)$/i;
+const OPTION_RE = /^(caption|layout|actors|unit|center|scene|parts|ratio|axis)\s*:\s*(.*)$/i;
+
+/** 머리 줄 옵션 중 한 종류만 읽는 것. 다른 종류에서는 내용 줄로 둔다. */
+const OWN_OPTION: Record<string, DiagramKind> = { parts: "bars", ratio: "bars", axis: "grid" };
 
 const YES = new Set(["o", "O", "✓", "✔", "yes", "y", "있음", "지원"]);
 const NO = new Set(["x", "X", "✕", "✗", "no", "n", "-", "—", "없음", "미지원"]);
@@ -214,8 +235,9 @@ export function parseDiagram(kind: DiagramKind, source: string): ParseResult {
       continue;
     }
     const opt = head ? line.trim().match(OPTION_RE) : null;
-    // parts·ratio 는 bars 의 머리 줄이다. 다른 그림에서는 내용 줄로 둔다.
-    if (opt && !(kind !== "bars" && /^(parts|ratio)$/i.test(opt[1]))) {
+    // parts·ratio 는 bars, axis 는 grid 의 머리 줄이다. 다른 그림에서는 내용 줄로 둔다.
+    const owner = opt ? OWN_OPTION[opt[1].toLowerCase()] : undefined;
+    if (opt && (!owner || owner === kind)) {
       opts[opt[1].toLowerCase()] = opt[2].trim();
       continue;
     }
@@ -240,8 +262,8 @@ export function parseDiagram(kind: DiagramKind, source: string): ParseResult {
   const done = (d: Diagram): ParseResult => {
     if (scene) {
       d.scene = true;
-      // timeline·bars 는 자기 규칙으로 검사했다. 나머지는 설명이 달린 칸이 단계다.
-      if (d.kind !== "timeline" && d.kind !== "bars") {
+      // timeline·bars·grid 는 자기 규칙으로 검사했다. 나머지는 설명이 달린 칸이 단계다.
+      if (d.kind !== "timeline" && d.kind !== "bars" && d.kind !== "grid") {
         const n = sceneCells(d).filter((c) => c.detail).length;
         if (n < 2) errors.push(`${d.kind} 장면은 \`> 설명\` 이 달린 칸이 둘 이상이어야 합니다(지금 ${n})`);
         if (n > 8) errors.push(`${d.kind} 장면의 단계(\`> 설명\` 이 달린 칸)는 8개까지입니다(지금 ${n})`);
@@ -441,6 +463,12 @@ export function parseDiagram(kind: DiagramKind, source: string): ParseResult {
       lengths(errors, "bars", items.map((b) => b.label), 20, "짧게");
       return done({ kind, caption, unit: opts.unit || undefined, items });
     }
+
+    case "grid": {
+      const axis = /^(on|true|yes|1)$/i.test(opts.axis ?? "");
+      const steps = gridSteps(raw, details, scene, errors);
+      return done({ kind, caption, axis, rows: steps[0]?.rows ?? [], steps: scene ? steps : undefined });
+    }
   }
 }
 
@@ -469,6 +497,8 @@ export function sceneCells(d: Diagram): (Mark & { label: string })[] {
       return d.items;
     case "bars":
       return d.items;
+    case "grid":
+      return [];
   }
 }
 
@@ -545,6 +575,73 @@ function barScene(raw: string[], details: Map<number, string>, opts: Record<stri
   if (opts.ratio && rows.length < 2) errors.push("ratio 는 행이 둘 이상일 때 씁니다");
   if (steps.length && steps.every((s) => s.values.every((v) => v.reduce((a, b) => a + b, 0) === 0))) errors.push("bars 값이 모두 0 입니다");
   return { parts, ratio: opts.ratio || undefined, rows, steps };
+}
+
+/** grid 칸 — `#` 벽, `.` 빈 칸, 그 밖은 4자까지의 글자. 끝에 `*` 강조, `~` 흐리게. */
+const GRID_CELL = /^([^\s*~]{1,4})([*~]{0,2})$/;
+const GRID_MAX = 12;
+
+function gridRow(line: string, errors: string[]): GridCell[] | null {
+  const out: GridCell[] = [];
+  for (const tok of line.trim().split(/\s+/)) {
+    const m = tok.match(GRID_CELL);
+    if (!m) {
+      errors.push(`grid 칸 "${short(tok, 8)}" 은 4자까지, 공백 없이 씁니다(벽 #, 빈 칸 .)`);
+      return null;
+    }
+    const wall = m[1] === "#";
+    out.push({ text: wall || m[1] === "." ? "" : m[1], wall, accent: m[2].includes("*"), muted: m[2].includes("~") });
+  }
+  return out;
+}
+
+/**
+ * grid — 줄마다 격자 한 줄. 장면이면 `step: 이름` 줄마다 `>` 설명과 그 단계의 격자 전체를 쓴다.
+ * 격자를 비운 단계는 앞 단계 격자를 그대로 쓴다(설명만 바뀐다). 정지 그림은 단계 하나로 돌려준다.
+ */
+function gridSteps(raw: string[], details: Map<number, string>, scene: boolean, errors: string[]): GridStep[] {
+  const steps: GridStep[] = [];
+  let rows: GridCell[][] | null = null;
+  const close = () => {
+    const s = steps[steps.length - 1];
+    if (s && rows) s.rows = rows;
+    else if (s && steps.length > 1) s.rows = steps[steps.length - 2].rows;
+    rows = null;
+  };
+  for (const [i, line] of raw.entries()) {
+    const t = line.trim();
+    const st = t.match(/^step\s*:\s*(.+)$/i);
+    if (st) {
+      if (!scene) {
+        errors.push("grid 의 `step:` 줄은 `scene: on` 과 함께 씁니다");
+        break;
+      }
+      close();
+      steps.push({ name: st[1].trim(), note: details.get(i) ?? "", rows: [] });
+      if (!details.has(i)) errors.push(`grid 장면의 단계 "${short(st[1].trim())}" 바로 아래에 \`> 설명\` 줄이 있어야 합니다`);
+      continue;
+    }
+    if (scene && !steps.length) {
+      errors.push("grid 장면은 `step: 이름` 줄로 시작합니다");
+      break;
+    }
+    if (details.has(i)) errors.push(`grid 의 설명은 ${scene ? "`step:` 줄 바로 아래에" : "장면(`scene: on`)에서만"} 씁니다`);
+    if (!scene && !steps.length) steps.push({ name: "", note: "", rows: [] });
+    const row = gridRow(t, errors);
+    if (row) (rows ??= []).push(row);
+  }
+  close();
+  if (scene) count(errors, "grid 장면", steps.length, 2, 8, "단계");
+  const first = steps[0]?.rows ?? [];
+  if (!first.length) errors.push(scene ? "grid 장면의 첫 단계에 격자가 있어야 합니다" : "grid 에 격자 줄이 없습니다");
+  const cols = first[0]?.length ?? 0;
+  if (first.length > GRID_MAX || cols > GRID_MAX) errors.push(`grid 는 ${GRID_MAX}×${GRID_MAX} 칸까지입니다(지금 ${first.length}×${cols})`);
+  for (const s of steps) {
+    if (s.rows.length !== first.length || s.rows.some((r) => r.length !== cols)) {
+      errors.push(`grid ${scene ? `"${short(s.name)}" 단계의 ` : ""}격자가 ${first.length}줄 × ${cols}칸이어야 합니다(줄마다 칸 수가 같게)`);
+    }
+  }
+  return steps;
 }
 
 /** 본문에서 그림 블록(```figure 포함)을 찾아 낸다. 점검기가 개수·오류를 센다. */

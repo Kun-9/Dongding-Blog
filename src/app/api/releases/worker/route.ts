@@ -20,7 +20,7 @@ import { dbAdmin } from "@/lib/supabase";
 import { revalidateContent } from "@/lib/api-shared";
 import { syncLinkMeta } from "@/lib/link-meta";
 import { postExists, toRow, PostBodySchema } from "@/app/api/posts/_shared";
-import { applyReplacements, loadPost, loadTaxonomy } from "@/lib/mcp-blog";
+import { applyReplacements, checkVoiceWithHistory, loadPost, loadTaxonomy } from "@/lib/mcp-blog";
 import { checkVoice, guide, releaseDay } from "@/lib/voice";
 import { WORKER_PROMPT } from "@/lib/release-worker";
 import { readPage } from "@/lib/trends";
@@ -250,10 +250,10 @@ export async function POST(req: Request) {
       case "check": {
         if (input.slug) {
           const post = await loadPost(input.slug);
-          return post ? ok(checkVoice(post, input.kind ?? (await kindOfSlug(input.slug)))) : bad("없는 글", 404);
+          return post ? ok(await checkVoiceWithHistory(post, input.kind ?? (await kindOfSlug(input.slug)))) : bad("없는 글", 404);
         }
         if (!input.body) return bad("slug 나 body 중 하나는 있어야 한다");
-        return ok(checkVoice({ title: input.title ?? "", summary: "", body: input.body }, input.kind));
+        return ok(await checkVoiceWithHistory({ title: input.title ?? "", summary: "", body: input.body }, input.kind));
       }
 
       case "image": {

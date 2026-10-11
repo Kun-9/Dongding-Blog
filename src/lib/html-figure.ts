@@ -9,7 +9,7 @@
  * - class 는 `fig-` 로 시작하는 것만
  * - style 은 배치 속성(grid·flex·gap·폭·정렬)만. 색·글꼴·위치는 지운다
  * - 모션은 `data-anim`·`data-loop` 의 정해진 값과 숫자 `data-from` 만
- * - 장면 속성(`data-step` 등)은 모듈마다 정한 값 모양만(lib/figure/scene-attrs)
+ * - 장면 속성(`data-step`·`data-at` 등)은 모듈마다 정한 값 모양만(lib/figure/scene-attrs)
  *
  * 키트·모션·장면 속성의 목록은 lib/figure 의 모듈이 정한다. 여기는 그 목록으로 거른다.
  *
@@ -20,7 +20,7 @@
  */
 
 import { ANIMS, LOOPS } from "./figure/anims";
-import { SCENE_ATTRS, badSteps, sceneAttr } from "./figure/scene-attrs";
+import { SCENE_ATTRS, badSteps, sceneAttr, sceneChecks } from "./figure/scene-attrs";
 
 const TAGS = new Set([
   "div", "span", "p", "ul", "ol", "li", "strong", "em", "b", "i", "code", "small",
@@ -211,6 +211,7 @@ export function parseFigureHtml(source: string): FigureHtml {
     if (steps.length < 2 || steps.length > 8) errors.push(`figure 장면은 \`step:\` 이 2~8개입니다(지금 ${steps.length})`);
     const bad = steps.length ? badSteps(html, steps.length) : [];
     if (bad.length) errors.push(`figure 장면의 단계 번호는 1~${steps.length} 안에서 앞이 작게 씁니다: ${bad.slice(0, 4).join(", ")}`);
+    errors.push(...sceneChecks(html));
     steps.forEach((s) => {
       if (!s.note) errors.push(`figure 장면의 단계 "${s.name.slice(0, 14)}" 바로 아래에 \`> 설명\` 줄이 있어야 합니다`);
       else if (s.note.length > 200) errors.push(`figure 장면의 설명 "${s.note.slice(0, 20)}…" 가 깁니다(200자까지)`);

@@ -17,6 +17,7 @@ import { identify } from "@/lib/mcp-auth";
 import { syncLinkMeta } from "@/lib/link-meta";
 import { postExists } from "@/app/api/posts/_shared";
 import {
+  checkVoiceWithHistory,
   applyReplacements,
   buildContext,
   loadPost,
@@ -45,7 +46,7 @@ import {
   type TopicRow,
 } from "@/lib/release-topics";
 import { STAGES, nextStage } from "@/lib/release-stages";
-import { guide, checkVoice, releaseDay } from "@/lib/voice";
+import { guide, releaseDay } from "@/lib/voice";
 
 const VISIBILITY = z.enum(["published", "private", "draft", "review"]);
 const SEVERITY = z.enum(["error", "warning", "info"]);
@@ -632,10 +633,10 @@ const handler = createMcpHandler(
         if (slug) {
           const post = await loadPost(slug);
           if (!post) return fail(`'${slug}' 글이 없습니다.`);
-          return json(checkVoice(post, kind ?? (await kindOfSlug(slug))));
+          return json(await checkVoiceWithHistory(post, kind ?? (await kindOfSlug(slug))));
         }
         if (!body) return fail("slug 나 body 중 하나는 있어야 합니다.");
-        return json(checkVoice({ title: title ?? "", summary: "", body }, kind));
+        return json(await checkVoiceWithHistory({ title: title ?? "", summary: "", body }, kind));
       },
     );
 

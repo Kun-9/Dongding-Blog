@@ -9,8 +9,9 @@
  * 들어오면 첫 단계로 움직인다. 움직임 줄이기 설정이면 단계만 바뀌고 움직이지 않는다.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import type { BarScene, TimelinePoint } from "@/lib/diagram";
+import type { BarScene, GridStep, TimelinePoint } from "@/lib/diagram";
 import { SCENE_ATTRS, type SceneCtx } from "@/lib/figure/scene-attrs";
+import { cellClass, GridBoard } from "./Grid";
 import { cx } from "./parts";
 
 const clamp = (x: number, lo = 0, hi = 1) => Math.min(hi, Math.max(lo, x));
@@ -402,6 +403,58 @@ export function BarsScene({ caption, unit, scene }: { caption?: string; unit?: s
   );
 }
 
+/* ── grid ─────────────────────────────────────────────────────────────── */
+
+/** 칸 글자의 숫자 값 — 바뀐 칸이 차오르는 순서. 숫자가 아니면 읽는 순서대로 뒤에. */
+const orderOf = (t: string) => {
+  const v = Number(t.replace(/,/g, ""));
+  return t && Number.isFinite(v) ? v : Number.POSITIVE_INFINITY;
+};
+
+/**
+ * grid 장면 — 단계마다 격자 전체. 바뀐 칸만 숫자 순서(같으면 읽는 순서)로 0.07초씩 늦게
+ * 튀어 오른다. BFS 면 거리 순서로 번진다. 시작 전에는 벽만 보이고 칸은 비어 있다.
+ */
+export function GridScene({ caption, axis, steps }: { caption?: string; axis: boolean; steps: GridStep[] }) {
+  const box = useRef<HTMLDivElement>(null);
+  const paint = (s: number, instant: boolean) => {
+    const root = box.current;
+    if (!root) return;
+    const reduce = instant || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const rows = steps[Math.max(0, s)].rows;
+    const changed: { el: HTMLElement; text: string; cls: string; o: number; i: number }[] = [];
+    root.querySelectorAll<HTMLElement>(".dg-gc").forEach((el, i) => {
+      const c = rows[Number(el.dataset.r)][Number(el.dataset.c)];
+      const cell = s < 0 && !c.wall ? { ...c, text: "", accent: false, muted: false } : c;
+      const cls = cellClass(cell);
+      if (el.textContent === cell.text && el.className.replace(" is-new", "") === cls) return;
+      changed.push({ el, text: cell.text, cls, o: orderOf(cell.text), i });
+    });
+    changed.sort((a, b) => a.o - b.o || a.i - b.i);
+    const gap = Math.min(70, 700 / Math.max(1, changed.length));
+    changed.forEach(({ el, text, cls }, k) => {
+      el.textContent = text;
+      el.className = cls;
+      if (reduce || !text) return;
+      el.style.setProperty("--d", `${Math.round(k * gap)}ms`);
+      void el.offsetWidth;
+      el.classList.add("is-new");
+    });
+  };
+  return (
+    <Stage
+      label={caption ?? steps.map((x) => x.name).join(", ")}
+      head={caption ? <div className="sc-ttl">{caption}</div> : null}
+      notes={steps.map((x) => ({ k: x.name, text: x.note }))}
+      onStep={paint}
+    >
+      <div ref={box} className="sc-grid">
+        <GridBoard rows={steps[0].rows} axis={axis} still />
+      </div>
+    </Stage>
+  );
+}
+
 /* ── 그 밖의 그림 블록 — 칸마다 한 단계 ─────────────────────────────────── */
 
 /**
@@ -461,22 +514,43 @@ export function FigureScene({ caption, html, steps }: { caption?: string; html: 
   // innerHTML 을 통째로 다시 써서 첫 paint 가 입힌 단계 상태가 지워지고, 다음 단계가 올 때까지
   // fig-layer 의 화면들이 한꺼번에 겹쳐 보인다(2026-10-09 Haiku 5.5 글).
   const inner = useMemo(() => ({ __html: html }), [html]);
+  const cur = useRef(-1);
+  const ctxOf = (instant: boolean): SceneCtx => ({
+    instant: instant || window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    original(el) {
+      if (!first.current.has(el)) first.current.set(el, { v: el.style.getPropertyValue("--v"), text: el.textContent ?? "" });
+      return first.current.get(el)!;
+    },
+    timers: timers.current,
+  });
   const paint = (s: number, instant: boolean) => {
     const root = box.current;
     if (!root) return;
+    cur.current = s;
     if (!ready) setReady(true);
-    const ctx: SceneCtx = {
-      instant: instant || window.matchMedia("(prefers-reduced-motion: reduce)").matches,
-      original(el) {
-        if (!first.current.has(el)) first.current.set(el, { v: el.style.getPropertyValue("--v"), text: el.textContent ?? "" });
-        return first.current.get(el)!;
-      },
-      timers: timers.current,
-    };
+    // 떠 있는 요소(data-at)는 data-ready 로 판 위에 뜬 뒤에 자리를 잰다. React 가 붙이기 전에 먼저 붙인다.
+    root.setAttribute("data-ready", "");
+    const ctx = ctxOf(instant);
     // 처음 값은 무엇이든 바꾸기 전에 적어 둔다.
     root.querySelectorAll<HTMLElement>(SCENE_ATTRS.map((a) => `[${a.name}]`).join(",")).forEach((el) => ctx.original(el));
     for (const a of SCENE_ATTRS) root.querySelectorAll<HTMLElement>(`[${a.name}]`).forEach((el) => a.apply(el, s + 1, ctx));
   };
+  const ctxRef = useRef(ctxOf);
+  useEffect(() => {
+    ctxRef.current = ctxOf;
+  });
+  // 자리를 재는 속성(layout)은 판 크기가 바뀌면 지금 단계로 다시 잰다.
+  useEffect(() => {
+    const root = box.current;
+    const attrs = SCENE_ATTRS.filter((a) => a.layout);
+    if (!root || !attrs.some((a) => root.querySelector(`[${a.name}]`))) return;
+    const ro = new ResizeObserver(() => {
+      if (!root.hasAttribute("data-ready")) return;
+      for (const a of attrs) root.querySelectorAll<HTMLElement>(`[${a.name}]`).forEach((el) => a.apply(el, cur.current + 1, ctxRef.current(true)));
+    });
+    ro.observe(root);
+    return () => ro.disconnect();
+  }, [html]);
   return (
     <Stage
       label={caption ?? steps.map((x) => x.name).join(", ")}

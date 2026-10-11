@@ -15,3 +15,25 @@
     0 10px 26px -12px color-mix(in oklab, var(--callout-tip-glyph) 70%, transparent);
 }
 .sc-html .fig-bar::after { transition: width 0.8s cubic-bezier(0.2, 0.8, 0.2, 1); }
+/* 실패·꺼짐·막힘(on.ts 의 bad) — 상자는 붉은 테두리와 바탕, 글자 칸은 붉은 바탕 */
+.sc-html .is-bad {
+  border-color: var(--danger);
+  background-color: color-mix(in oklab, var(--danger) 11%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--danger) 22%, transparent);
+}
+/* 터미널 안의 취소선은 지운 줄이다(diff) — fig-t-del 과 같은 모양 */
+.sc-html .fig-term-body .is-strike { opacity: 0.75; background: color-mix(in oklab, var(--code-number) 16%, transparent); text-decoration-color: var(--code-number); }
+
+/* data-at — 떠 있는 요소. JS 가 붙기 전에는 글쓴이가 둔 자리(보통 첫 자리) 그대로 보이고,
+   붙은 뒤에는 판 위에 떠서 단계마다 data-spot 자리 한가운데로 미끄러진다(at.ts). */
+.sc-html { position: relative; }
+.sc-html[data-ready] [data-at] {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 2;
+  margin: 0;
+  transition: translate 0.8s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.45s, box-shadow 0.45s, border-color 0.45s, background-color 0.45s, color 0.45s;
+}
+/* diff 의 새 줄은 옛 줄에 줄이 그어진 다음에 들어온다 */
+.sc-html .fig-term-body .fig-t-add[data-step] { transition-delay: 0.3s; }
