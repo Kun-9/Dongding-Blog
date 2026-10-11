@@ -1,6 +1,6 @@
 /**
  * 트렌드 신호 — 트렌드 탐색기(release-scout.ts 의 TREND_PROMPT)가 탐색기 API 의
- * `signals`·`volume` 액션으로 읽는다.
+ * `signals`·`volume` 액션으로, 도구 글감 탐색기(TOOLS_PROMPT)가 `tools` 액션으로 읽는다.
  *
  * 외부 소스는 서버가 대신 부른다. 루틴 환경은 허용 목록 밖 사이트를 열지 못한다.
  * 키 없이 열리는 소스만 쓴다. 소스 하나가 막혀도 나머지는 돌려준다.
@@ -51,9 +51,9 @@ const href = (xml: string) => xml.match(/<link[^>]*href=["']([^"']+)["']/)?.[1] 
 
 /* ── 소스 ─────────────────────────────────────────────────────────────── */
 
-async function hn() {
-  const since = Math.floor(Date.now() / 1000) - 3 * DAY;
-  const q = new URLSearchParams({ tags: "story", numericFilters: `created_at_i>${since}`, hitsPerPage: "40" });
+async function hn(tags = "story", days = 3) {
+  const since = Math.floor(Date.now() / 1000) - days * DAY;
+  const q = new URLSearchParams({ tags, numericFilters: `created_at_i>${since}`, hitsPerPage: "40" });
   const { hits } = (await (await get(`https://hn.algolia.com/api/v1/search?${q}`)).json()) as {
     hits: { title: string; url: string | null; points: number; num_comments: number; created_at: string; objectID: string }[];
   };
@@ -140,8 +140,75 @@ async function geeknews() {
     .map((e, i) => ({ rank: i + 1, title: tag(e, "title"), url: href(e), at: tag(e, "updated") }));
 }
 
+/* ── 써 볼 거리 ── 도구 글감 탐색기(TOOLS_PROMPT)가 `tools` 액션으로 읽는다. ── */
+
+type SkillRow = { source: string; skillId: string; installs: number; installsYesterday?: number; change?: number; isOfficial?: boolean };
+
+/**
+ * skills.sh 순위. 공개 API 가 없어 페이지에 박힌 데이터를 읽는다. 한 레포의 스킬
+ * 여러 개가 줄줄이 오르므로 레포(source) 단위로 묶는다. hot 은 어제보다 는 설치,
+ * trending 은 24시간 설치 수다.
+ */
+async function skillsBoard(tab: "hot" | "trending") {
+  const html = (await (await get(`https://skills.sh/${tab}`)).text()).replace(/\\"/g, '"');
+  const rows = (html.match(/\{"source":"[^"]+","skillId":[^{}]*\}/g) ?? []).flatMap((s) => {
+    try {
+      return [JSON.parse(s) as SkillRow];
+    } catch {
+      return [];
+    }
+  });
+  if (!rows.length) throw new Error("순위 데이터를 찾지 못함(페이지 구조가 바뀌었을 수 있음)");
+  const repos = new Map<string, { source: string; skills: string[]; installs: number; change: number; official: boolean }>();
+  for (const r of rows) {
+    const g = repos.get(r.source) ?? { source: r.source, skills: [], installs: 0, change: 0, official: false };
+    // 페이지에 같은 데이터가 두 번 실린다.
+    if (g.skills.includes(r.skillId)) continue;
+    g.skills.push(r.skillId);
+    g.installs += r.installs;
+    g.change += r.change ?? 0;
+    g.official ||= !!r.isOfficial;
+    repos.set(r.source, g);
+  }
+  return [...repos.values()].slice(0, 20).map((g, i) => {
+    const gh = /^[\w.-]+\/[\w.-]+$/.test(g.source);
+    return {
+      rank: i + 1,
+      source: g.source,
+      skills: g.skills.slice(0, 5),
+      more: Math.max(0, g.skills.length - 5),
+      installs: g.installs,
+      ...(tab === "hot" ? { change: g.change } : {}),
+      official: g.official,
+      repo: gh ? `https://github.com/${g.source}` : null,
+      page: gh ? `https://skills.sh/${g.source}` : null,
+    };
+  });
+}
+
+/** GitHub 트렌딩(오늘). 새 레포만 보는 github() 와 달리 오래된 레포가 다시 뜨는 것도 잡힌다. */
+async function githubTrending() {
+  const html = await (await get("https://github.com/trending?since=daily")).text();
+  const num = (s?: string) => (s ? Number(s.replace(/,/g, "")) : null);
+  return html
+    .split('<article class="Box-row')
+    .slice(1)
+    .map((a, i) => {
+      const repo = a.match(/<h2[\s\S]*?href="\/([^"]+)"/)?.[1] ?? "";
+      return {
+        rank: i + 1,
+        repo,
+        description: decode((a.match(/<p class="col-9[^"]*">([\s\S]*?)<\/p>/)?.[1] ?? "").replace(/<[^>]+>/g, "")).slice(0, 200) || null,
+        language: a.match(/itemprop="programmingLanguage">([^<]+)</)?.[1] ?? null,
+        stars: num(a.match(/\/stargazers"[\s\S]*?<\/svg>\s*([\d,]+)/)?.[1]),
+        today: num(a.match(/([\d,]+) stars today/)?.[1]),
+        url: `https://github.com/${repo}`,
+      };
+    });
+}
+
 const SOURCES = {
-  hn,
+  hn: () => hn(),
   reddit,
   github,
   huggingface,
@@ -150,19 +217,30 @@ const SOURCES = {
   geeknews,
 };
 
+const TOOL_SOURCES = {
+  skills_hot: () => skillsBoard("hot"),
+  skills_trending: () => skillsBoard("trending"),
+  gh_trending: githubTrending,
+  gh_new: github,
+  show_hn: () => hn("show_hn", 7),
+};
+
 const reason = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
-export async function collectSignals() {
-  const names = Object.keys(SOURCES) as (keyof typeof SOURCES)[];
-  const settled = await Promise.allSettled(names.map((n) => SOURCES[n]()));
-  const signals: Partial<Record<keyof typeof SOURCES, unknown>> = {};
-  const errors: Partial<Record<keyof typeof SOURCES, string>> = {};
+async function collect<K extends string>(sources: Record<K, () => Promise<unknown>>) {
+  const names = Object.keys(sources) as K[];
+  const settled = await Promise.allSettled(names.map((n) => sources[n]()));
+  const signals: Partial<Record<K, unknown>> = {};
+  const errors: Partial<Record<K, string>> = {};
   settled.forEach((r, i) => {
     if (r.status === "fulfilled") signals[names[i]] = r.value;
     else errors[names[i]] = reason(r.reason);
   });
   return { at: new Date().toISOString(), signals, errors };
 }
+
+export const collectSignals = () => collect(SOURCES);
+export const collectToolSignals = () => collect(TOOL_SOURCES);
 
 /* ── 키워드 추이 ──────────────────────────────────────────────────────── */
 
