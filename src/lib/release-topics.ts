@@ -40,6 +40,8 @@ export interface TopicRow {
   /** 버린 시각. 있으면 droppedReason 이 버린 이유이고, 다시 펼칠 수 없다. */
   discardedAt: string | null;
   updatedAt: string;
+  /** 주제를 만든(글감을 찾은) 시각. 맡기기 전 주제가 최신인지 가늠한다. */
+  createdAt: string;
   candidates: TopicCandidate[];
   /** AI 작업 상태. null 이면 맡긴 일이 없다. */
   ai: {
@@ -106,6 +108,7 @@ type DbTopic = {
   post_slug: string | null;
   dropped_reason: string | null;
   updated_at: string;
+  created_at: string;
   ai_status?: string | null;
   ai_until?: string | null;
   ai_message?: string | null;
@@ -120,7 +123,7 @@ type DbTopic = {
 };
 
 const BASE_COLUMNS =
-  "id, title, angle, stage, checks, post_slug, dropped_reason, updated_at";
+  "id, title, angle, stage, checks, post_slug, dropped_reason, updated_at, created_at";
 const AI_COLUMNS = `${BASE_COLUMNS}, ai_status, ai_until, ai_message, ai_updated_at, notes`;
 const TOPIC_COLUMNS = `${AI_COLUMNS}, ai_log, ai_started_at`;
 const LOCAL_COLUMNS = `${TOPIC_COLUMNS}, ai_local`;
@@ -159,6 +162,7 @@ function toRow(t: DbTopic, candidateIds: string[]): TopicRow {
     droppedReason: t.dropped_reason,
     discardedAt: t.discarded_at ?? null,
     updatedAt: t.updated_at,
+    createdAt: t.created_at,
     candidates: candidateIds.map(splitCandidateId),
     ai: {
       status: (t.ai_status ?? null) as AiStatus | null,

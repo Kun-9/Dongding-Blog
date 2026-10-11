@@ -596,8 +596,9 @@ const CHIP: Record<ChipTone, string> = {
   plain: "font-medium text-ink-subtle",
 };
 
-/** "2026-10-07T…" → "10.07" */
-const monthDay = (iso: string) => iso.slice(5, 10).replace("-", ".");
+/** "2026-10-07T…" → "10.07". DB 시각은 UTC 라 한국 날짜로 바꿔 자른다. */
+const monthDay = (iso: string) =>
+  new Date(iso).toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" }).slice(5).replace("-", ".");
 
 /** 상태는 이 칩 하나로만 말한다. */
 function chipOf(t: TopicRow): { label: string; tone: ChipTone } {
@@ -614,7 +615,8 @@ function chipOf(t: TopicRow): { label: string; tone: ChipTone } {
   }
   if (t.ai.status === "failed") return { label: "AI 멈춤", tone: "danger" };
   if (next.key === "published") return { label: "발행 대기", tone: "warning" };
-  if (t.stage === "picked") return { label: "시작 전", tone: "muted" };
+  // 손대기 전 주제는 찾은 날을 단다. 오래된 글감인지 맡기기 전에 본다.
+  if (t.stage === "picked") return { label: `${monthDay(t.createdAt)} 찾음`, tone: "muted" };
   return { label: `${stageLabel(t.stage)}까지 끝남`, tone: "muted" };
 }
 
