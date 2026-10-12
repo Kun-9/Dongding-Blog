@@ -43,7 +43,7 @@ curl -sS -X POST "$APP/api/releases/worker/" -H "Authorization: Bearer $TOKEN" -
 
 | action | 본문 | 하는 일 |
 | --- | --- | --- |
-| claim | id? | 맡긴 일 하나를 집는다. id 를 주면 그 주제만. \`{"work": 주제 | null}\` |
+| claim | id? | 맡긴 일 하나를 집는다. id 를 주면 그 주제만. \`{"work": 주제 | null}\`. id 로 집다가 응답을 못 받았으면 같은 id 로 다시 부른다(집은 뒤 진행 기록이 없으면 그 주제를 그대로 준다) |
 | report | id, message | 진행 중 한 줄 상황(어드민 카드에 보임). 어드민에서 취소했으면 에러 |
 | notes | id, markdown, mode(append·replace) | 작업 노트에 쓴다 |
 | advance | id, note, postSlug? | 다음 단계를 끝냈다고 기록한다 |

@@ -504,6 +504,7 @@ const handler = createMcpHandler(
         description:
           "어드민에서 'AI에게 맡기기'를 '예약'으로 맡긴 작업 하나를 집는다(바로 실행으로 맡긴 것은 클라우드 루틴 몫이라 집지 않는다). " +
           "집은 주제는 running 이 되고, 주제 전체(단계·근거·노트·글감·until)를 돌려준다. 할 일이 없으면 { work: null }. " +
+          "id 로 집다가 응답을 못 받았으면 같은 id 로 다시 부른다 — 집은 뒤 진행 기록이 없으면 그 주제를 그대로 돌려준다. " +
           "로컬 실행기(scripts/release-worker.sh)가 맨 먼저 부른다. 한 번에 하나만 집을 것.",
         inputSchema: z.object({
           id: z

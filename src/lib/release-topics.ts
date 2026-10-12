@@ -740,6 +740,20 @@ export async function claimAiWork(id?: number, local = false): Promise<TopicRow 
       return getTopic(c.id);
     }
   }
+  // id 로 집었는데 이미 running 이고 로그가 집은 줄 하나뿐이면, 앞 집기는 서버에서
+  // 끝났지만 응답이 호출자에게 닿지 못한 것이다(호출 중단·재시도). null 을 주면
+  // 아무도 진행하지 않는 running 으로 2시간 묶이니 그 주제를 그대로 돌려준다.
+  // ponytail: 같은 id 를 두 세션에 맡기면 첫 보고 전까지는 둘 다 받는다. 그런 일이 생기면 집은 쪽 식별을 더한다.
+  if (id !== undefined) {
+    const t = await getTopic(id).catch(() => null);
+    const orphan =
+      t?.ai.status === "running" &&
+      t.ai.local === local &&
+      t.droppedReason === null &&
+      t.ai.log.length === 1 &&
+      t.ai.log[0].kind === "start";
+    if (orphan) return t;
+  }
   return null;
 }
 
