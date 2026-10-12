@@ -40,6 +40,7 @@ import {
   dropTopic,
   slugDiscarded,
   editTopic,
+  getTopic,
   getTopics,
   revertTopic,
   kindOfSlug,
@@ -700,16 +701,25 @@ const handler = createMcpHandler(
           angle: z.string().max(300).nullable().optional(),
           candidateIds: z.array(z.string()).max(50).optional(),
           revert: z.boolean().optional().describe("마지막 단계 취소"),
+          unpublish: z
+            .boolean()
+            .optional()
+            .describe("발행된 주제를 되돌릴 때만 true. 글이 draft 로 내려가 방문자에게 안 보인다. 사용자가 발행 취소를 말했을 때만"),
           dropReason: z.string().min(1).max(300).nullable().optional(),
         }),
       },
-      async ({ id, title, angle, candidateIds, revert, dropReason }) =>
+      async ({ id, title, angle, candidateIds, revert, unpublish, dropReason }) =>
         topicCall(async () => {
           let t: TopicRow | undefined;
           if (title !== undefined || angle !== undefined || candidateIds) {
             t = await editTopic(id, { title, angle, candidateIds });
           }
-          if (revert) t = await revertTopic(id);
+          if (revert) {
+            // 2026-10-12 review→draft 로 알고 부른 revert 가 발행된 주제를 내려 공개 글이 draft 가 됐다.
+            if ((await getTopic(id)).stage === "published" && !unpublish)
+              throw new TopicError("발행된 주제다. 되돌리면 글이 draft 로 내려간다. 사용자가 발행 취소를 말했을 때만 unpublish: true 로 다시 부를 것");
+            t = await revertTopic(id);
+          }
           if (dropReason !== undefined) t = await dropTopic(id, dropReason);
           if (!t) throw new TopicError("바꿀 항목이 없다");
           return t;
