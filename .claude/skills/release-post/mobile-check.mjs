@@ -191,7 +191,12 @@ try {
       for (const m of await page.evaluate(scan)) if (!found.has(m)) found.set(m, theme);
       if (shots) {
         const now = await page.evaluate(() => [...document.querySelectorAll(".sc-note.on")].map((e) => e.textContent).join("|"));
-        if (now && now !== note) await page.screenshot({ path: join(shots, `${theme}-${String(++n).padStart(2, "0")}.png`) });
+        // 설명이 막 바뀐 박자는 전환(칩 0.8초, 설명 형광펜 1.15초)이 끝난 뒤에 찍는다. 스냅이 늦게 끝나면
+        // 박자가 위 900ms 대기 끝에서야 넘어가 칩이 날아가는 중간에 찍혔다(2026-10-12 POST·PUT 글).
+        if (now && now !== note) {
+          await page.waitForTimeout(1200);
+          await page.screenshot({ path: join(shots, `${theme}-${String(++n).padStart(2, "0")}.png`) });
+        }
         note = now;
       }
       const y = await page.evaluate(() => scrollY);
