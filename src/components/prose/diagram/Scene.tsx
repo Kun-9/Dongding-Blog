@@ -266,7 +266,8 @@ function plan(scene: BarScene, unit?: string) {
   const dec = Math.max(0, ...scene.steps.flatMap((s) => s.values.flat().map(decimalsOf)));
   const pre = unit && PREFIX.test(unit) ? unit : "";
   const suf = unit && !pre ? unit : "";
-  const fmt = (v: number, d = dec) => `${pre}${v.toFixed(d)}${suf}`;
+  // 정지 bars(Numbers 의 fmt)와 같이 천 단위 쉼표를 둔다. 굴러가는 중간 값도.
+  const fmt = (v: number, d = dec) => `${pre}${v.toLocaleString("ko-KR", { minimumFractionDigits: d, maximumFractionDigits: d })}${suf}`;
   const totals = scene.steps.map((s) => s.values.map((v) => v.reduce((a, b) => a + b, 0)));
   const wide = Math.max(...totals.filter((_, i) => !scene.steps[i].zoom).flat(), 0) * 1.07 || 1;
   const axes = scene.steps.map((s, i) => (s.zoom ? Math.max(...totals[i]) * 1.12 || wide : wide));
