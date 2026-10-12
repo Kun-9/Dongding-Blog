@@ -142,7 +142,9 @@ function ProposalCard({
         <Chip className="bg-[color:var(--callout-info-bg)] text-[color:var(--callout-info-ink)]">{scout}</Chip>
         {p &&
           (p.unverified ? (
-            <Chip className="bg-[color:var(--callout-warning-bg)] text-[color:var(--callout-warning-ink)]">{p.unverified}</Chip>
+            <Chip wrap className="bg-[color:var(--callout-warning-bg)] text-[color:var(--callout-warning-ink)]">
+              {p.unverified}
+            </Chip>
           ) : (
             <Chip className="bg-[color:var(--callout-tip-bg)] text-[color:var(--callout-tip-ink)]">출처 확인</Chip>
           ))}
@@ -206,9 +208,12 @@ function ProposalCard({
   );
 }
 
-function Chip({ className, children }: { className: string; children: ReactNode }) {
+/** wrap: 미확인 문장처럼 길 수 있는 칩은 카드 폭에서 줄을 바꾼다. */
+function Chip({ className, wrap = false, children }: { className: string; wrap?: boolean; children: ReactNode }) {
   return (
-    <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-0.5 font-sans text-[12px] font-medium ${className}`}>
+    <span
+      className={`inline-flex max-w-full items-center rounded-full px-2.5 py-0.5 font-sans text-[12px] font-medium ${wrap ? "" : "whitespace-nowrap"} ${className}`}
+    >
       {children}
     </span>
   );
