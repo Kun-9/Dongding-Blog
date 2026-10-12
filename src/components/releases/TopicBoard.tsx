@@ -698,9 +698,8 @@ function TopicItem({
   const [prompt, setPrompt] = useState("");
   const [reason, setReason] = useState("");
   const [until, setUntil] = useState<AiUntil>("review");
-  /** 예약으로 맡길지. 고르기 전에는 지난번 방식(폴링으로 바뀌어도 따라간다). */
-  const [pickLocal, setLocal] = useState<boolean | null>(null);
-  const local = pickLocal ?? topic.ai.local;
+  /** 예약으로 맡길지. 기본은 예약 — 바로 실행은 골라야만 루틴을 깨운다. */
+  const [local, setLocal] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
