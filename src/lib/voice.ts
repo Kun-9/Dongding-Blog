@@ -54,6 +54,23 @@ export const CONCEPT_PARTS = [
   { key: "source", label: "출처 링크", how: "표준·공식 문서(RFC, MDN, 언어·프레임워크 문서, 원전) 링크를 본문 문장 안에. 끝에 목록으로 몰지 않는다" },
 ] as const;
 
+/**
+ * 릴리스 글이 출처로 치는 공식 문서·저장소 도메인(하위 도메인 포함). `docs.` 로 시작하는 주소도 친다.
+ * 다른 회사 릴리스를 다루게 되면 그 회사 공식 문서 도메인을 여기 더한다.
+ */
+export const RELEASE_SOURCE_HOSTS = [
+  "github.com",
+  "code.claude.com",
+  "anthropic.com",
+  "openai.com",
+  "chatgpt.com",
+  "cloudflare.com",
+] as const;
+
+const RELEASE_SOURCE = new RegExp(
+  `https?://(docs\\.|([\\w-]+\\.)*(${RELEASE_SOURCE_HOSTS.map((h) => h.replace(/\./g, "\\.")).join("|")})(?=[/)\\s?#:]|$))`,
+);
+
 const PARTS: Record<PostKind, readonly { key: (typeof REQUIRED_PARTS)[number]["key"]; label: string; how: string }[]> = {
   release: REQUIRED_PARTS,
   concept: CONCEPT_PARTS,
@@ -677,7 +694,7 @@ export function checkVoice(post: VoiceInput, kind: PostKind = "release"): VoiceR
     source:
       kind === "concept"
         ? /(?<!!)\[[^\]]*\]\(https?:\/\//.test(post.body.replace(/^(```|~~~)[\s\S]*?^\1\s*$/gm, ""))
-        : /https?:\/\/(github\.com|docs\.|code\.claude\.com|[^\s)]*anthropic\.com)/.test(post.body),
+        : RELEASE_SOURCE.test(post.body),
   };
   for (const p of PARTS[kind]) {
     if (!parts[p.key]) {
