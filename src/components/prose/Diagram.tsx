@@ -9,7 +9,7 @@
  * 그림 자체에는 훅이 없어서 서버·클라이언트(스튜디오 미리보기) 어디서나 그려진다.
  */
 import type { Diagram as DiagramData } from "@/lib/diagram";
-import type { FigureHtml } from "@/lib/html-figure";
+import { keepHyphens, type FigureHtml } from "@/lib/html-figure";
 import { Compare, Matrix } from "./diagram/Compare";
 import { Cycle, Flow } from "./diagram/Flow";
 import { Bars, Stats } from "./diagram/Numbers";
@@ -78,12 +78,13 @@ export function Diagram({ diagram }: { diagram: DiagramData }) {
   );
 }
 
-/** ```figure — 이미 거른 HTML 이다(parseFigureHtml). */
+/** ```figure — 이미 거른 HTML 이다(parseFigureHtml). 하이픈 토큰은 여기서 칸으로 감싼다(keepHyphens). */
 export function HtmlFigure({ figure }: { figure: FigureHtml }) {
-  if (figure.scene) return <FigureScene key={sigOf(figure.html)} caption={figure.caption} html={figure.html} steps={figure.scene.steps} />;
+  const html = keepHyphens(figure.html);
+  if (figure.scene) return <FigureScene key={sigOf(figure.html)} caption={figure.caption} html={html} steps={figure.scene.steps} />;
   return (
     <Shell caption={figure.caption} sig={sigOf(figure.html)}>
-      <div className="fig-html" dangerouslySetInnerHTML={{ __html: figure.html }} />
+      <div className="fig-html" dangerouslySetInnerHTML={{ __html: html }} />
     </Shell>
   );
 }

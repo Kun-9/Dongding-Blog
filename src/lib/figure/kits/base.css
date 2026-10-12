@@ -5,6 +5,12 @@
   color: var(--ink);
   word-break: keep-all;
 }
+/* 하이픈 토큰 칸(lib/html-figure 의 keepHyphens). 줄에 자리가 없으면 통째로 다음 줄로, 줄보다 길면 안에서 접힌다.
+   inline-block 이라 부모의 취소선이 건너오지 않아 다시 긋는다. 줄바꿈 없는 칩·머리줄에서는 칸을 풀어
+   글자로 둔다 — flex 안에서 칸이 따로 항목이 되면 앞뒤 띄어쓰기가 사라지고 말줄임이 칸째 먹는다. */
+.fig-nb { display: inline-block; max-width: 100%; }
+:is(.fig-t-del, .is-strike) .fig-nb { text-decoration: line-through; text-decoration-color: inherit; }
+:is(.fig-chip, .fig-term-bar) .fig-nb { display: contents; }
 .fig-html :where(p) { margin: 0; }
 .fig-html :where(ul, ol) { margin: 0; padding-left: 1.15em; }
 .fig-html :where(ul) { list-style: disc; }

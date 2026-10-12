@@ -175,6 +175,16 @@ export function sanitizeFigureHtml(input: string): { html: string; dropped: stri
   return { html: out.join(""), dropped: [...dropped] };
 }
 
+/**
+ * 하이픈이 든 토큰(`react-day-picker`, `--plugin-dir`)을 칸(`fig-nb`, kits/base.css)으로 감싼다. 브라우저는
+ * 하이픈 뒤에서 줄을 접어 좁은 화면에서 `react-day-` / `picker` 로 갈린다. 칸은 들어갈 자리가 없으면 통째로
+ * 다음 줄로 가고, 줄보다 길 때만 안에서 접힌다. 글자는 그대로라 복사하면 원래 하이픈이다.
+ * 숫자 앞 하이픈(-12%, 2026-10-12)은 거기서 접히지 않고, 감싸면 숫자 세기(count)가 서지 않아 둔다.
+ * 거른 HTML 에서 < 는 태그에만 있어 태그 밖 글자만 고친다. 그리는 곳(Diagram 의 HtmlFigure)에서만 부른다.
+ */
+export const keepHyphens = (html: string): string =>
+  html.replace(/<[^>]*>|[^\s<]+/g, (m) => (m.startsWith("<") || !/-[^\s\d-]/.test(m) ? m : `<span class="fig-nb">${m}</span>`));
+
 /** 펜스 원문 → 캡션 + 거른 HTML. */
 /**
  * 머리 줄(`caption:`·`scene:`·`step:`·`> 설명`)을 떼고 나머지 HTML 을 거른다. 머리 줄은
