@@ -57,4 +57,5 @@ description: Use when the user asks you directly (not through the admin "AI에�
 
 - `check_release_voice` 가 `passed: true` 이고, `update_post`·`create_post` 응답의 `report.counts` 가 0이다.
 - 주제에 끝낸 단계마다 근거가 기록돼 있다.
+- 시리즈에 편을 더했으면 계획 편수도 올린다: `node .claude/skills/release-post/series-count.mjs <seriesId> <편수>`. 안 올리면 계획보다 뒤 회차가 시리즈 페이지에서 "순서 미지정"으로 따로 보인다. 2026-10-12 Supabase 시리즈를 6편으로 늘리며 5편 계획에 6편째가 이렇게 떠 있었다.
 - 발행은 하지 않는다. `update_post` 로 visibility 를 published 로 바꾸지 않는다. 사람이 어드민의 발행 버튼으로 한다. 스튜디오 링크(`https://blog.dongding.dev/studio`)와 남은 일만 알린다.
