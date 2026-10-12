@@ -25,7 +25,7 @@ import {
 import { Callout, type CalloutKind } from "@/components/prose/Callout";
 import { CodeBlock } from "@/components/prose/CodeBlock";
 import { Diagram, HtmlFigure } from "@/components/prose/Diagram";
-import { isDiagramLang, parseDiagram } from "@/lib/diagram";
+import { isAsciiTree, isDiagramLang, parseDiagram } from "@/lib/diagram";
 import { parseFigureHtml } from "@/lib/html-figure";
 import { EditableImage } from "@/components/prose/EditableImage";
 import { Figure, ImageGroup } from "@/components/prose/Figure";
@@ -426,7 +426,7 @@ export function renderMarkdown(
         i++;
       }
       i++; // skip closing fence
-      // 그림 블록(```flow 등) → 그림. 문법이 틀리면 코드로 보인다.
+      // 그림 블록(```flow 등) → 그림. 문법이 틀리면 코드로 보인다. 아스키 트리를 담은 text 블록도 tree 그림.
       // ```figure → 디자인 키트 HTML(허용 목록으로 거른 뒤).
       if (lang === "figure" && !filename) {
         const figure = parseFigureHtml(code.join("\n"));
@@ -435,8 +435,9 @@ export function renderMarkdown(
           continue;
         }
       }
-      if (isDiagramLang(lang) && !filename) {
-        const { diagram } = parseDiagram(lang, code.join("\n"));
+      const kind = isAsciiTree(lang, code.join("\n")) ? "tree" : lang;
+      if (isDiagramLang(kind) && !filename) {
+        const { diagram } = parseDiagram(kind, code.join("\n"));
         if (diagram) {
           out.push(<Diagram key={k()} diagram={diagram} />);
           continue;

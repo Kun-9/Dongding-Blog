@@ -39,6 +39,20 @@ export function isDiagramLang(lang: string | undefined): lang is DiagramKind {
   return !!lang && (DIAGRAM_LANGS as readonly string[]).includes(lang);
 }
 
+/**
+ * 언어 없는·text 코드 블록에 붙여 넣은 `tree` 출력 — 루트 한 줄 아래가 모두 `├──`·`└──`·`│` 줄이면
+ * 코드 대신 tree 그림으로 그린다. 글마다 아스키 트리와 tree 그림이 섞여 보이지 않게.
+ */
+export function isAsciiTree(lang: string, source: string): boolean {
+  if (!["", "text", "txt", "plaintext"].includes(lang)) return false;
+  const [root, ...rest] = source.split("\n").filter((l) => l.trim());
+  return (
+    !!root && !/[│├└]/.test(root) &&
+    rest.some((l) => /[├└]/.test(l)) &&
+    rest.every((l) => /^[\s│]*(?:[├└]|$)/.test(l))
+  );
+}
+
 export interface Mark {
   /** 줄 끝 `*` */
   accent: boolean;
@@ -406,7 +420,9 @@ export function parseDiagram(kind: DiagramKind, source: string): ParseResult {
         const m = cleaned.match(/^(\s*)(?:[-*+]\s+)?(.*)$/)!;
         const indent = m[1].length;
         if (!m[2].trim()) continue;
-        const node: TreeNode = at({ ...item(m[2]), children: [] }, i);
+        // `이름    — 설명`·`이름  # 설명` 처럼 공백 두 칸 넘게 띄운 꼬리 주석은 `|` 뒤 설명으로 받는다.
+        const text = m[2].includes("|") ? m[2] : m[2].replace(/\s{2,}(?:(?:—|#|\/\/|←|<-)\s*)?(?=\S)/, " | ");
+        const node: TreeNode = at({ ...item(text), children: [] }, i);
         while (stack.length && stack[stack.length - 1].indent >= indent) stack.pop();
         if (stack.length) stack[stack.length - 1].node.children.push(node);
         else roots.push(node);

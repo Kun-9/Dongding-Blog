@@ -63,8 +63,11 @@ export function Layers({ items, layout }: { items: Item[]; layout: "nest" | "sta
 
 /* ── tree ─────────────────────────────────────────────────────────────── */
 
+/** `폴더/` — 하위를 줄인 `폴더/...`·`폴더/…` 도 폴더다. */
+const isFolder = (label: string) => /\/(?:\.{3}|…)?$/.test(label);
+
 function Icon({ label }: { label: string }) {
-  if (label.endsWith("/")) {
+  if (isFolder(label)) {
     return (
       <svg viewBox="0 0 16 16" aria-hidden className="size-3.5 shrink-0 opacity-70">
         <path d="M1.75 4.25c0-.69.56-1.25 1.25-1.25h3.1l1.4 1.5H13c.69 0 1.25.56 1.25 1.25v6.25c0 .69-.56 1.25-1.25 1.25H3c-.69 0-1.25-.56-1.25-1.25z" fill="none" stroke="currentColor" strokeWidth="1.3" />
@@ -96,7 +99,7 @@ function Branch({ nodes, depth, order }: { nodes: TreeNode[]; depth: number; ord
   return (
     <ul className={depth ? "ml-[11px]" : ""}>
       {nodes.map((n, i) => {
-        const pathy = n.label.endsWith("/") || /\.[a-z0-9]{1,6}$/i.test(n.label);
+        const pathy = isFolder(n.label) || /\.[a-z0-9]{1,6}$/i.test(n.label);
         return (
           <li
             key={i}
