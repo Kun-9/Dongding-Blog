@@ -185,9 +185,11 @@ export function ImageGroup({
 
   return (
     <div className={["my-[26px]", opt === "wide" ? WIDE_CLASS : ""].join(" ")}>
+      {/* 열 수는 변수로 넘긴다. 인라인 grid-template-columns 는 좁은 화면의 열 수 클래스를 덮어
+          390px 에서도 175px 두 칸으로 남았다. */}
       <div
-        className="grid gap-2 max-[680px]:grid-cols-2 max-[440px]:grid-cols-1"
-        style={{ gridTemplateColumns: `repeat(${cols}, minmax(0,1fr))` }}
+        className="grid gap-2 grid-cols-[repeat(var(--cols),minmax(0,1fr))] max-[680px]:grid-cols-2 max-[440px]:grid-cols-1"
+        style={{ "--cols": cols } as React.CSSProperties}
       >
         {items.map((it, idx) => (
           <figure key={idx} className="m-0 grid content-start gap-1.5">

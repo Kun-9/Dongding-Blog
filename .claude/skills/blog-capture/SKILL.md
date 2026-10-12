@@ -39,7 +39,9 @@ node .claude/skills/blog-capture/capture.mjs --run "claude --model claude-sonnet
 
 ### 스킬·플러그인 글의 전·후 캡처
 
-스킬·플러그인 글은 같은 예시 프롬프트를 도구 없이 한 번, `--plugin` 으로 싣고 한 번 떠서 두 장을 나란히 싣는다. 프롬프트·폴더(`--setup`)·모델·자르는 범위를 똑같이 두고 `--plugin` 만 바꾼다. 태그가 skill·plugin 인 글은 실제 캡처가 두 장 미만이면 점검(`tool-no-capture`)에서 막힌다.
+스킬·플러그인 글은 같은 예시 프롬프트를 도구 없이 한 번, `--plugin` 으로 싣고 한 번 떠서 두 장을 싣는다. 두 이미지를 빈 줄 없이 연달아 두면 묶음(ImageGroup)이 되어 4:3 칸으로 잘리니(cover), 터미널 캡처는 "조작 한 줄 → 캡처 → 결과 한 줄"로 문장을 사이에 두고 한 장씩 싣는다. 크기를 맞춘 PNG(고치기 전·후 카드)만 연달아 둔다.
+
+플러그인이 아닌 스킬(SKILL.md 폴더)은 `--setup` 으로 캡처 폴더의 `.claude/skills/<이름>/` 에 복사한다. safe-mode 는 프로젝트 스킬까지 끄므로 `--no-safe-mode` 를 주고 `--run "claude --setting-sources project …"` 처럼 설정 출처를 직접 붙인다(내 CLAUDE.md·플러그인·훅이 섞이지 않는다). 2026-10-12 make-interfaces 글에서 safe-mode 로 띄웠더니 슬래시 명령이 잡히지 않았다. 프롬프트·폴더(`--setup`)·모델·자르는 범위를 똑같이 두고 `--plugin` 만 바꾼다. 태그가 skill·plugin 인 글은 실제 캡처가 두 장 미만이면 점검(`tool-no-capture`)에서 막힌다.
 
 ```bash
 P="Add a date picker component to the frontend."
