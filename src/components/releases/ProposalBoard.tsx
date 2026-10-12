@@ -79,7 +79,7 @@ export function ProposalBoard({
 
   // 이름은 위 탭(제안 N)이 대신한다.
   return (
-    <section ref={top} aria-label="제안" className="mb-14">
+    <section ref={top} aria-label="제안" className="mb-14 scroll-mt-20">
       {adopted && (
         <div
           role="status"
@@ -246,17 +246,17 @@ function ProposalCard({
   );
 }
 
-/** 이전 · 페이지 번호 · 다음. 제안은 많아야 수십 개라 번호를 다 보인다. */
+/**
+ * 이전 · 페이지 번호 · 다음. 제안은 많아야 수십 개라 번호를 다 보인다.
+ * 끝에 닿은 이전·다음은 disabled 가 아니라 aria-disabled 다. 누른 버튼이
+ * disabled 가 되면 포커스가 body 로 빠지면서 제안 맨 위로 가던 스크롤이 끊긴다.
+ */
 function Pager({ at, pages, onGo }: { at: number; pages: number; onGo: (n: number) => void }) {
-  const base = "rounded-full px-3 py-1 font-sans text-[12.5px] transition-colors disabled:opacity-40";
+  const base = "rounded-full px-3 py-1 font-sans text-[12.5px] transition-colors";
+  const edge = `${base} border border-border-token text-ink-muted hover:text-ink aria-disabled:pointer-events-none aria-disabled:opacity-40`;
   return (
     <nav aria-label="제안 페이지" className="mt-4 flex flex-wrap items-center justify-center gap-1.5">
-      <button
-        type="button"
-        onClick={() => onGo(at - 1)}
-        disabled={at === 0}
-        className={`${base} border border-border-token text-ink-muted enabled:hover:text-ink`}
-      >
+      <button type="button" onClick={() => at > 0 && onGo(at - 1)} aria-disabled={at === 0} className={edge}>
         이전
       </button>
       {Array.from({ length: pages }, (_, i) => (
@@ -274,9 +274,9 @@ function Pager({ at, pages, onGo }: { at: number; pages: number; onGo: (n: numbe
       ))}
       <button
         type="button"
-        onClick={() => onGo(at + 1)}
-        disabled={at === pages - 1}
-        className={`${base} border border-border-token text-ink-muted enabled:hover:text-ink`}
+        onClick={() => at < pages - 1 && onGo(at + 1)}
+        aria-disabled={at === pages - 1}
+        className={edge}
       >
         다음
       </button>
