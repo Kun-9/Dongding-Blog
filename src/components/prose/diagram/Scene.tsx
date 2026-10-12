@@ -505,6 +505,25 @@ export function SpotScene({
 /* ── figure — 요소마다 단계를 적는 자유 구성 ─────────────────────────────── */
 
 /**
+ * 터미널 본문에 모든 줄을 펼친 높이를 잡아 둔다. 나오기 전 줄은 접혀 있어(states.css) 그대로 두면 단계마다
+ * 판 높이가 바뀐다. 단계 표시를 걷은 사본을 같은 폭으로 잠깐 붙여 잰다.
+ */
+function holdTermHeight(root: HTMLElement) {
+  root.querySelectorAll<HTMLElement>(".fig-term-body").forEach((body) => {
+    if (!body.querySelector("div[data-step]:not(:has(div))")) return;
+    const ghost = body.cloneNode(true) as HTMLElement;
+    ghost.querySelectorAll("[data-step]").forEach((el) => {
+      el.removeAttribute("data-step");
+      el.classList.remove("sc-off");
+    });
+    ghost.style.cssText = `position: absolute; visibility: hidden; width: ${body.offsetWidth}px`;
+    body.after(ghost);
+    body.style.minHeight = `${ghost.offsetHeight}px`;
+    ghost.remove();
+  });
+}
+
+/**
  * ```figure 장면. 단계는 작성자가 1부터 센다. 요소의 장면 속성(data-step·data-on·data-v·
  * data-text …)을 단계마다 입히는 일은 속성 모듈(lib/figure/scene-attrs)이 맡는다.
  */
@@ -531,6 +550,8 @@ export function FigureScene({ caption, html, steps }: { caption?: string; html: 
     if (!root) return;
     cur.current = s;
     if (!ready) setReady(true);
+    // 처음 한 번 — 서버가 그린 모습(줄이 다 펼쳐진 높이)과 같은 높이를 터미널 본문에 잡는다.
+    if (!root.hasAttribute("data-ready")) holdTermHeight(root);
     // 떠 있는 요소(data-at)는 data-ready 로 판 위에 뜬 뒤에 자리를 잰다. React 가 붙이기 전에 먼저 붙인다.
     root.setAttribute("data-ready", "");
     const ctx = ctxOf(instant);
@@ -542,14 +563,15 @@ export function FigureScene({ caption, html, steps }: { caption?: string; html: 
   useEffect(() => {
     ctxRef.current = ctxOf;
   });
-  // 자리를 재는 속성(layout)은 판 크기가 바뀌거나 글꼴이 늦게 들어와 칸이 밀리면 지금 단계로 다시 잰다.
+  // 판 크기가 바뀌거나 글꼴이 늦게 들어와 칸이 밀리면 다시 잰다 — 터미널 본문 높이와, 자리를 재는 속성(layout)을 지금 단계로.
   useEffect(() => {
     const root = box.current;
     const attrs = SCENE_ATTRS.filter((a) => a.layout);
-    if (!root || !attrs.some((a) => root.querySelector(`[${a.name}]`))) return;
+    if (!root || !root.querySelector(`.fig-term-body, ${attrs.map((a) => `[${a.name}]`).join(", ")}`)) return;
     let alive = true;
     const relayout = () => {
       if (!alive || !root.hasAttribute("data-ready")) return;
+      holdTermHeight(root);
       for (const a of attrs) root.querySelectorAll<HTMLElement>(`[${a.name}]`).forEach((el) => a.apply(el, cur.current + 1, ctxRef.current(true)));
     };
     const ro = new ResizeObserver(relayout);

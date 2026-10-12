@@ -1,6 +1,6 @@
 /* figure 장면 속성이 단계마다 붙이는 상태(scene-attrs/*.ts). on.ts 의 STATES 와 이름이 같아야 한다. */
 .sc-html [data-step],
-.sc-html [data-on] { transition: opacity 0.45s, translate 0.45s, box-shadow 0.45s, border-color 0.45s, background-color 0.45s, color 0.45s; }
+.sc-html [data-on] { transition: opacity 0.45s, translate 0.45s, box-shadow 0.45s, border-color 0.45s, background-color 0.45s, color 0.45s, line-height 0.45s; }
 .sc-html .is-dim { opacity: 0.3; }
 .sc-html .is-hide { opacity: 0; }
 .sc-html .is-strike { text-decoration: line-through; opacity: 0.5; }
@@ -37,3 +37,7 @@
 }
 /* diff 의 새 줄은 옛 줄에 줄이 그어진 다음에 들어온다 */
 .sc-html .fig-term-body .fig-t-add[data-step] { transition-delay: 0.3s; }
+/* 터미널 줄(안에 div 가 없는 칸)은 나오기 전에 접혀 있다가 그 단계에 펼쳐진다. 자리를 비워 두면 코드 중간에
+   빈 줄 뭉치가 보인다. 줄 높이를 접어서 몇 줄로 접혔든 함께 펼쳐진다. 판 높이는 FigureScene 이 모든 줄을
+   펼친 높이를 터미널 본문에 잡아 두어 단계마다 같다 — 빈 곳은 본문 아래로 간다. */
+.sc-html .fig-term-body div.sc-off:not(:has(div)) { line-height: 0; }
