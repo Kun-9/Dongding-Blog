@@ -5,7 +5,8 @@
  *
  * 잡는 것: 문서 가로 넘침, 그림 판(figure·장면 무대) 밖으로 나간 요소,
  * 터미널 줄이 공백 없는 긴 토큰 중간에서 끊긴 곳, 한 칸에 겹쳐 둔 단계 화면(fig-layer)이 둘 이상 보이는 곳,
- * 화면보다 커서 단계 설명을 화면 밖으로 밀어내는 장면 무대.
+ * 화면보다 커서 단계 설명을 화면 밖으로 밀어내는 장면 무대, 제 칸이 말줄임·line-clamp·overflow 로 자른 글자
+ * (터미널 머리줄 칩, sequence 라벨 등. 장면은 박자마다 그림 순서·박자·글자 앞부분을 적는다).
  *
  *   node .claude/skills/release-post/mobile-check.mjs <slug> [--base https://blog.dongding.dev] [--shots <폴더>]
  *
@@ -74,11 +75,33 @@ function scan() {
   const name = (el) =>
     `${el.tagName.toLowerCase()}${[...el.classList].slice(0, 2).map((c) => "." + c).join("")} "${(el.textContent ?? "").trim().slice(0, 30)}"`;
   const visible = (el) => el.checkVisibility?.({ opacityProperty: true, visibilityProperty: true }) ?? true;
+  // 어느 그림(article figure 순서)의 몇 번째 박자인지. 장면 설명(.sc-notes)은 판 figure 밖에 있어 무대에서 판을 찾는다.
+  const figs = [...document.querySelectorAll("article figure")];
+  const where = (el) => {
+    const st = el.closest(".sc-in");
+    const on = st?.querySelector(".sc-note.on");
+    const beat = !st ? "" : on ? ` 박자 ${[...on.parentElement.children].indexOf(on) + 1}(${on.querySelector(".sc-k")?.textContent ?? ""})` : " 박자 0";
+    return `그림 ${figs.indexOf(el.closest("figure") ?? st?.querySelector("figure")) + 1}${beat}`;
+  };
+  const clipped = (o) => o === "hidden" || o === "clip";
   for (const box of document.querySelectorAll("article figure, .sc-in")) {
     const r = box.getBoundingClientRect();
     if (r.height === 0 || r.bottom < 0 || r.top > innerHeight) continue;
     for (const el of box.querySelectorAll("*")) {
       if (!visible(el)) continue;
+      // 제 칸이 글자를 자른다 — 말줄임 칩(.fig-term-tag), line-clamp 인 sequence 라벨, 격자 칸(2026-10-12 머리줄 칩이
+      // "refresh(rt, no…" 로, sequence 라벨 "websearch(query," 가 세로선에 잘렸는데 끝 코드 0 이었다). 장면은 data-text 로
+      // 글자가 바뀌니 박자마다 본다. 크롬은 넘친 글자 뒤에 끝 여백을 더해 재므로 여백 안까지는 잘림이 아니다.
+      // 빼는 것: 흐린 단계(.is-dim), 이미지 묶음 설명(figcaption, 일부러 두 줄로 줄이고 확대 화면에서 다 보인다), 1px 낭독기 글자.
+      if (el.tagName !== "FIGCAPTION" && !el.closest(".is-dim") && el.clientWidth > 2 && el.clientHeight > 2 && [...el.childNodes].some((n) => n.nodeType === 3 && n.data.trim())) {
+        const cs = getComputedStyle(el);
+        const dx = clipped(cs.overflowX) ? Math.round(el.scrollWidth - parseFloat(cs.paddingRight) - el.clientWidth) : 0;
+        const dy = clipped(cs.overflowY) ? Math.round(el.scrollHeight - parseFloat(cs.paddingBottom) - el.clientHeight) : 0;
+        // 같은 요소의 같은 글자는 처음 잘린 박자에서 한 번만 적는다(박자마다 같은 줄이 쌓이지 않게).
+        const said = (window.__clipSaid ??= new WeakMap());
+        if ((dx > 1 || dy > 1) && said.get(el) !== el.textContent && said.set(el, el.textContent))
+          out.push(`글자 잘림: ${where(el)} ${name(el)} (${dx > 1 ? `가로 ${dx}px` : `세로 ${dy}px`} 넘쳐 잘림. 글자를 줄인다)`);
+      }
       // 그림 안 세로 스크롤 — 휠이 페이지 대신 판 안쪽을 내려 머리줄이 잘린다(2026-10-08 matrix).
       const oy = getComputedStyle(el).overflowY;
       if ((oy === "auto" || oy === "scroll") && el.tagName !== "PRE" && (el.scrollTop > 0 || el.scrollHeight > el.clientHeight + 1))
@@ -138,7 +161,7 @@ function scan() {
 const browser = await pw.chromium.launch({ headless: true }).catch(() => null);
 if (!browser) give("chromium 을 띄우지 못했습니다");
 
-// --selftest: 문제를 일부러 심은 화면에서 셋 다 잡는지 본다.
+// --selftest: 문제를 일부러 심은 화면에서 다 잡는지, 일부러 둔 것은 안 잡는지 본다.
 if (selftest) {
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
   await page.setContent(`<article><figure style="width:300px;margin:0">
@@ -148,12 +171,22 @@ if (selftest) {
     <div class="fig-term-body" style="width:200px;font:12px/20px monospace"><div>{"sub":"user-42","role":"admin","jti":"d7853a97"}</div><div>Exception: error creating bean with name main</div></div>
     <div class="fig-layer"><div>화면 하나</div><div>화면 둘</div></div>
     <div class="fig-layer"><div>보이는 화면</div><div style="opacity:0">숨은 화면</div></div>
-  </figure><div style="width:600px;height:10px"></div></article>
+    <div style="position:relative;height:60px"><span style="position:absolute;bottom:20px;left:10%;width:30%;box-sizing:border-box;padding:0 8px;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;text-align:center;word-break:keep-all;font:12.5px/1.35 sans-serif"><span>2</span>websearch(query, 결과)</span></div>
+    <div style="width:100px;box-sizing:border-box;padding:0 8px;overflow:hidden;white-space:nowrap;font:12px monospace">padonlyfits</div>
+    <div style="position:absolute;width:1px;height:1px;overflow:hidden;white-space:nowrap">화면 낭독기만 읽는 긴 글자</div>
+    <figcaption style="width:80px;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden">이미지 묶음 설명은 두 줄로 줄이고 확대 화면에서 다 보인다</figcaption>
+    <div class="is-dim"><span style="display:block;width:60px;overflow:hidden;white-space:nowrap">흐린단계의긴칩글자흐린단계</span></div>
+  </figure>
+  <div class="sc-in"><figure style="margin:0;width:300px"><div style="display:flex;white-space:nowrap;font:11.5px monospace"><span class="fig-term-tag" style="min-width:0;max-width:62%;margin-left:auto;overflow:hidden;text-overflow:ellipsis;padding:2px 9px">refresh(rt, now) 새 access 발급</span></div></figure>
+    <div class="sc-notes"><div class="sc-note"><span class="sc-k">발급</span></div><div class="sc-note on"><span class="sc-k">갱신</span></div></div></div>
+  <div style="width:600px;height:10px"></div></article>
   <div class="sc-stage" style="position:fixed;top:0;height:844px;overflow:visible"><div class="sc-in" style="height:900px"></div></div>`);
   const got = await page.evaluate(scan);
   await browser.close();
-  const want = ["문서 가로 넘침", "그림 판 밖으로 나감", "터미널 줄이 토큰 중간에서 끊김", "그림 안에 세로 스크롤", "겹친 단계 화면이 함께 보임", "장면 무대가 화면보다 큼"];
+  const want = ["문서 가로 넘침", "그림 판 밖으로 나감", "터미널 줄이 토큰 중간에서 끊김", "그림 안에 세로 스크롤", "겹친 단계 화면이 함께 보임", "장면 무대가 화면보다 큼", "글자 잘림: 그림 1 span", "글자 잘림: 그림 2 박자 2(갱신) span.fig-term-tag"];
   const miss = want.filter((w) => !got.some((g) => g.startsWith(w)));
+  // 끝 여백 안까지만 들어간 글자, 낭독기 글자, 이미지 묶음 설명, 흐린 단계는 잘림으로 잡지 않아야 한다.
+  for (const w of ["padonlyfits", "낭독기", "이미지 묶음", "흐린단계"]) if (got.some((g) => g.startsWith("글자 잘림") && g.includes(w))) miss.push(`${w} 를 잘림으로 잘못 잡음`);
   // 공백에서 접힌 줄은 잡지 않아야 한다.
   if (got.some((g) => g.includes("Exception"))) miss.push("공백에서 접힌 줄을 잘못 잡음");
   // 판 안에서 일부러 가린 요소(timeline 슬라이드)는 잡지 않아야 한다.

@@ -152,7 +152,7 @@ v2.1.283 | 기본값으로 전환 *
 ### sequence — 참여자 2~5(이름 16자), 12줄, 내용 40자
 `actors:` 로 순서를 정한다(없으면 나온 순서). `A -> B | 내용`, 응답은 `-->`(점선), 혼자 하는 일은 `A -> A`. 참여자가 넷 이상이면 모바일에서 번호 목록이 된다.
 
-내용 안의 띄어쓰기 없는 토큰은 12자 안쪽으로 쓴다. 390px 에서 참여자 셋이면 이웃한 세로선 사이가 그 정도라, `websearch(query,`·`url·title·description` 처럼 긴 토큰은 줄바꿈되지 못하고 세로선에 잘린다. 모바일 검사는 이것을 잡지 못하니 `--shots` 사진으로 본다(2026-10-12 Cloudflare Web Search 글에서 `websearch() 호출`·`같은 모양의 items` 로 줄였다).
+내용 안의 띄어쓰기 없는 토큰은 12자 안쪽으로 쓴다. 390px 에서 참여자 셋이면 이웃한 세로선 사이가 그 정도라, `websearch(query,`·`url·title·description` 처럼 긴 토큰은 줄바꿈되지 못하고 세로선에 잘린다. 모바일 검사가 "글자 잘림"으로 잡는다(2026-10-12 Cloudflare Web Search 글에서 `websearch() 호출`·`같은 모양의 items` 로 줄였다).
 
 ````
 ```sequence
@@ -639,5 +639,5 @@ caption: 확인이 필요한 명령만 사용자에게 간다
 
 - 릴리스 글: MCP `check_release_voice`(slug) 또는 실행기 API `check`. 그림 관련 규칙은 `diagram-error`·`figure-dropped`·`figure-empty`·`figure-no-caption`·`figure-long-caption`·`capture-pending`.
 - 직접 보려면 스튜디오(`/studio`) 미리보기가 같은 렌더러를 쓴다. 다크 모드와 좁은 화면에서도 한 번 본다.
-- 좁은 화면 확인은 `node .claude/skills/release-post/mobile-check.mjs <slug>` 로 한다. 390px·라이트/다크로 끝까지 내리며 가로 넘침, 판 밖으로 나간 요소, 토큰 중간에서 끊긴 터미널 줄, 함께 보이는 겹친 단계 화면, 화면보다 큰 장면 무대를 잡는다. `--shots <폴더>` 로 박자마다 사진을 남긴다. 렌더러(`diagram/*`)를 고쳤으면 그 그림이 든 글로 돌려 본다.
+- 좁은 화면 확인은 `node .claude/skills/release-post/mobile-check.mjs <slug>` 로 한다. 390px·라이트/다크로 끝까지 내리며 가로 넘침, 판 밖으로 나간 요소, 토큰 중간에서 끊긴 터미널 줄, 함께 보이는 겹친 단계 화면, 화면보다 큰 장면 무대, 제 칸이 말줄임·line-clamp 로 자른 글자(머리줄 칩 `fig-term-tag`, sequence 라벨 등. 장면은 박자마다)를 잡는다. `--shots <폴더>` 로 박자마다 사진을 남긴다. 렌더러(`diagram/*`)를 고쳤으면 그 그림이 든 글로 돌려 본다.
 - 키트·모션·장면 속성을 늘리거나 바꾸면 **blog-figure-extend** 스킬을 따른다(모듈 하나 + 등록, `sync-docs.ts` 로 표 갱신). 그림 블록 종류·장면 문법은 `src/lib/diagram.ts`(`barScene`·`sceneCells`)와 `Scene.tsx`, 쓰기 기준 `src/lib/voice.ts` 의 `DIAGRAM_SYNTAX`, 스튜디오 문법표를 같이 고친다.
