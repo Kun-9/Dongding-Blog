@@ -373,6 +373,8 @@ sec-default | 내장 가드
 - 복사·출생은 `from>to`: `data-step="2" data-at="2:browser>attacker"` 면 2단계에 원본 자리에서 나와 공격자 자리로 간다. 원본을 지우는 단계는 원본에 `data-on="3+:strike"`, 실패·꺼짐은 상자에 `data-on="4:bad"`.
 - 값이 바뀌는 칸(메모리 `count`)은 `data-text="1:5|3:6|4:6|5:7"`. 숫자끼리는 센다.
 - 자리 이름이 없으면 점검의 `diagram-error` 가 "data-at 이 가리키는 자리가 없습니다"로 잡는다.
+- 자리 넷을 `fig-grid-4` 로 두면 420px 아래에서 한 열로 쌓여 무대가 화면보다 커지고 단계 설명이 밀려난다. 격자에 `style="grid-template-columns: repeat(auto-fit, minmax(140px, 1fr))"` 를 붙이면 넓은 화면은 4열, 390px 는 2열이 된다(2026-10-12 Supabase 1편).
+- `data-text` 로 바꾸는 코드 줄은 `span` 이 아니라 `div` 로 둔다. `span` 이면 앞 줄에 이어 붙어 바뀌는 줄이 따로 보이지 않는다.
 
 ````
 ```figure
@@ -631,5 +633,5 @@ caption: 확인이 필요한 명령만 사용자에게 간다
 
 - 릴리스 글: MCP `check_release_voice`(slug) 또는 실행기 API `check`. 그림 관련 규칙은 `diagram-error`·`figure-dropped`·`figure-empty`·`figure-no-caption`·`figure-long-caption`·`capture-pending`.
 - 직접 보려면 스튜디오(`/studio`) 미리보기가 같은 렌더러를 쓴다. 다크 모드와 좁은 화면에서도 한 번 본다.
-- 좁은 화면 확인은 `node .claude/skills/release-post/mobile-check.mjs <slug>` 로 한다. 390px·라이트/다크로 끝까지 내리며 가로 넘침, 판 밖으로 나간 요소, 토큰 중간에서 끊긴 터미널 줄, 함께 보이는 겹친 단계 화면을 잡는다. 렌더러(`diagram/*`)를 고쳤으면 그 그림이 든 글로 돌려 본다.
+- 좁은 화면 확인은 `node .claude/skills/release-post/mobile-check.mjs <slug>` 로 한다. 390px·라이트/다크로 끝까지 내리며 가로 넘침, 판 밖으로 나간 요소, 토큰 중간에서 끊긴 터미널 줄, 함께 보이는 겹친 단계 화면, 화면보다 큰 장면 무대를 잡는다. `--shots <폴더>` 로 박자마다 사진을 남긴다. 렌더러(`diagram/*`)를 고쳤으면 그 그림이 든 글로 돌려 본다.
 - 키트·모션·장면 속성을 늘리거나 바꾸면 **blog-figure-extend** 스킬을 따른다(모듈 하나 + 등록, `sync-docs.ts` 로 표 갱신). 그림 블록 종류·장면 문법은 `src/lib/diagram.ts`(`barScene`·`sceneCells`)와 `Scene.tsx`, 쓰기 기준 `src/lib/voice.ts` 의 `DIAGRAM_SYNTAX`, 스튜디오 문법표를 같이 고친다.

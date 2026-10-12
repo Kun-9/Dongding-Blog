@@ -4,25 +4,28 @@
  * 라이트·다크 두 번 끝까지 내려 본다. 장면은 박자마다 넘어가게 반 화면씩 내린다.
  *
  * 잡는 것: 문서 가로 넘침, 그림 판(figure·장면 무대) 밖으로 나간 요소,
- * 터미널 줄이 공백 없는 긴 토큰 중간에서 끊긴 곳, 한 칸에 겹쳐 둔 단계 화면(fig-layer)이 둘 이상 보이는 곳.
+ * 터미널 줄이 공백 없는 긴 토큰 중간에서 끊긴 곳, 한 칸에 겹쳐 둔 단계 화면(fig-layer)이 둘 이상 보이는 곳,
+ * 화면보다 커서 단계 설명을 화면 밖으로 밀어내는 장면 무대.
  *
- *   node .claude/skills/release-post/mobile-check.mjs <slug> [--base https://blog.dongding.dev]
+ *   node .claude/skills/release-post/mobile-check.mjs <slug> [--base https://blog.dongding.dev] [--shots <폴더>]
  *
+ * --shots 를 주면 장면 설명이 바뀔 때마다(박자마다) 화면을 <폴더>/<테마>-NN.png 로 남긴다. 장면은 이 사진으로 눈으로 본다.
  * 끝 코드: 0 문제 없음 · 1 문제 있음(목록 출력) · 3 브라우저나 로그인을 못 함(사람 몫으로 남긴다).
  * 로그인은 .env.local 의 STUDIO_EMAIL·STUDIO_PASSWORD 를 파일에서 읽어 쓰고 출력하지 않는다.
  */
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 
 const args = process.argv.slice(2);
-const bi = args.indexOf("--base");
-const base = (bi >= 0 ? args[bi + 1] : "https://blog.dongding.dev").replace(/\/$/, "");
-const slug = args.find((a, i) => !a.startsWith("--") && (bi < 0 || i !== bi + 1));
+const opt = (name) => (args.includes(name) ? args[args.indexOf(name) + 1] : undefined);
+const base = (opt("--base") ?? "https://blog.dongding.dev").replace(/\/$/, "");
+const shots = opt("--shots");
+const slug = args.find((a, i) => !a.startsWith("--") && !args[i - 1]?.startsWith("--"));
 const selftest = args.includes("--selftest");
 if (!slug && !selftest) {
-  console.error("쓰는 법: node mobile-check.mjs <slug> [--base URL]");
+  console.error("쓰는 법: node mobile-check.mjs <slug> [--base URL] [--shots 폴더]");
   process.exit(2);
 }
 
@@ -95,6 +98,14 @@ function scan() {
       if (left < r.left - 1 || right > r.right + 1) out.push(`그림 판 밖으로 나감: ${name(el)} (${Math.round(left)}~${Math.round(right)}, 판 ${Math.round(r.left)}~${Math.round(r.right)})`);
     }
   }
+  // 화면에 붙은 장면 무대(.sc-stage)의 내용(.sc-in)이 화면보다 크면 단계 설명이 화면 아래로 밀려 안 읽힌다
+  // (2026-10-12 Supabase 1편: 자리 넷을 fig-grid-4 로 두자 420px 아래에서 한 열로 쌓였다).
+  for (const st of document.querySelectorAll(".sc-stage")) {
+    if (Math.abs(st.getBoundingClientRect().top) > 2) continue;
+    const inner = st.querySelector(".sc-in")?.getBoundingClientRect();
+    if (inner && inner.bottom > innerHeight + 1)
+      out.push(`장면 무대가 화면보다 큼: ${name(st)} (무대 끝 ${Math.round(inner.bottom)}px, 화면 ${innerHeight}px). 단계 설명이 화면 밖으로 밀린다. 칸을 줄이거나 격자를 auto-fit 으로`);
+  }
   // 한 칸에 겹쳐 둔 단계 화면(fig-layer)은 한 번에 하나만 보여야 한다. 둘 이상 보이면 글자가 포개진다
   // (2026-10-09 FigureScene 이 다시 그려지며 단계 상태가 지워졌을 때). 그 상태는 판이 화면에 막 들어오는
   // 짧은 구간에서만 눈에 띄어 반 화면 걸음이 건너뛰므로, 화면 밖의 판도 본다.
@@ -137,10 +148,11 @@ if (selftest) {
     <div class="fig-term-body" style="width:200px;font:12px/20px monospace"><div>{"sub":"user-42","role":"admin","jti":"d7853a97"}</div><div>Exception: error creating bean with name main</div></div>
     <div class="fig-layer"><div>화면 하나</div><div>화면 둘</div></div>
     <div class="fig-layer"><div>보이는 화면</div><div style="opacity:0">숨은 화면</div></div>
-  </figure><div style="width:600px;height:10px"></div></article>`);
+  </figure><div style="width:600px;height:10px"></div></article>
+  <div class="sc-stage" style="position:fixed;top:0;height:844px;overflow:visible"><div class="sc-in" style="height:900px"></div></div>`);
   const got = await page.evaluate(scan);
   await browser.close();
-  const want = ["문서 가로 넘침", "그림 판 밖으로 나감", "터미널 줄이 토큰 중간에서 끊김", "그림 안에 세로 스크롤", "겹친 단계 화면이 함께 보임"];
+  const want = ["문서 가로 넘침", "그림 판 밖으로 나감", "터미널 줄이 토큰 중간에서 끊김", "그림 안에 세로 스크롤", "겹친 단계 화면이 함께 보임", "장면 무대가 화면보다 큼"];
   const miss = want.filter((w) => !got.some((g) => g.startsWith(w)));
   // 공백에서 접힌 줄은 잡지 않아야 한다.
   if (got.some((g) => g.includes("Exception"))) miss.push("공백에서 접힌 줄을 잘못 잡음");
@@ -173,9 +185,15 @@ try {
       document.documentElement.style.scrollBehavior = "auto";
     }, theme);
     await page.waitForTimeout(800);
+    if (shots) mkdirSync(shots, { recursive: true });
     // 반 화면씩 내려 장면을 한 박자씩 넘긴다. 바닥에 닿으면 멈춘다.
-    for (let i = 0, last = -1; i < 400; i++) {
+    for (let i = 0, last = -1, note = "", n = 0; i < 400; i++) {
       for (const m of await page.evaluate(scan)) if (!found.has(m)) found.set(m, theme);
+      if (shots) {
+        const now = await page.evaluate(() => [...document.querySelectorAll(".sc-note.on")].map((e) => e.textContent).join("|"));
+        if (now && now !== note) await page.screenshot({ path: join(shots, `${theme}-${String(++n).padStart(2, "0")}.png`) });
+        note = now;
+      }
       const y = await page.evaluate(() => scrollY);
       if (y === last) break;
       last = y;
