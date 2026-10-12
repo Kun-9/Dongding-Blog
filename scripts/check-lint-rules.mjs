@@ -210,7 +210,16 @@ assert.equal(stats.images, 1);
   assert.ok(has("장면의 화면은 직접 띄운 것을 줄여 옮겼습니다.\n", "stock-phrase"), "그림 제작 경위");
   assert.ok(has("token-weather의 띠는 README에 실린 예시를 옮겼습니다.\n", "stock-phrase"), "예시를 옮겼다");
   assert.ok(has("실제 화면을 줄여 다시 그렸습니다.\n", "stock-phrase"), "화면을 다시 그렸다");
-  assert.ok(!has("설정을 새 파일로 옮겼습니다. 직접 v2.1.292에서 열어 보니 첫 행이 바뀌었습니다.\n", "stock-phrase"), "옮김·직접 해 본 사실은 통과");
+  assert.ok(!has("설정을 새 파일로 옮겼습니다. v2.1.292에서 열어 보니 첫 행이 바뀌었습니다.\n", "stock-phrase"), "옮김·해 본 사실은 통과");
+  assert.ok(has("직접 v2.1.292에서 열어 보니 첫 행이 바뀌었습니다.\n", "stock-phrase"), "'직접' 표지");
+  assert.ok(has("직접 supabase-js 2.117로 로컬 Supabase에 불러 본 결과입니다.\n", "stock-phrase"), "'직접' 표지·버전 사이 점");
+  assert.ok(has("직접 0.161.0에서 codex mcp login을 돌렸습니다.\n", "stock-phrase"), "'직접' 표지·v 없는 버전");
+  assert.ok(!has("Convex는 직접 띄울 수 있고, 2년이 지난 버전은 Apache 2.0이 됩니다.\n", "stock-phrase"), "두 마디 숫자는 버전으로 보지 않는다");
+  assert.ok(!has("직접 `new` 하면 OrderService가 정합니다. 남은 문은 Postgres가 직접 지킵니다.\n", "stock-phrase"), "뜻 있는 '직접'은 통과");
+  assert.ok(has("```figure\ncaption: /doctor 리포트(v2.1.292 화면을 줄여 다시 그림)\n```\n", "stock-phrase"), "캡션 제작 경위");
+  assert.ok(has("```compare\ncaption: 역할을 바꾼 EXPLAIN(auth.uid()를 펼친 식은 줄임)\n```\n", "stock-phrase"), "캡션 제작 경위·괄호 중첩");
+  assert.ok(has("![호출과 응답(로컬에서 실행)](/posts/a/b.svg)\n", "stock-phrase"), "이미지 alt 제작 경위");
+  assert.ok(!has("```matrix\ncaption: 끄는 방법마다 멈추는 대상(✓ 멈춤)\n```\n```stats\ncaption: 싼 정도(발표문 기준)\n```\n", "stock-phrase"), "범례·숫자 출처 괄호는 통과");
   assert.ok(!has("로고를 다시 그렸습니다. 설정 화면을 옮겼습니다.\n", "stock-phrase"), "디자인·UI 작업 서술은 통과");
 
   assert.ok(has("지난 글에서 만든 테이블에 열을 더한다.\n\n## 가\n", "sequel-intro"), "링크 없는 지난 글에서");
