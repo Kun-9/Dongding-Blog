@@ -221,6 +221,21 @@ assert.equal(stats.images, 1);
   assert.ok(has("![호출과 응답(로컬에서 실행)](/posts/a/b.svg)\n", "stock-phrase"), "이미지 alt 제작 경위");
   assert.ok(!has("```matrix\ncaption: 끄는 방법마다 멈추는 대상(✓ 멈춤)\n```\n```stats\ncaption: 싼 정도(발표문 기준)\n```\n", "stock-phrase"), "범례·숫자 출처 괄호는 통과");
   assert.ok(!has("로고를 다시 그렸습니다. 설정 화면을 옮겼습니다.\n", "stock-phrase"), "디자인·UI 작업 서술은 통과");
+  // 2026-10-12 감사에서 걸린 실제 문장들
+  assert.ok(has("대화 중간에 바꿨을 때 되묻는 정도가 달라지는지는 확인하지 못했습니다.\n", "stock-phrase"), "작업 기록·확인 못 함");
+  assert.ok(has("시작 이벤트의 플러그인 목록에 ponytail이 없는 것을 확인했습니다.\n", "stock-phrase"), "작업 기록·확인 절차");
+  assert.ok(has("이 맥에 있던 4.9.0은 일곱 칸 사다리였습니다.\n", "stock-phrase"), "작업 기록·이 맥");
+  assert.ok(!has("이 맥락에서는 키가 필요합니다.\n", "stock-phrase"), "맥락은 통과");
+  assert.ok(has("Node v26.11.1에서 15분짜리 액세스 토큰으로 돌려 보니 200이었습니다.\n", "stock-phrase"), "실행 환경 서술");
+  assert.ok(has("Apple clang 21에서 두 함수의 지역 변수 주소를 찍어 보니 같았습니다.\n", "stock-phrase"), "실행 환경 서술·clang");
+  assert.ok(!has("Python 3.13에서 GIL을 끌 수 있습니다.\n", "stock-phrase"), "버전마다 다른 동작은 통과");
+  assert.ok(has("[RFC 6819 3.3절](https://x)이 이 동작을 그대로 적습니다.\n", "stock-phrase"), "근거를 주어로·링크 안 절 번호");
+  assert.ok(has("RFC 9110은 POST를 대상 자원이 요청 내용을 처리하라는 요청으로 정의합니다.\n", "stock-phrase"), "근거를 주어로·정의");
+  assert.ok(has("이 구분이 있는 이유는 RFC 9110 [9.2.2절](https://x)에 그대로 적혀 있습니다.\n", "stock-phrase"), "근거를 주어로·적혀 있다");
+  assert.ok(has("[CrowdStrike 분석](https://x)에 따르면 서버가 열려 있었습니다.\n", "stock-phrase"), "근거를 주어로·에 따르면");
+  assert.ok(!has("멱등한 메서드는 [다시 보내도](https://x) 결과가 같습니다.\n", "stock-phrase"), "링크만 단 단정은 통과");
+  assert.ok(has("\"훔쳐도 못 쓴다\"는 [Stack Overflow 답변](https://x)은 서버 앱에만 맞습니다.\n", "stock-phrase"), "커뮤니티 반응 인용");
+  assert.ok(has("HN 스레드에서 답글이 많이 달린 질문 하나는 이것이었습니다.\n", "stock-phrase"), "커뮤니티 반응 인용·HN");
 
   assert.ok(has("지난 글에서 만든 테이블에 열을 더한다.\n\n## 가\n", "sequel-intro"), "링크 없는 지난 글에서");
   assert.ok(has("> [!INFO]\n> 이전 편에 이어 RLS를 다룬다.\n", "sequel-intro"), "요약 박스 안");
