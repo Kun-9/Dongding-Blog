@@ -1,10 +1,10 @@
 /**
  * 그림 모션 — 그림 블록·```figure·본문 SVG 가 같이 쓰는 런타임(Motion).
  *
- * 그림 안의 `data-anim` 칸을 `--i` 차례로 묶고, 차례마다 첫 칸이 화면의 읽는 높이
- * (아래에서 4분의 1)를 넘어오거나 화면에 잠깐 머물면 한 번 재생한다. 그림이 화면 아래로
- * 막 들어올 때 끝나 버리면 눈이 닿기 전이라 아무도 못 본다. 이미 화면에 있거나 지나간
- * 칸은 그대로 둔다.
+ * 그림 안의 `data-anim` 칸을 `--i` 차례로 묶고, 차례마다 첫 칸이 화면 가운데를 넘어오면
+ * 한 번 재생한다. 그림이 화면 아래로 막 들어올 때 끝나 버리면 눈이 닿기 전이라 아무도
+ * 못 본다(아래 4분의 1 선이던 때 "스크롤 아래에서 재생된다"는 지적을 받았다). 페이지 끝이라
+ * 가운데까지 못 오는 칸만 화면에 잠깐 머물면 재생한다. 이미 화면에 있거나 지나간 칸은 그대로 둔다.
  *
  * 무엇이 어떻게 움직이는지는 모션 모듈(lib/figure/anims)이, 키트 클래스의 기본 모션과
  * 반복을 켤 자리는 키트 모듈(lib/figure/kits)이 정한다. 여기는 차례를 매기고 언제 틀지만 정한다.
@@ -22,11 +22,12 @@ import { animate, inView } from "motion";
 import { animByName, type AnimModule, type Prepared } from "./figure/anims";
 import { kitLive, kitMotion } from "./figure/kits";
 
-/** 읽는 높이 — 화면 아래 25% 를 뺀 곳에 들어오면 재생한다. */
-const READ_LINE = "0px 0px -25% 0px";
+/** 읽는 높이 — 화면 위에서부터의 비율. 칸 위끝이 여기를 넘으면 재생한다. */
+const READ = 0.5;
+const READ_LINE = `0px 0px -${(1 - READ) * 100}% 0px`;
 /** 같이 걸린 차례 사이(초). */
 const STAGGER = 0.09;
-/** 읽는 높이에 못 미쳐도 화면에 이만큼(ms) 머물면 재생한다. */
+/** 페이지 끝이라 읽는 높이에 못 오는 칸은 화면에 이만큼(ms) 머물면 재생한다. */
 const DWELL = 600;
 
 const RUNTIME = { animate };
@@ -101,11 +102,14 @@ export function attachFigureMotion(root: HTMLElement): () => void {
       if (!pending.length) requestAnimationFrame(flush);
       pending.push(key);
     };
-    // 읽는 높이를 넘거나, 화면 아래쪽에 멈춰 DWELL 만큼 머물면 재생한다. 앞의 것만
-    // 걸면 스크롤을 멈춘 자리(화면 아래 4분의 1, 페이지 끝)에서 칸이 빈칸으로 남는다.
+    // 읽는 높이를 넘으면 재생한다. 끝까지 내려도 거기 못 오는 칸(페이지 끝)만 화면에
+    // DWELL 만큼 머물면 재생한다. 아니면 그 칸은 빈칸으로 남는다.
     const offLine = inView(anchor, fire, { margin: READ_LINE });
     const offDwell = inView(anchor, () => {
-      const t = setTimeout(fire, DWELL);
+      const t = setTimeout(() => {
+        const left = document.documentElement.scrollHeight - innerHeight - scrollY;
+        if (anchor.getBoundingClientRect().top - left > innerHeight * READ) fire();
+      }, DWELL);
       return () => clearTimeout(t);
     });
     stops.push(offLine, offDwell);
