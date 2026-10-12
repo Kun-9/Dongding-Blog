@@ -318,7 +318,8 @@ function cells(line, st) {
   return out;
 }
 
-const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+// = 도 문자 참조로 둔다. 코드 화면의 ` onClick=` 이 업로드 검사(on* 속성 막기)에 걸렸다(2026-10-12 caveman 글).
+const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/=/g, "&#61;");
 const style = (c) => `${c.fg ?? FG}|${c.bg ?? ""}|${c.b}|${c.d}|${c.i}`;
 
 const st = { fg: null, bg: null, b: false, d: false, i: false };
