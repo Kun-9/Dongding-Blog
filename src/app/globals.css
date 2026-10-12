@@ -683,7 +683,7 @@ html.sc-snap { scroll-snap-type: y proximity; }
 /* ============================================================
    grid 그림(diagram/Grid) — 미로·BFS·DP 표. 칸은 정사각형, 글자는 고정폭.
    ============================================================ */
-.dg-grid { display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 46px)); gap: 5px; justify-content: center; }
+.dg-grid { container-type: inline-size; display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 46px)); gap: 5px; justify-content: center; }
 .dg-gx { display: grid; place-items: center; font: 600 10.5px/1 var(--font-mono); color: var(--ink-muted); }
 .dg-gc {
   aspect-ratio: 1;
@@ -691,7 +691,10 @@ html.sc-snap { scroll-snap-type: y proximity; }
   place-items: center;
   border-radius: 8px;
   border: 1px solid var(--border);
-  font: 700 clamp(10.5px, 3.4vw, 14px)/1 var(--font-mono);
+  /* 4자가 칸 안에 들게 칸 폭(판 폭 ÷ 칸 수)에 맞춰 줄인다. 좁은 화면 12칸이면 칸이 19px 안팎이다. */
+  font: 700 clamp(7.5px, calc(min(100cqw, var(--cols) * 51px) / var(--cols) * 0.32), 14px)/1 var(--font-mono);
+  letter-spacing: -0.03em;
+  overflow: hidden;
   font-variant-numeric: tabular-nums;
   transition: background-color 0.35s, color 0.35s, border-color 0.35s;
 }

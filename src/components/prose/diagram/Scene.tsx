@@ -539,17 +539,23 @@ export function FigureScene({ caption, html, steps }: { caption?: string; html: 
   useEffect(() => {
     ctxRef.current = ctxOf;
   });
-  // 자리를 재는 속성(layout)은 판 크기가 바뀌면 지금 단계로 다시 잰다.
+  // 자리를 재는 속성(layout)은 판 크기가 바뀌거나 글꼴이 늦게 들어와 칸이 밀리면 지금 단계로 다시 잰다.
   useEffect(() => {
     const root = box.current;
     const attrs = SCENE_ATTRS.filter((a) => a.layout);
     if (!root || !attrs.some((a) => root.querySelector(`[${a.name}]`))) return;
-    const ro = new ResizeObserver(() => {
-      if (!root.hasAttribute("data-ready")) return;
+    let alive = true;
+    const relayout = () => {
+      if (!alive || !root.hasAttribute("data-ready")) return;
       for (const a of attrs) root.querySelectorAll<HTMLElement>(`[${a.name}]`).forEach((el) => a.apply(el, cur.current + 1, ctxRef.current(true)));
-    });
+    };
+    const ro = new ResizeObserver(relayout);
     ro.observe(root);
-    return () => ro.disconnect();
+    void document.fonts?.ready.then(relayout);
+    return () => {
+      alive = false;
+      ro.disconnect();
+    };
   }, [html]);
   return (
     <Stage

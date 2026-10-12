@@ -10,7 +10,7 @@ import { revalidatePath } from "next/cache";
 import { dbAdmin } from "@/lib/supabase";
 import { syncLinkMeta } from "@/lib/link-meta";
 import { loadPost } from "@/lib/mcp-blog";
-import { checkVoice, type PostKind } from "@/lib/voice";
+import { checkVoice, REVIEW_ONLY_RULES, type PostKind } from "@/lib/voice";
 import { fireReleaseRoutine } from "@/lib/routine-fire";
 import type { Json } from "@/lib/database.types";
 import {
@@ -353,8 +353,11 @@ export async function advanceTopic(
     if (!post) throw new TopicError(`'${postSlug}' 글이 없다. 초안 slug 를 확인할 것`);
     const report = checkVoice(post, topic.kind);
     // 캡처 자리(todo-)는 점검 단계에선 참고지만, 발행 직전에는 막는다.
+    // 그림 다양화 규칙(REVIEW_ONLY_RULES)은 점검 단계에서만 막는다.
     const blocking = report.issues.filter(
-      (i) => i.severity !== "info" || (next.key === "published" && i.rule === "capture-pending"),
+      (i) =>
+        (i.severity !== "info" && !(next.key === "published" && REVIEW_ONLY_RULES.has(i.rule))) ||
+        (next.key === "published" && i.rule === "capture-pending"),
     );
     if (blocking.length > 0) {
       const list = blocking

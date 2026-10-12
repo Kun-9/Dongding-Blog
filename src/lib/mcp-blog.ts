@@ -85,7 +85,10 @@ const RECENT_SHAPES = 8;
 export async function checkVoiceWithHistory(post: VoiceInput & { slug?: string }, kind?: PostKind): Promise<VoiceReport> {
   const report = checkVoice(post, kind);
   const { data } = await dbAdmin().from("posts").select("slug, title, body").order("date", { ascending: false }).limit(RECENT_SHAPES + 1);
-  const others = ((data ?? []) as { slug: string; title: string; body: string }[]).filter((p) => p.slug !== post.slug).slice(0, RECENT_SHAPES);
+  // slug 없이 저장된 글의 본문을 넘겨도 자기 자신과 견주지 않게 본문이 같은 글도 뺀다.
+  const others = ((data ?? []) as { slug: string; title: string; body: string }[])
+    .filter((p) => p.slug !== post.slug && p.body !== post.body)
+    .slice(0, RECENT_SHAPES);
   const repeat = shapeRepeat(post.body, others);
   if (repeat) report.issues.push(repeat);
   return report;

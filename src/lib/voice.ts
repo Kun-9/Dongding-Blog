@@ -364,6 +364,12 @@ export const GUIDE = guide("release");
 
 /* ── 점검 ─────────────────────────────────────────────────────────────── */
 
+/**
+ * 쓸 때(점검 단계)만 막는 규칙. 발행 관문에서는 참고로 본다 — 규칙이 생기기 전에 점검을 통과한 초안을
+ * 그림을 다시 짜야 하는 이유로 발행에서 막지 않는다.
+ */
+export const REVIEW_ONLY_RULES: ReadonlySet<string> = new Set(["scene-evidence-only"]);
+
 /** 터미널 화면만 바꾸는 figure — 직접 돌린 결과·활용 예. 자리 이동이나 diff 가 있으면 아니다. */
 const isEvidence = (html: string) => html.includes("fig-term") && !/data-at=|fig-t-add|fig-t-del/.test(html);
 
