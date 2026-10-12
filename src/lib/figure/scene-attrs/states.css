@@ -23,6 +23,9 @@
 }
 /* 터미널 안의 취소선은 지운 줄이다(diff) — fig-t-del 과 같은 모양 */
 .sc-html .fig-term-body .is-strike { opacity: 0.75; background: color-mix(in oklab, var(--code-number) 16%, transparent); text-decoration-color: var(--code-number); }
+/* 빛나거나 실패한 터미널 줄은 테두리를 글자에서 띄운다. 본문 좌우 여백(18px) 안으로 8px 내밀고 그만큼 안쪽을
+   채워 글자 자리와 줄 높이는 그대로다 — 테두리 3px 이 글자와 판 가장자리 사이 가운데쯤 선다. */
+.sc-html .fig-term-body div:is(.is-accent, .is-bad):not(:has(div)) { margin-inline: -8px; padding-inline: 8px; border-radius: 6px; }
 
 /* data-at — 떠 있는 요소. JS 가 붙기 전에는 글쓴이가 둔 자리(보통 첫 자리) 그대로 보이고,
    붙은 뒤에는 판 위에 떠서 단계마다 data-spot 자리 한가운데로 미끄러진다(at.ts). */
