@@ -6,7 +6,7 @@
  * 잡는 것: 문서 가로 넘침, 그림 판(figure·장면 무대) 밖으로 나간 요소,
  * 터미널 줄이 공백 없는 긴 토큰 중간에서 끊긴 곳, 한 칸에 겹쳐 둔 단계 화면(fig-layer)이 둘 이상 보이는 곳,
  * 화면보다 커서 단계 설명을 화면 밖으로 밀어내는 장면 무대, 제 칸이 말줄임·line-clamp·overflow 로 자른 글자
- * (터미널 머리줄 칩, sequence 라벨 등. 장면은 박자마다 그림 순서·박자·글자 앞부분을 적는다).
+ * (터미널 머리줄 칩, sequence 라벨 등. 장면은 박자마다 그림 순서·박자·글자 앞부분을 적는다), 칸 테두리 밖으로 삐져나온 글자.
  *
  *   node .claude/skills/release-post/mobile-check.mjs <slug> [--base https://blog.dongding.dev] [--shots <폴더>]
  *
@@ -84,6 +84,52 @@ function scan() {
     return `그림 ${figs.indexOf(el.closest("figure") ?? st?.querySelector("figure")) + 1}${beat}`;
   };
   const clipped = (o) => o === "hidden" || o === "clip";
+  // 테두리 안쪽(padding box).
+  const pad = (a, cs) => {
+    const q = a.getBoundingClientRect();
+    return { left: q.left + parseFloat(cs.borderLeftWidth), right: q.right - parseFloat(cs.borderRightWidth), top: q.top + parseFloat(cs.borderTopWidth), bottom: q.bottom - parseFloat(cs.borderBottomWidth) };
+  };
+  // 칸 — 좌우에 테두리를 그린 상자(키트 fig-box·fig-t-box·fig-chip, 그림 블록의 rounded-xl border 칸, 격자 dg-gc).
+  // 판(.dg-panel)은 칸이 아니다. 판 경계는 판 밖 검사가 본다.
+  const isCell = (a, cs) =>
+    !a.matches(".dg-panel, figure") &&
+    ["Left", "Right"].every((s) => cs[`border${s}Style`] !== "none" && parseFloat(cs[`border${s}Width`]) > 0 && cs[`border${s}Color`] !== "rgba(0, 0, 0, 0)");
+  // 요소 바로 아래 글자 노드들의 실제 글자 상자(앞뒤 공백 뺌)를 합친다.
+  const textBox = (el) => {
+    let b = null;
+    for (const n of el.childNodes) {
+      const m = n.nodeType === 3 && /\S(?:[\s\S]*\S)?/.exec(n.data);
+      if (!m) continue;
+      const rg = document.createRange();
+      rg.setStart(n, m.index);
+      rg.setEnd(n, m.index + m[0].length);
+      for (const q of rg.getClientRects()) {
+        if (!q.width || !q.height) continue;
+        b = b
+          ? { left: Math.min(b.left, q.left), right: Math.max(b.right, q.right), top: Math.min(b.top, q.top), bottom: Math.max(b.bottom, q.bottom) }
+          : { left: q.left, right: q.right, top: q.top, bottom: q.bottom };
+      }
+    }
+    return b;
+  };
+  // 글자가 가장 가까운 칸의 테두리 밖으로 나간 방향과 거리. 칸까지 가는 길에 글자를 자르는 조상이 있으면 잘린 뒤 보이는
+  // 범위로 보고, 떠 있는 요소(data-at 칩, absolute 배지·말풍선)를 지나면 일부러 칸 밖에 둔 것이라 뺀다.
+  const spillOf = (el, box) => {
+    const t = textBox(el);
+    for (let a = el; t && a && a !== box; a = a.parentElement) {
+      const cs = getComputedStyle(a);
+      const p = pad(a, cs);
+      if (clipped(cs.overflowX)) [t.left, t.right] = [Math.max(t.left, p.left), Math.min(t.right, p.right)];
+      if (clipped(cs.overflowY)) [t.top, t.bottom] = [Math.max(t.top, p.top), Math.min(t.bottom, p.bottom)];
+      if (t.right - t.left < 1 || t.bottom - t.top < 1) return null;
+      if (isCell(a, cs)) {
+        const d = [["오른쪽으로", t.right - p.right], ["왼쪽으로", p.left - t.left], ["아래로", t.bottom - p.bottom], ["위로", p.top - t.top]].sort((x, y) => y[1] - x[1])[0];
+        return d[1] > 2 ? d : null;
+      }
+      if (a.hasAttribute("data-at") || cs.position === "absolute" || cs.position === "fixed") return null;
+    }
+    return null;
+  };
   for (const box of document.querySelectorAll("article figure, .sc-in")) {
     const r = box.getBoundingClientRect();
     if (r.height === 0 || r.bottom < 0 || r.top > innerHeight) continue;
@@ -101,6 +147,15 @@ function scan() {
         const said = (window.__clipSaid ??= new WeakMap());
         if ((dx > 1 || dy > 1) && said.get(el) !== el.textContent && said.set(el, el.textContent))
           out.push(`글자 잘림: ${where(el)} ${name(el)} (${dx > 1 ? `가로 ${dx}px` : `세로 ${dy}px`} 넘쳐 잘림. 글자를 줄인다)`);
+      }
+      // 글자가 제 칸 테두리 밖으로 삐져나온다(overflow visible). 잘림 검사는 자르는 칸만, 판 밖 검사는 판 경계만 봐서
+      // 놓쳤다(2026-10-12 diagram-design 글: 390px 에 세 칸을 그대로 둔 fig-grid-3 의 셋째 칸 제목이 칸 밖으로 나왔는데 끝 코드 0).
+      // 빼는 것은 잘림 검사와 같다(흐린 단계, 아직 안 온·숨긴 단계는 visible 이 거른다, 1px 낭독기 글자는 자르는 조상이 거른다).
+      if (!el.closest(".is-dim")) {
+        const d = spillOf(el, box);
+        const said = (window.__spillSaid ??= new WeakMap());
+        if (d && said.get(el) !== el.textContent && said.set(el, el.textContent))
+          out.push(`칸 넘침: ${where(el)} ${name(el)} (칸 ${d[0]} ${Math.round(d[1])}px 넘침)`);
       }
       // 그림 안 세로 스크롤 — 휠이 페이지 대신 판 안쪽을 내려 머리줄이 잘린다(2026-10-08 matrix).
       const oy = getComputedStyle(el).overflowY;
@@ -176,17 +231,25 @@ if (selftest) {
     <div style="position:absolute;width:1px;height:1px;overflow:hidden;white-space:nowrap">화면 낭독기만 읽는 긴 글자</div>
     <figcaption style="width:80px;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden">이미지 묶음 설명은 두 줄로 줄이고 확대 화면에서 다 보인다</figcaption>
     <div class="is-dim"><span style="display:block;width:60px;overflow:hidden;white-space:nowrap">흐린단계의긴칩글자흐린단계</span></div>
+    <div class="fig-box" style="width:80px;border:1px solid;font:12px monospace"><span class="fig-title" style="display:block;white-space:nowrap">overflowingtitle</span></div>
+    <div style="width:80px;box-sizing:border-box;padding:0 10px;border:1px solid;font:12px monospace;white-space:nowrap">padinside</div>
+    <div style="position:relative;width:100px;height:40px;border:1px solid"><span style="position:absolute;top:-8px;right:-30px;white-space:nowrap">모서리배지</span><span data-at="1:b" style="display:inline-block;translate:120px 0;white-space:nowrap">떠다니는칩</span></div>
+    <div class="is-dim"><div style="width:40px;border:1px solid;white-space:nowrap">흐린칸넘침글자</div></div>
+    <div style="width:60px;border:1px solid;overflow:hidden;white-space:nowrap">자르는칸은잘림검사몫</div>
   </figure>
-  <div class="sc-in"><figure style="margin:0;width:300px"><div style="display:flex;white-space:nowrap;font:11.5px monospace"><span class="fig-term-tag" style="min-width:0;max-width:62%;margin-left:auto;overflow:hidden;text-overflow:ellipsis;padding:2px 9px">refresh(rt, now) 새 access 발급</span></div></figure>
+  <div class="sc-in"><figure style="margin:0;width:300px"><div style="display:flex;white-space:nowrap;font:11.5px monospace"><span class="fig-term-tag" style="min-width:0;max-width:62%;margin-left:auto;overflow:hidden;text-overflow:ellipsis;padding:2px 9px">refresh(rt, now) 새 access 발급</span></div>
+    <div style="width:60px;height:20px;border:1px solid;font:12px/20px sans-serif">장면 칸 아래로 넘친 글자</div></figure>
     <div class="sc-notes"><div class="sc-note"><span class="sc-k">발급</span></div><div class="sc-note on"><span class="sc-k">갱신</span></div></div></div>
   <div style="width:600px;height:10px"></div></article>
   <div class="sc-stage" style="position:fixed;top:0;height:844px;overflow:visible"><div class="sc-in" style="height:900px"></div></div>`);
   const got = await page.evaluate(scan);
   await browser.close();
-  const want = ["문서 가로 넘침", "그림 판 밖으로 나감", "터미널 줄이 토큰 중간에서 끊김", "그림 안에 세로 스크롤", "겹친 단계 화면이 함께 보임", "장면 무대가 화면보다 큼", "글자 잘림: 그림 1 span", "글자 잘림: 그림 2 박자 2(갱신) span.fig-term-tag"];
+  const want = ["문서 가로 넘침", "그림 판 밖으로 나감", "터미널 줄이 토큰 중간에서 끊김", "그림 안에 세로 스크롤", "겹친 단계 화면이 함께 보임", "장면 무대가 화면보다 큼", "글자 잘림: 그림 1 span", "글자 잘림: 그림 2 박자 2(갱신) span.fig-term-tag", "칸 넘침: 그림 1 span.fig-title \"overflowingtitle\" (칸 오른쪽으로", "칸 넘침: 그림 2 박자 2(갱신) div \"장면 칸 아래로"];
   const miss = want.filter((w) => !got.some((g) => g.startsWith(w)));
   // 끝 여백 안까지만 들어간 글자, 낭독기 글자, 이미지 묶음 설명, 흐린 단계는 잘림으로 잡지 않아야 한다.
   for (const w of ["padonlyfits", "낭독기", "이미지 묶음", "흐린단계"]) if (got.some((g) => g.startsWith("글자 잘림") && g.includes(w))) miss.push(`${w} 를 잘림으로 잘못 잡음`);
+  // 칸 안쪽 여백까지만 들어간 글자, 떠 있는 배지·data-at 칩, 흐린 단계, 자르는 칸(잘림 검사 몫)은 칸 넘침으로 잡지 않아야 한다.
+  for (const w of ["padinside", "모서리배지", "떠다니는칩", "흐린칸", "자르는칸", "낭독기"]) if (got.some((g) => g.startsWith("칸 넘침") && g.includes(w))) miss.push(`${w} 를 칸 넘침으로 잘못 잡음`);
   // 공백에서 접힌 줄은 잡지 않아야 한다.
   if (got.some((g) => g.includes("Exception"))) miss.push("공백에서 접힌 줄을 잘못 잡음");
   // 판 안에서 일부러 가린 요소(timeline 슬라이드)는 잡지 않아야 한다.
