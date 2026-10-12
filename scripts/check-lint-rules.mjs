@@ -234,6 +234,7 @@ assert.equal(stats.images, 1);
   assert.ok(has("이 구분이 있는 이유는 RFC 9110 [9.2.2절](https://x)에 그대로 적혀 있습니다.\n", "stock-phrase"), "근거를 주어로·적혀 있다");
   assert.ok(has("[CrowdStrike 분석](https://x)에 따르면 서버가 열려 있었습니다.\n", "stock-phrase"), "근거를 주어로·에 따르면");
   assert.ok(!has("멱등한 메서드는 [다시 보내도](https://x) 결과가 같습니다.\n", "stock-phrase"), "링크만 단 단정은 통과");
+  assert.ok(!has("값이 깨지면 그 값을 여러 스레드가 함께 쓰고 있지 않은지부터 봅니다.\n", "stock-phrase"), "동시성 글의 스레드는 통과");
   assert.ok(has("\"훔쳐도 못 쓴다\"는 [Stack Overflow 답변](https://x)은 서버 앱에만 맞습니다.\n", "stock-phrase"), "커뮤니티 반응 인용");
   assert.ok(has("HN 스레드에서 답글이 많이 달린 질문 하나는 이것이었습니다.\n", "stock-phrase"), "커뮤니티 반응 인용·HN");
 
