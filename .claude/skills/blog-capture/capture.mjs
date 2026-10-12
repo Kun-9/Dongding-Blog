@@ -70,7 +70,9 @@ class Fail extends Error {
 // 전역 환경·설정이 섞여 기계마다 다른 화면이 나온다. 마지막 세션을 닫으면 서버도 끝난다.
 const tmux = (...a) => spawnSync("tmux", ["-L", `blogcap-${process.pid}`, "-f", "/dev/null", ...a], { encoding: "utf8" });
 const sleep = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
-const plain = (s) => s.replace(/\x1b\[[0-9;:]*m/g, "");
+// OSC(하이퍼링크 ESC ] 8 ;; 주소 ESC \\ 등)는 지운다. 남기면 file:///private/var/… 같은 로컬 경로가 글자로 SVG 에 흘렀다(2026-10-12).
+const noOsc = (s) => s.replace(/\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)/g, "");
+const plain = (s) => noOsc(s).replace(/\x1b\[[0-9;:]*m/g, "");
 
 /** 화면이 ms 동안 그대로면 멈춘 것으로 본다. 마지막 화면(색 포함)을 돌려준다. */
 function settle(session, ms = 1200) {
@@ -210,7 +212,7 @@ try {
     lock();
     held = true;
   }
-  ansi = opt.ansi ? readFileSync(opt.ansi, "utf8") : shoot();
+  ansi = noOsc(opt.ansi ? readFileSync(opt.ansi, "utf8") : shoot());
   unlock();
 } catch (e) {
   unlock();
@@ -234,7 +236,7 @@ while (to > from && !text[to].trim()) to--;
 
 /** 글에 실으면 안 되는 것. 걸리면 범위를 좁힌다. 화면 자체가 그 내용이면 --allow <이름>. */
 const PRIVATE = {
-  path: /(^|\s)(~|\/)[\w.…-]+\/[\w.…-]+/,
+  path: /(^|\s)(~|\/)[\w.…-]+\/[\w.…-]+|file:\/\//,
   email: /[\w.+-]+@[\w-]+\.[a-z]{2,}/i,
   secret: /\bsk-[\w-]{10,}|\b[a-f0-9]{32,}\b|\beyJ[\w-]{10,}\./i,
   usage: /\b(5h|wk|7d|extra):\[|usage limit|resets? (at|in)\b/i,
