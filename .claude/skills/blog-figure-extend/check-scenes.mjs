@@ -38,6 +38,8 @@ function snapshot() {
     .filter((f) => !f.closest(".sc"))
     .map((f) => ({
       cap: (f.querySelector("figcaption")?.textContent ?? "").slice(0, 24),
+      // 모션 칸(data-anim)이 없는 그림(마크다운 표·이미지)은 재생을 기다리지 않는다.
+      motion: !!f.querySelector("[data-anim]"),
       cells: [...f.querySelectorAll("*")].map((el) => ({
         sig: el.closest("[data-loop]") ? "loop" : norm(getComputedStyle(el), el),
         below: el.getBoundingClientRect().top > innerHeight * 1.2,
@@ -98,7 +100,8 @@ for (const [label, opts] of VIEWS) {
 
   // 2) 런타임 — 화면 아래 칸은 재생을 기다리며 기준과 달라야 한다(움직임 줄이기면 그대로).
   const first = await page.evaluate(snapshot);
-  const below = first.flatMap((f) => f.cells.filter((c) => c.below)).length;
+  // 2026-10-12 Codex 글: 화면 아래 그림이 마크다운 표뿐이라 "런타임이 붙지 않았다"로 잘못 잡았다.
+  const below = first.filter((f) => f.motion).flatMap((f) => f.cells.filter((c) => c.below)).length;
   const waiting = diff(base, first, (c) => c.below).length;
   if (label !== "reduced" && below && !waiting) fails.push(`${label} 모션 런타임이 붙지 않았습니다(화면 아래 그림 칸 ${below}개가 처음부터 끝 모습)`);
   if (label === "reduced" && waiting) fails.push(`${label} 움직임 줄이기인데 화면 아래 칸 ${waiting}개가 숨어 있습니다`);
