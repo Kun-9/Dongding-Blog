@@ -14,13 +14,14 @@
  * 꼭 내 구성이 보여야 하면 --no-safe-mode. safe-mode 는 플러그인을 끄므로, mod·플러그인 화면은
  * --plugin <폴더> 로 그 플러그인만 싣는다(--setting-sources project 는 그대로).
  * --setup "<셸 명령>" 은 띄우기 전에 캡처 폴더에서 돈다(지울 파일 만들기 등). --wait <글자> 는
- * --keys 사이에 끼워 그 글자가 화면에 뜰 때까지 기다린다(턴이 끝난 뒤 키 누르기).
+ * --keys 사이에 끼워 그 글자가 화면에 뜰 때까지 기다린다(턴이 끝난 뒤 키 누르기). --keep <폴더> 는 끝난 뒤
+ * 캡처 폴더를 그 폴더로 복사해 둔다(모델이 만든 파일을 브라우저로 띄워 찍을 때).
  *
  * 끝 코드: 0 성공 · 1 사용법 · 2 개인 정보가 보임 · 3 띄우지 못함(설치·로그인)
  *          4 tmux 없음 · 5 --from/--to 를 화면에서 못 찾음
  */
 import { spawnSync } from "node:child_process";
-import { mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { basename, join } from "node:path";
 
@@ -38,6 +39,7 @@ for (let i = 0; i < argv.length; i++) {
   else if (k === "--wait") opt.keys.push({ wait: v() });
   else if (k === "--plugin") opt.plugins.push(v());
   else if (k === "--setup") opt.setup = v();
+  else if (k === "--keep") opt.keep = v();
   else if (k === "--from") opt.from = v();
   else if (k === "--to") opt.to = v();
   else if (k === "--out") opt.out = v();
@@ -165,6 +167,8 @@ function shoot() {
     return settle(session, 1500);
   } finally {
     tmux("kill-session", "-t", session);
+    // 2026-10-12 diagram-design 글은 결과 HTML 을 찍으려고 이 스크립트 사본을 고쳐 띄웠다.
+    if (opt.keep) cpSync(dir, opt.keep, { recursive: true });
     rmSync(dir, { recursive: true, force: true });
     // Claude Code 는 끝나면서 기록을 한 번 더 쓴다. 잠깐 기다렸다 지운다(남아도 다음 캡처가 시작할 때 지운다).
     sleep(1500);
