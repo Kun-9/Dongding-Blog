@@ -497,6 +497,8 @@ step: blast-radius · 실행 직전
 
 `code`·`kbd`·`mark`·`table`·`details` 는 클래스 없이도 키트 모양이 입혀진다.
 
+경로·코드·헤더 이름처럼 대소문자가 뜻인 글자는 `fig-label` 대신 `fig-mono`(또는 `fig-sub`)에 둔다. `fig-label` 은 글자를 대문자로 바꿔 `/orders` 가 `/ORDERS` 로, `Idempotency-Key` 가 `IDEMPOTENCY-KEY` 로 틀린 값처럼 보인다(2026-10-12 POST·PUT 글).
+
 ````
 ```figure
 caption: 분류기가 명령을 두 갈래로 나누는 방식
