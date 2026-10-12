@@ -29,9 +29,11 @@ import {
   advanceTopic,
   claimAiWork,
   finishAi,
+  getTopic,
   kindOfSlug,
   reportAi,
   saveNotes,
+  topicReceipt,
 } from "@/lib/release-topics";
 import { nextStage } from "@/lib/release-stages";
 import type { TopicRow } from "@/lib/release-topics";
@@ -80,6 +82,7 @@ async function assertWorkerPost(slug: string) {
 
 const Action = z.discriminatedUnion("action", [
   z.object({ action: z.literal("claim"), id: ID.optional() }),
+  z.object({ action: z.literal("topic"), id: ID }),
   z.object({ action: z.literal("report"), id: ID, message: z.string().min(1).max(200) }),
   z.object({
     action: z.literal("finish"),
@@ -170,15 +173,18 @@ export async function POST(req: Request) {
         const t = await claimAiWork(input.id);
         return ok({ work: t ? withNext(t) : null });
       }
+      case "topic":
+        return ok(withNext(await getTopic(input.id)));
+      // 쓰기 응답은 요약이다(노트는 notesLength 만). 전문은 topic 으로 읽는다.
       case "report":
-        return ok(withNext(await reportAi(input.id, input.message)));
+        return ok(topicReceipt(await reportAi(input.id, input.message)));
       case "finish":
-        return ok(withNext(await finishAi(input.id, input.ok, input.message, input.todo)));
+        return ok(topicReceipt(await finishAi(input.id, input.ok, input.message, input.todo)));
       case "notes":
-        return ok(withNext(await saveNotes(input.id, input.markdown, input.mode)));
+        return ok(topicReceipt(await saveNotes(input.id, input.markdown, input.mode)));
       case "advance":
         // 발행은 허용하지 않는다(allowPublish 기본 false).
-        return ok(withNext(await advanceTopic(input.id, { note: input.note, postSlug: input.postSlug })));
+        return ok(topicReceipt(await advanceTopic(input.id, { note: input.note, postSlug: input.postSlug })));
 
       case "candidates": {
         const { data, error } = await dbAdmin()

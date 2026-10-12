@@ -43,6 +43,7 @@ import {
   getTopics,
   revertTopic,
   kindOfSlug,
+  topicReceipt,
   type TopicRow,
 } from "@/lib/release-topics";
 import { STAGES, nextStage } from "@/lib/release-stages";
@@ -75,10 +76,10 @@ function brief(t: TopicRow) {
 const IMAGE_BUCKET = "post-images";
 const SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
 
-/** 주제 도구 공용 — TopicError 는 모델이 고칠 수 있는 실패라 메시지만 준다. */
+/** 주제 쓰기 도구 공용 — 응답은 요약(노트는 길이만). TopicError 는 모델이 고칠 수 있는 실패라 메시지만 준다. */
 async function topicCall(fn: () => Promise<TopicRow>) {
   try {
-    return json(withNext(await fn()));
+    return json(topicReceipt(await fn()));
   } catch (e) {
     if (e instanceof TopicError) return fail(e.message);
     throw e;
@@ -456,8 +457,10 @@ const handler = createMcpHandler(
           "릴리스 노트 카테고리의 글 주제와 집필 진행 상태를 돌려준다. 주제마다 끝낸 단계(stage), " +
           "단계별 근거(checks), 다음 할 일(next), 묶인 글감(candidates: repo·tag)이 있다. " +
           `단계 순서: ${STAGES.map((s) => `${s.key}(${s.label})`).join(" → ")}. ` +
-          "릴리스 글을 쓰기 전에 먼저 불러 어디까지 진행됐는지 확인할 것. 글감 본문은 주지 않는다.",
+          "릴리스 글을 쓰기 전에 먼저 불러 어디까지 진행됐는지 확인할 것. 글감 본문은 주지 않는다. " +
+          "목록의 작업 노트는 길이(notesLength)만 준다. id 를 주면 그 주제 하나를 노트(notes) 전문과 함께 준다.",
         inputSchema: z.object({
+          id: z.number().int().optional().describe("이 주제 하나만, 작업 노트 전문과 함께"),
           includeDropped: z.boolean().optional().describe("접거나 버린 주제도 포함. 버린 주제는 discardedAt 이 있다"),
           reserved: z
             .boolean()
@@ -465,8 +468,12 @@ const handler = createMcpHandler(
             .describe("어드민에서 '예약'으로 맡겨 로컬 세션을 기다리는 주제만. claim_release_work 에 id 로 넘길 후보"),
         }),
       },
-      async ({ includeDropped, reserved }) => {
+      async ({ id, includeDropped, reserved }) => {
         const topics = await getTopics();
+        if (id !== undefined) {
+          const t = topics.find((t) => t.id === id);
+          return t ? json(withNext(t)) : fail(`${id}번 주제가 없습니다.`);
+        }
         return json(
           topics
             .filter((t) => includeDropped || t.droppedReason === null)
@@ -527,7 +534,7 @@ const handler = createMcpHandler(
         description:
           "작업 중인 주제의 한 줄 상황을 남긴다(어드민 카드에 실시간 진행 로그로 쌓인다). 단계를 시작할 때뿐 아니라 " +
           "작은 일마다(문서 읽기, 표 만들기, 초안 섹션 등) 1~2분에 한 번꼴로 구체적으로 부를 것. " +
-          "어드민에서 취소했으면 에러가 나니 그때는 바로 멈출 것.",
+          "어드민에서 취소했으면 에러가 나니 그때는 바로 멈출 것. 응답은 주제 요약이다(노트는 notesLength 만).",
         inputSchema: z.object({ id: z.number().int(), message: z.string().min(1).max(200) }),
       },
       async ({ id, message }) => topicCall(() => reportAi(id, message)),
@@ -557,7 +564,8 @@ const handler = createMcpHandler(
         title: "릴리스 주제 작업 노트 쓰기",
         description:
           "주제의 작업 노트(markdown)에 덧붙이거나(append) 통째로 바꾼다(replace). 2차 소스 조사 요약·출처 링크, " +
-          "자료 단계의 비교 표·그림 목록을 여기에 쌓는다. 어드민 카드에서 사람이 그대로 읽는다. 섹션은 '## 2차 소스' 처럼 단계 이름으로 나눌 것.",
+          "자료 단계의 비교 표·그림 목록을 여기에 쌓는다. 어드민 카드에서 사람이 그대로 읽는다. 섹션은 '## 2차 소스' 처럼 단계 이름으로 나눌 것. " +
+          "응답은 주제 요약이고 노트는 길이(notesLength)만 온다. 전문은 list_release_topics 에 id 를 넘겨 읽는다.",
         inputSchema: z.object({
           id: z.number().int(),
           markdown: z.string().min(1).max(50_000),

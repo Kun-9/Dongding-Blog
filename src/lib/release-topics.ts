@@ -193,6 +193,27 @@ function toRow(t: DbTopic, candidateIds: string[]): TopicRow {
   };
 }
 
+/**
+ * 쓰기 응답(보고·노트·단계 넘기기·끝내기)에 싣는 요약. 실행기가 1~2분마다 부르는데
+ * 노트 전문과 진행 로그를 매번 다시 실으면 컨텍스트를 크게 쓴다. 전문은 집기와
+ * 주제 읽기(MCP list_release_topics 의 id, 실행기 API 의 topic)로 본다.
+ */
+export function topicReceipt(t: TopicRow) {
+  const next = nextStage(t.stage);
+  return {
+    id: t.id,
+    kind: t.kind,
+    title: t.title,
+    stage: t.stage,
+    next: next ? { stage: next.key, label: next.label, todo: next.todo } : null,
+    checks: t.checks,
+    postSlug: t.postSlug,
+    droppedReason: t.droppedReason,
+    ai: { status: t.ai.status, until: t.ai.until, message: t.ai.message, prompt: t.ai.prompt, todo: t.ai.todo },
+    notesLength: t.notes.length,
+  };
+}
+
 export async function getTopics(): Promise<TopicRow[]> {
   const db = dbAdmin();
   const [topics, links] = await Promise.all([
@@ -215,7 +236,7 @@ export async function getTopics(): Promise<TopicRow[]> {
   );
 }
 
-async function getTopic(id: number): Promise<TopicRow> {
+export async function getTopic(id: number): Promise<TopicRow> {
   const db = dbAdmin();
   const [topic, links] = await Promise.all([
     selectTopics((cols) =>

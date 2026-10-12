@@ -20,6 +20,7 @@ description: Use when the user asks you directly (not through the admin "AI에�
 | 지시서 액션 | MCP 도구 |
 | --- | --- |
 | candidates | `get_release_candidates` — `released` 가 배포일 |
+| topic | `list_release_topics` 에 `id` — 작업 노트 전문. 쓰기 도구 응답에는 노트 길이(`notesLength`)만 온다 |
 | notes | `save_release_notes` (`## 2차 소스`, `## 자료` 섹션) |
 | advance | `advance_release_topic` (근거 note, 자료 단계에서 `postSlug`) |
 | taxonomy / slugs | `list_taxonomy` / `list_posts` |
