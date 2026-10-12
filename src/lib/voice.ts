@@ -65,6 +65,13 @@ export const RELEASE_SOURCE_HOSTS = [
   "openai.com",
   "chatgpt.com",
   "cloudflare.com",
+  // 보안 사고 글의 정부·공공 기관 발표(go.kr 은 정부 기관 전체)와 표준 문서
+  "go.kr",
+  "kisa.or.kr",
+  "fss.or.kr",
+  "fsec.or.kr",
+  "rfc-editor.org",
+  "ietf.org",
 ] as const;
 
 const RELEASE_SOURCE = new RegExp(
