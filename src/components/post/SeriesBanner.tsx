@@ -3,6 +3,7 @@
  * 좌측 색상 마커 + 시리즈 타이틀 + 현재 STEP 진행 표시 + 시리즈 페이지 링크.
  */
 import Link from "next/link";
+import { Chevron } from "@/components/ui/Chevron";
 
 interface Props {
   seriesId: string;
@@ -55,12 +56,7 @@ export function SeriesBanner({
       </div>
       <span className="flex shrink-0 items-center gap-2 font-sans text-[11px] font-medium tracking-[-0.005em] text-ink-soft">
         <span className="hidden sm:inline">전체 {publishedCount}편</span>
-        <span
-          aria-hidden
-          className="font-mono text-[12px] text-ink-muted transition-transform duration-200 group-hover:translate-x-1"
-        >
-          →
-        </span>
+        <Chevron className="text-[12px] text-ink-muted transition-transform duration-200 group-hover:translate-x-1" />
       </span>
     </Link>
   );

@@ -4,6 +4,7 @@
  */
 import Link from "next/link";
 import type { PostMeta } from "@/lib/types";
+import { Chevron } from "@/components/ui/Chevron";
 
 export type StepSlot =
   | { kind: "post"; order: number; post: PostMeta }
@@ -76,15 +77,10 @@ export function SeriesStepNav({
         </div>
         <Link
           href={`/series/${seriesId}`}
-          className="group/all shrink-0 font-sans text-[12px] font-medium text-ink-soft no-underline hover:text-ink"
+          className="group/all inline-flex shrink-0 items-center gap-1 font-sans text-[12px] font-medium text-ink-soft no-underline hover:text-ink"
         >
-          전체 보기 ({publishedCount}편){" "}
-          <span
-            aria-hidden
-            className="inline-block font-mono transition-transform duration-200 group-hover/all:translate-x-0.5"
-          >
-            →
-          </span>
+          전체 보기 ({publishedCount}편)
+          <Chevron className="transition-transform duration-200 group-hover/all:translate-x-0.5" />
         </Link>
       </div>
 
@@ -95,12 +91,10 @@ export function SeriesStepNav({
             className="group/prev flex flex-col gap-1.5 border-b border-border-token p-5 text-inherit no-underline transition-colors duration-200 hover:bg-surface-alt sm:border-b-0 sm:border-r"
           >
             <div className="flex items-center gap-2 font-sans text-[10.5px] font-bold uppercase tracking-[0.14em] text-ink-muted">
-              <span
-                aria-hidden
-                className="font-mono transition-transform duration-200 group-hover/prev:-translate-x-1"
-              >
-                ←
-              </span>
+              <Chevron
+                dir="left"
+                className="transition-transform duration-200 group-hover/prev:-translate-x-1"
+              />
               <span>이전 단계</span>
               <StepLabel order={prev.seriesOrder} />
             </div>
@@ -127,12 +121,7 @@ export function SeriesStepNav({
             >
               <StepLabelInline order={next.seriesOrder} />
               <span>다음 단계</span>
-              <span
-                aria-hidden
-                className="font-mono transition-transform duration-200 group-hover/next:translate-x-1"
-              >
-                →
-              </span>
+              <Chevron className="transition-transform duration-200 group-hover/next:translate-x-1" />
             </div>
             <div className="font-sans text-[15.5px] font-semibold leading-[1.4] tracking-[-0.018em] text-ink">
               {next.title}
