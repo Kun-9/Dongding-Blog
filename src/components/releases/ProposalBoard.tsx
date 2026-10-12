@@ -168,7 +168,8 @@ function ProposalCard({
         </div>
       )}
       {p?.trend && <Trend weeks={p.trend} />}
-      <div className="mt-0.5 flex items-center gap-1.5">
+      {/* 한 줄의 카드는 높이가 같다. 버튼을 바닥에 붙여 줄마다 같은 자리에 둔다. */}
+      <div className="mt-auto flex items-center gap-1.5 pt-0.5">
         <button
           type="button"
           onClick={onAdopt}
