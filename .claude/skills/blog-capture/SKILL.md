@@ -37,6 +37,25 @@ node .claude/skills/blog-capture/capture.mjs --run "claude --model claude-sonnet
 | `--wait <글자>` | `--keys` 사이에 끼운다. 그 글자가 화면에 뜰 때까지(최대 `--timeout`) 기다렸다가 다음 키를 보낸다. 턴이 끝난 뒤 명령을 칠 때 쓴다 |
 | `--timeout <초>` | 기다리는 상한(기본 40). 모델이 한 턴 일하는 화면은 120 안팎 |
 
+### 스킬·플러그인 글의 전·후 캡처
+
+스킬·플러그인 글은 같은 예시 프롬프트를 도구 없이 한 번, `--plugin` 으로 싣고 한 번 떠서 두 장을 나란히 싣는다. 프롬프트·폴더(`--setup`)·모델·자르는 범위를 똑같이 두고 `--plugin` 만 바꾼다. 태그가 skill·plugin 인 글은 실제 캡처가 두 장 미만이면 점검(`tool-no-capture`)에서 막힌다.
+
+```bash
+P="Add a date picker component to the frontend."
+SETUP='git clone -q --depth 1 https://github.com/fastapi/full-stack-fastapi-template .'
+# 전: 도구 없이
+node .claude/skills/blog-capture/capture.mjs --timeout 180 --setup "$SETUP" \
+  --run "claude --model claude-opus-5-5" --keys "$P" --keys Enter \
+  --wait "<턴이 끝나면 뜨는 글자>" --from "<첫 줄 글자>" --to "<끝 줄 글자>" --out /tmp/before.svg
+# 후: 같은 명령에 --plugin 만 더한다
+node .claude/skills/blog-capture/capture.mjs --timeout 180 --setup "$SETUP" --plugin ./ponytail \
+  --run "claude --model claude-opus-5-5" --keys "$P" --keys Enter \
+  --wait "<턴이 끝나면 뜨는 글자>" --from "<첫 줄 글자>" --to "<끝 줄 글자>" --out /tmp/after.svg
+```
+
+자리표시(`<…>`)는 처음 한 번 짐작으로 띄워 끝 코드 5 가 보여 주는 화면을 보고 채운다. 브라우저에 그려지는 결과(고친 카드, 기본 달력과 직접 만든 달력)는 dev-browser 스킬로 띄워 PNG 로 찍어 `upload_post_image` 로 올린다. 본문은 "조작 한 줄 → 캡처 → 결과 한 줄"로 잇는다.
+
 ### 플러그인·mod 를 실제로 돌려 뜨기
 
 예제가 무엇을 하는지는 실제로 돌린 화면이 가장 빨리 전한다. 모델에게 일을 시켜야 뜨는 화면이면 프롬프트를 `--keys` 로 치고, 결과가 뜰 때까지 `--wait` 로 기다린다. 모델 호출이 한 번 드니 사용자 몫의 비용이라는 것을 알리고 뜬다.

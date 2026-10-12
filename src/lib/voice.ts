@@ -106,6 +106,7 @@ export const CLARITY_RULES = [
   "근거는 링크로만 단다. 'RFC 6819 3.3절이 그대로 적습니다', '가이드는 ~라고 적었으니', 'Stack Overflow 답변은 ~에만 맞습니다'처럼 문서·절 번호·문서 상태·커뮤니티 반응을 문장 주어로 세우지 않는다. 내용을 단정하고 핵심 낱말에 링크를 건다",
   "문장·섹션마다 '독자가 이걸 읽고 무엇을 하거나 고르나'에 답이 있어야 남긴다. 작성자 뒷얘기(도구 호출 순서, 문서끼리 어긋난 값, 이슈·PR 상태), 남의 벤치마크 세부, 제목 밖 릴리스 항목, 발표 뉴스 맥락, 쓰지 말라는 선택지를 길게 시연하는 우회는 지운다",
   "따라 칠 코드·설정은 생략 없이 쓴다(`opts`·`...`로 핵심 인자를 가리지 않는다). 문제를 짚었으면 해법(코드·설정 한 덩어리)까지 쓴다",
+  "스킬·플러그인·CLI 처럼 써 보는 도구를 다룰 때는 네 가지를 꼭 둔다. ① 설치·실행 명령을 실제 값으로(복사해 바로 되게) ② 예시 프롬프트 원문 ③ 같은 요청을 적용 전(도구 없이)·후로 돌린 결과를 나란히 ④ 실제 스크린샷. 스크린샷은 '조작 한 줄 → 캡처 → 결과 한 줄'로 잇고, 터미널은 blog-capture 의 capture.mjs(`--plugin` 을 빼고 넣어 전·후 두 번), 브라우저에 그려지는 결과는 PNG 로 뜬다. figure 로 다시 그린 화면은 실제 캡처를 대신하지 않는다(장면은 원리·움직임 자리). 태그가 skill·plugin 인 글은 실제 캡처가 두 장 미만이면 점검에서 막힌다",
   "비유는 기준 독자가 이미 아는 것에만 댄다. \"Express나 Koa의 미들웨어와 같은 모양\"처럼 그 독자가 모를 수 있는 것에 빗대면 비유를 또 설명해야 한다",
   "링크는 더 읽을 거리다. 링크를 누르지 않아도 이 글만으로 이해되게, 링크를 단 문장 안에서 필요한 만큼 풀어 쓴다",
   "이전 글을 읽었다고 가정하지 않는다. 이전 글이 필요하면 첫 문단에서 이 글에 필요한 부분을 한두 문장으로 요약하고 그 요약에 링크를 건다. '먼저 읽고 오라'고 하지 않는다. 느슨하게 관련된 글은 전편처럼 다루지 말고 본문 링크로 둔다",
@@ -298,7 +299,7 @@ export const PLOTS: { id: string; name: string; kinds: PostKind[]; when: string;
   { id: "symptom", name: "증상부터", kinds: ["release", "concept"], when: "독자가 놀랄 동작이나 틀린 결과가 있다(업데이트 뒤 달라진 동작, 예상과 다른 출력, 모델 은퇴)", flow: ["달라진 동작이나 틀린 결과를 재현한 화면·코드 한 줄", "왜 그런가(릴리스·PR·문서·원리)", "고치거나 되돌리는 법", "버전·환경마다 다른 점"], verb: "바뀐다·덮어쓴다·시점이 온다" },
   { id: "measure", name: "직접 재 보기", kinds: ["release", "concept"], when: "가격·성능·한도처럼 숫자가 주인공이다", flow: ["흔한 믿음이나 예상", "계산 예·측정 하나를 끝까지 끌고 가며 조건을 하나씩 바꾸기", "뜻밖이었던 숫자와 이유", "언제 무엇을 고르나"], verb: "늘고 준다" },
   { id: "ladder", name: "질문 사다리", kinds: ["concept"], when: "개념 하나를 독자가 묻는 순서대로 풀 수 있다", flow: ["첫 질문은 실제 증상(왜 200000이 아닌가)", "질문마다 한 섹션, 소제목을 질문으로", "마지막 질문의 답이 결론. '자주 하는 오해'·'언제 고르나'를 따로 세우지 않는다"], verb: "복사된다·덮어쓴다" },
-  { id: "tour", name: "써 보며 익히기", kinds: ["release"], when: "새 기능·명령이 생겨 무엇을 할 수 있는지가 핵심이다", flow: ["가장 작은 예제를 바로 실행", "활용 예 두세 개를 화면으로", "어디까지 되고 무엇이 안 되나"], verb: "차례로 지난다(화면이 뜬다는 증거로)" },
+  { id: "tour", name: "써 보며 익히기", kinds: ["release"], when: "새 기능·명령·스킬·플러그인이 생겨 무엇을 할 수 있는지가 핵심이다", flow: ["설치·실행 명령(실제 값)", "예시 프롬프트 원문과 그 실제 화면", "같은 요청을 적용 전·후로 뜬 화면 나란히", "활용 예 두세 개: 조작 한 줄 → 캡처 → 결과 한 줄", "언제 켜고 끄나(상황 표)"], verb: "차례로 지난다(화면이 뜬다는 증거로)" },
   { id: "replay", name: "풀이 중계", kinds: ["concept"], when: "알고리즘 풀이·자료구조. 예제 입력 하나로 끝까지 돌려 볼 수 있다", flow: ["예제 입력과 기대 출력", "예제를 장면으로 끝까지 돌리기", "단계마다 코드 조각", "틀리기 쉬운 경계"], verb: "번진다" },
 ];
 
@@ -396,7 +397,11 @@ export const GUIDE = guide("release");
  * 쓸 때(점검 단계)만 막는 규칙. 발행 관문에서는 참고로 본다 — 규칙이 생기기 전에 점검을 통과한 초안을
  * 그림을 다시 짜야 하는 이유로 발행에서 막지 않는다.
  */
-export const REVIEW_ONLY_RULES: ReadonlySet<string> = new Set(["scene-evidence-only"]);
+export const REVIEW_ONLY_RULES: ReadonlySet<string> = new Set(["scene-evidence-only", "tool-no-capture"]);
+
+/** 써 보는 도구를 다루는 글의 태그. 이 글은 실제 화면이 증거다. */
+const TOOL_TAGS = ["skill", "plugin"];
+const TOOL_MIN_SHOTS = 2;
 
 /** 터미널 화면만 바꾸는 figure — 직접 돌린 결과·활용 예. 자리 이동이나 diff 가 있으면 아니다. */
 const isEvidence = (html: string) => html.includes("fig-term") && !/data-at=|fig-t-add|fig-t-del/.test(html);
@@ -465,6 +470,8 @@ export interface VoiceInput {
   title: string;
   summary: string;
   body: string;
+  /** 있으면 도구 글(스킬·플러그인) 규칙을 본다. 본문만 넘긴 점검에는 없다. */
+  tags?: string[];
 }
 
 export interface VoiceReport {
@@ -635,6 +642,16 @@ export function checkVoice(post: VoiceInput, kind: PostKind = "release"): VoiceR
   }
 
   const captures = figures.filter((f) => /\/todo-[^/]*$/.test(f[2]));
+  // 도구 글 — 2026-10-12 "스킬을 설명할 땐 예시·방법·적용 전후·실제 스크린샷을 적극 쓰라"는 지적.
+  // figure 로 다시 그린 화면만 있던 스킬 글들은 무엇이 뜨는지 와닿지 않았다.
+  const shots = figures.length - captures.length;
+  if (post.tags?.some((t) => TOOL_TAGS.includes(t)) && shots < TOOL_MIN_SHOTS) {
+    issues.push({
+      rule: "tool-no-capture",
+      severity: "warning",
+      message: `스킬·플러그인 글인데 실제 화면 캡처가 ${shots}장입니다. 예시 프롬프트의 실제 화면과, 같은 요청을 도구 없이·있이 뜬 전·후 화면을 이미지로 ${TOOL_MIN_SHOTS}장 이상 실으세요(blog-capture 의 capture.mjs --plugin)`,
+    });
+  }
   if (captures.length) {
     issues.push({
       rule: "capture-pending",
