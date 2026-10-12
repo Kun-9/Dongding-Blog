@@ -1,6 +1,7 @@
 /**
  * 트렌드 신호 — 트렌드 탐색기(release-scout.ts 의 TREND_PROMPT)가 탐색기 API 의
- * `signals`·`volume` 액션으로, 도구 글감 탐색기(TOOLS_PROMPT)가 `tools` 액션으로 읽는다.
+ * `signals`·`volume` 액션으로, 도구 글감 탐색기(TOOLS_PROMPT)가 `tools`, 인기 스킬
+ * 탐색기(SKILLS_PROMPT)가 `skills` 액션으로 읽는다.
  *
  * 외부 소스는 서버가 대신 부른다. 루틴 환경은 허용 목록 밖 사이트를 열지 못한다.
  * 키 없이 열리는 소스만 쓴다. 소스 하나가 막혀도 나머지는 돌려준다.
@@ -140,50 +141,148 @@ async function geeknews() {
     .map((e, i) => ({ rank: i + 1, title: tag(e, "title"), url: href(e), at: tag(e, "updated") }));
 }
 
-/* ── 써 볼 거리 ── 도구 글감 탐색기(TOOLS_PROMPT)가 `tools` 액션으로 읽는다. ── */
+/* ── 스킬 ── 도구 글감 탐색기(TOOLS_PROMPT)는 `tools`, 인기 스킬 탐색기(SKILLS_PROMPT)는 `skills` 로 읽는다. ── */
 
-type SkillRow = { source: string; skillId: string; installs: number; installsYesterday?: number; change?: number; isOfficial?: boolean };
+type SkillRow = {
+  source: string;
+  skillId: string;
+  installs: number;
+  installsYesterday?: number;
+  change?: number;
+  isOfficial?: boolean;
+  /** 전체 순위에만 있다. 최근 8주의 주별 설치 수, 오래된 주부터. */
+  weeklyInstalls?: number[];
+};
 
 /**
- * skills.sh 순위. 공개 API 가 없어 페이지에 박힌 데이터를 읽는다. 한 레포의 스킬
- * 여러 개가 줄줄이 오르므로 레포(source) 단위로 묶는다. hot 은 어제보다 는 설치,
- * trending 은 24시간 설치 수다.
+ * skills.sh 순위 페이지에 박힌 행. 공개 API 는 Vercel OIDC 인증이 있어야 해서
+ * 페이지를 읽는다. 같은 데이터가 두 번 실려 중복을 지운다.
  */
-async function skillsBoard(tab: "hot" | "trending") {
+async function skillRows(tab: "" | "hot" | "trending"): Promise<SkillRow[]> {
   const html = (await (await get(`https://skills.sh/${tab}`)).text()).replace(/\\"/g, '"');
+  const seen = new Set<string>();
   const rows = (html.match(/\{"source":"[^"]+","skillId":[^{}]*\}/g) ?? []).flatMap((s) => {
     try {
-      return [JSON.parse(s) as SkillRow];
+      const r = JSON.parse(s) as SkillRow;
+      const key = `${r.source}/${r.skillId}`;
+      if (seen.has(key)) return [];
+      seen.add(key);
+      return [r];
     } catch {
       return [];
     }
   });
   if (!rows.length) throw new Error("순위 데이터를 찾지 못함(페이지 구조가 바뀌었을 수 있음)");
+  return rows;
+}
+
+/** GitHub 레포에서 온 스킬만 레포·상세 주소가 있다. uizze.sh 처럼 사이트에서 배포하는 것은 null. */
+function skillLinks(source: string, skillId?: string) {
+  const gh = /^[\w.-]+\/[\w.-]+$/.test(source);
+  return {
+    repo: gh ? `https://github.com/${source}` : null,
+    page: gh ? `https://skills.sh/${source}${skillId ? `/${skillId}` : ""}` : null,
+  };
+}
+
+/**
+ * skills.sh hot·trending. 한 레포의 스킬 여러 개가 줄줄이 오르므로 레포(source)
+ * 단위로 묶는다. hot 은 어제보다 는 설치, trending 은 24시간 설치 수다.
+ */
+async function skillsBoard(tab: "hot" | "trending") {
   const repos = new Map<string, { source: string; skills: string[]; installs: number; change: number; official: boolean }>();
-  for (const r of rows) {
+  for (const r of await skillRows(tab)) {
     const g = repos.get(r.source) ?? { source: r.source, skills: [], installs: 0, change: 0, official: false };
-    // 페이지에 같은 데이터가 두 번 실린다.
-    if (g.skills.includes(r.skillId)) continue;
     g.skills.push(r.skillId);
     g.installs += r.installs;
     g.change += r.change ?? 0;
     g.official ||= !!r.isOfficial;
     repos.set(r.source, g);
   }
-  return [...repos.values()].slice(0, 20).map((g, i) => {
-    const gh = /^[\w.-]+\/[\w.-]+$/.test(g.source);
-    return {
+  return [...repos.values()].slice(0, 20).map((g, i) => ({
+    rank: i + 1,
+    source: g.source,
+    skills: g.skills.slice(0, 5),
+    more: Math.max(0, g.skills.length - 5),
+    installs: g.installs,
+    ...(tab === "hot" ? { change: g.change } : {}),
+    official: g.official,
+    ...skillLinks(g.source),
+  }));
+}
+
+/**
+ * 주간·월간 인기 스킬. skills.sh 전체 순위(설치 상위 600개)의 행마다 최근 8주
+ * 주별 설치 수가 있다. 주간은 마지막 칸, 월간은 마지막 네 칸 합. rise 는 마지막
+ * 주를 앞 세 주 평균으로 나눈 값. 600개 밖의 작은 스킬은 보이지 않는다(막 뜬 것은
+ * 도구 글감 탐색기가 hot 으로 본다).
+ *
+ * 개인·커뮤니티 스킬을 소개하려는 목록이라 셋을 미리 뺀다. 그대로 두면 상위 30이
+ * 이것들로 차서 ponytail 같은 스킬이 목록에 들지 못한다(2026-10-12 실측).
+ * - official: 회사가 자기 제품 쓰는 법을 담은 공식 스킬
+ * - copies: 같은 스킬 이름 셋 이상을 공유하는 레포가 둘 넘게 더 있는 것. 한 묶음을
+ *   이름만 바꾼 레포로 여럿 올려 설치 수를 부풀렸다(예: 여러 `*\/superpowers`).
+ *   레포 안 스킬끼리 설치 수가 같은 것은 기준이 못 된다 — 레포를 통째로 설치하면
+ *   mattpocock/skills 같은 정상 레포도 그렇다.
+ * - flat: 최근 6주 주별 설치의 변동계수가 2.5% 미만. 사람이 골라 설치하면 이렇게
+ *   일정하지 않다(예: 매주 113k 안팎인 reddit-automation).
+ */
+export async function popularSkills() {
+  const sum = (a: number[]) => a.reduce((x, y) => x + y, 0);
+  const rows = (await skillRows("")).filter((r) => r.weeklyInstalls?.length === 8);
+  const names = new Map<string, Set<string>>();
+  for (const r of rows) names.set(r.source, (names.get(r.source) ?? new Set()).add(r.skillId));
+  const copies = new Set(
+    [...names]
+      .filter(([src, a]) => [...names].filter(([o, b]) => o !== src && [...a].filter((n) => b.has(n)).length >= 3).length >= 2)
+      .map(([src]) => src),
+  );
+  const isFlat = (w: number[]) => {
+    const a = w.slice(2);
+    const m = sum(a) / a.length;
+    return Math.min(...a) > 0 && Math.sqrt(sum(a.map((x) => (x - m) ** 2)) / a.length) / m < 0.025;
+  };
+  const flat = new Set(rows.filter((r) => isFlat(r.weeklyInstalls!)).map((r) => r.source));
+  const official = new Set(rows.filter((r) => r.isOfficial).map((r) => r.source));
+  const scored = rows
+    .filter((r) => !official.has(r.source) && !copies.has(r.source) && !flat.has(r.source))
+    .map((r) => {
+      const w = r.weeklyInstalls!;
+      const before = sum(w.slice(4, 7)) / 3;
+      // 앞 세 주에 설치가 없던 새 스킬은 배수가 의미 없다.
+      return { r, w, week: w[7], month: sum(w.slice(4)), rise: before >= 1 ? Math.round((w[7] / before) * 10) / 10 : null };
+    });
+  const top = (key: "week" | "month") => {
+    // 레포마다 가장 높은 스킬 하나만 두고 나머지는 이름만 붙인다.
+    const best = new Map<string, (typeof scored)[number] & { others: string[] }>();
+    for (const s of [...scored].sort((a, b) => b[key] - a[key])) {
+      const g = best.get(s.r.source);
+      if (g) g.others.push(s.r.skillId);
+      else best.set(s.r.source, { ...s, others: [] });
+    }
+    return [...best.values()].slice(0, 30).map((s, i) => ({
       rank: i + 1,
-      source: g.source,
-      skills: g.skills.slice(0, 5),
-      more: Math.max(0, g.skills.length - 5),
-      installs: g.installs,
-      ...(tab === "hot" ? { change: g.change } : {}),
-      official: g.official,
-      repo: gh ? `https://github.com/${g.source}` : null,
-      page: gh ? `https://skills.sh/${g.source}` : null,
-    };
-  });
+      id: `${s.r.source}/${s.r.skillId}`,
+      source: s.r.source,
+      skill: s.r.skillId,
+      week: s.week,
+      month: s.month,
+      rise: s.rise,
+      weeks: s.w,
+      installs: s.r.installs,
+      others: s.others.slice(0, 5),
+      ...skillLinks(s.r.source, s.r.skillId),
+    }));
+  };
+  // 루틴은 월요일마다 돈다. 한국 날짜로 1~7일이면 그달 첫 월요일이다.
+  const kstDay = new Date(Date.now() + 9 * 3600_000).getUTCDate();
+  return {
+    at: new Date().toISOString(),
+    monthly: kstDay <= 7,
+    week: top("week"),
+    month: top("month"),
+    excluded: { official: [...official], copies: [...copies], flat: [...flat] },
+  };
 }
 
 /** GitHub 트렌딩(오늘). 새 레포만 보는 github() 와 달리 오래된 레포가 다시 뜨는 것도 잡힌다. */

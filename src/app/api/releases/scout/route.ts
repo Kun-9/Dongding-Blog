@@ -7,8 +7,9 @@
  * 트렌드 탐색기 루틴도 같은 API 를 쓴다(signals·volume·read·topics·topic_create).
  * 개념 글감 탐색기는 questions·posts·read·topics·topic_create(kind concept).
  * 도구 글감 탐색기는 tools·volume·posts·read·topics·topic_create.
+ * 인기 스킬 탐색기는 skills·posts·read·topics·topic_create.
  *
- * GET  → 지시서(markdown). `?kind=trend` 면 트렌드, `?kind=concept` 면 개념, `?kind=tools` 면 도구 글감 탐색기 지시서. 토큰 없이
+ * GET  → 지시서(markdown). `?kind=trend` 면 트렌드, `?kind=concept` 면 개념, `?kind=tools` 면 도구, `?kind=skills` 면 인기 스킬 탐색기 지시서. 토큰 없이
  *        연다 — 비밀값이 없고, 첫 호출에 토큰이 실리면 루틴의 권한 분류기가
  *        Data Exfiltration 으로 막는 일이 잦았다.
  * POST → { action, ... }
@@ -17,8 +18,8 @@ import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { dbAdmin } from "@/lib/supabase";
-import { CONCEPT_PROMPT, SCOUT_PROMPT, TOOLS_PROMPT, TREND_PROMPT } from "@/lib/release-scout";
-import { collectSignals, collectToolSignals, conceptQuestions, keywordVolume, readPage } from "@/lib/trends";
+import { CONCEPT_PROMPT, SCOUT_PROMPT, SKILLS_PROMPT, TOOLS_PROMPT, TREND_PROMPT } from "@/lib/release-scout";
+import { collectSignals, collectToolSignals, conceptQuestions, keywordVolume, popularSkills, readPage } from "@/lib/trends";
 import { CONCEPT_AREA_KEYS } from "@/lib/concept-areas";
 import { TopicError, createTopic, getTopics, saveNotes } from "@/lib/release-topics";
 
@@ -55,6 +56,7 @@ const Action = z.discriminatedUnion("action", [
   z.object({ action: z.literal("skip"), ids: IDS.max(50), note: z.string().min(1).max(200) }),
   z.object({ action: z.literal("signals") }),
   z.object({ action: z.literal("tools") }),
+  z.object({ action: z.literal("skills") }),
   z.object({
     action: z.literal("volume"),
     keywords: z.array(z.string().min(1).max(60)).min(1).max(5),
@@ -66,7 +68,7 @@ const Action = z.discriminatedUnion("action", [
 
 export async function GET(req: Request) {
   const kind = new URL(req.url).searchParams.get("kind");
-  const prompt = { trend: TREND_PROMPT, concept: CONCEPT_PROMPT, tools: TOOLS_PROMPT }[kind ?? ""] ?? SCOUT_PROMPT;
+  const prompt = { trend: TREND_PROMPT, concept: CONCEPT_PROMPT, tools: TOOLS_PROMPT, skills: SKILLS_PROMPT }[kind ?? ""] ?? SCOUT_PROMPT;
   return new Response(prompt, {
     headers: { "content-type": "text/markdown; charset=utf-8", "cache-control": "no-store" },
   });
@@ -169,6 +171,9 @@ export async function POST(req: Request) {
 
       case "tools":
         return ok(await collectToolSignals());
+
+      case "skills":
+        return ok(await popularSkills());
 
       case "volume":
         return ok(await keywordVolume(input.keywords));
