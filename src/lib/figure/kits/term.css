@@ -39,16 +39,18 @@
   background: color-mix(in oklab, var(--code-string) 16%, transparent);
   color: var(--code-string);
 }
-.fig-term-body { padding: 12px 14px; overflow-wrap: anywhere; }
+.fig-term-body { padding: 14px 18px 16px; overflow-wrap: anywhere; }
 /* 줄(안에 div 가 없는 칸)만 공백을 살린다. 감싸는 칸까지 살리면 HTML 들여쓰기가 빈 줄로 보인다. */
 .fig-term-body :not(:has(div)) { white-space: pre-wrap; }
 .fig-t-dim { color: var(--code-muted); }
 .fig-t-ok { color: var(--code-string); }
 .fig-t-bad { color: var(--code-number); }
 .fig-t-warn { color: var(--code-type); }
-.fig-t-box { margin-top: 6px; padding: 8px 10px; border: 1px solid color-mix(in oklab, var(--code-ink) 18%, transparent); border-radius: 8px; }
-.fig-t-key { display: inline-block; margin-right: 8px; padding: 0 6px; border: 1px solid color-mix(in oklab, var(--code-ink) 22%, transparent); border-radius: 5px; }
-.fig-t-sep { margin-top: 8px; padding-top: 8px; border-top: 1px solid color-mix(in oklab, var(--code-ink) 12%, transparent); }
+.fig-t-box { margin-block: 10px; padding: 14px 18px; border: 1px solid color-mix(in oklab, var(--code-ink) 18%, transparent); border-radius: 8px; }
+.fig-t-key { display: inline-block; padding: 2px 10px; border: 1px solid color-mix(in oklab, var(--code-ink) 22%, transparent); border-radius: 5px; }
+/* 버튼 줄 — 윗줄 글자에 테두리가 붙지 않게 띄우고, 좁아서 접히면 줄 사이도 띄운다. */
+.fig-term-body div:not([data-spot]):has(> .fig-t-key) { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
+.fig-t-sep { margin-top: 10px; padding-top: 10px; border-top: 1px solid color-mix(in oklab, var(--code-ink) 12%, transparent); }
 /* diff 줄 — 무엇을 무엇으로 바꾸는지. 줄 바탕만 칠하고 글자 색은 그대로 둔다. */
 .fig-t-add { background: color-mix(in oklab, var(--code-string) 15%, transparent); }
 .fig-t-del { background: color-mix(in oklab, var(--code-number) 16%, transparent); text-decoration: line-through; text-decoration-color: var(--code-number); opacity: 0.75; }

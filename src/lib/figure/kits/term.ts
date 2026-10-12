@@ -14,7 +14,7 @@ export const term: Kit = {
     ["fig-t-bad", ""],
     ["fig-t-warn", "줄 색"],
     ["fig-t-box", "안쪽 상자"],
-    ["fig-t-key", "버튼·배지"],
+    ["fig-t-key", "버튼·배지. 버튼 줄은 div 하나에 모은다(윗줄과 띄우고, 접히면 줄 사이도 띄운다)"],
     ["fig-t-sep", "위 구분선"],
     ["fig-t-add", "넣는 줄(초록 바탕)"],
     ["fig-t-del", "지우는 줄(붉은 바탕·취소선). 장면에서는 옛 줄에 data-on 의 strike 를 걸면 같은 모양이 된다"],

@@ -492,7 +492,7 @@ step: blast-radius · 실행 직전
 | 조각 | `fig-arrow`(→, `fig-down` 을 더하면 ↓) `fig-num`(번호 배지) `fig-chip`(알약) `fig-dot` `fig-ok`(✓) `fig-no`(–) `fig-part`(반쯤) `fig-bar`(막대, `style="--v: 70%"`, `fig-accent` 면 강조색) |
 | 글자 | `fig-label`(작은 대문자 머리말) `fig-title`(굵은 제목) `fig-sub`(보조 설명) `fig-big`(큰 숫자) `fig-mono` |
 | 겹치기 | `fig-layer`(자식이 한 칸에 겹친다)<br>장면에서 단계마다 바뀌는 화면을 한 칸에 겹쳐 둔다. 높이는 가장 큰 화면이 정해 흔들리지 않는다 |
-| 터미널 | `fig-term`(어두운 판) `fig-term-bar`(머리줄, 점 셋은 자동) `fig-term-tag`(머리줄 오른쪽 칩. 장면에서 지금 움직이는 훅·명령을 data-text 로) `fig-term-body`(본문. 줄은 div 하나씩) `fig-t-dim` `fig-t-ok` `fig-t-bad` `fig-t-warn`(줄 색) `fig-t-box`(안쪽 상자) `fig-t-key`(버튼·배지) `fig-t-sep`(위 구분선) `fig-t-add`(넣는 줄(초록 바탕)) `fig-t-del`(지우는 줄(붉은 바탕·취소선). 장면에서는 옛 줄에 data-on 의 strike 를 걸면 같은 모양이 된다)<br>활용 예의 실제 화면, 직접 돌린 코드와 결과, 설정 파일의 바꿀 줄(diff)을 그릴 때. 두 테마 모두 어두운 판이고, 문구는 실제 화면·README·소스에서 옮긴다 |
+| 터미널 | `fig-term`(어두운 판) `fig-term-bar`(머리줄, 점 셋은 자동) `fig-term-tag`(머리줄 오른쪽 칩. 장면에서 지금 움직이는 훅·명령을 data-text 로) `fig-term-body`(본문. 줄은 div 하나씩) `fig-t-dim` `fig-t-ok` `fig-t-bad` `fig-t-warn`(줄 색) `fig-t-box`(안쪽 상자) `fig-t-key`(버튼·배지. 버튼 줄은 div 하나에 모은다(윗줄과 띄우고, 접히면 줄 사이도 띄운다)) `fig-t-sep`(위 구분선) `fig-t-add`(넣는 줄(초록 바탕)) `fig-t-del`(지우는 줄(붉은 바탕·취소선). 장면에서는 옛 줄에 data-on 의 strike 를 걸면 같은 모양이 된다)<br>활용 예의 실제 화면, 직접 돌린 코드와 결과, 설정 파일의 바꿀 줄(diff)을 그릴 때. 두 테마 모두 어두운 판이고, 문구는 실제 화면·README·소스에서 옮긴다 |
 <!-- /figure:kits -->
 
 `code`·`kbd`·`mark`·`table`·`details` 는 클래스 없이도 키트 모양이 입혀진다.
