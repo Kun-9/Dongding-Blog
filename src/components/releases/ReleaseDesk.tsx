@@ -1,16 +1,24 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { API } from "@/lib/api-routes";
 import type { QueueRow } from "@/lib/release-queue";
 import type { TopicRow } from "@/lib/release-topics";
 import { ProposalBoard } from "@/components/releases/ProposalBoard";
 import { ReleaseQueue } from "@/components/releases/ReleaseQueue";
-import { TopicBoard } from "@/components/releases/TopicBoard";
+import { monthDay, TopicBoard } from "@/components/releases/TopicBoard";
+
+type View = "board" | "proposals";
+
+const subscribeHash = (onChange: () => void) => {
+  addEventListener("hashchange", onChange);
+  return () => removeEventListener("hashchange", onChange);
+};
 
 /**
  * 집필 진행판과 글감 목록을 한 상태로 묶는다. 주제에 글감을 넣으면 그 글감이
  * 쓸래로 올라가고 목록에 주제 꼬리표가 붙어야 해서 둘이 따로 놀면 안 된다.
+ * 집필 진행과 제안은 탭으로 나눈다. 주소 끝 #proposals 가 제안 탭이다.
  */
 export function ReleaseDesk({
   initialQueue,
@@ -72,21 +80,88 @@ export function ReleaseDesk({
     setRows((rs) => rs.map((r) => (set.has(r.id) ? { ...r, status: "skipped", note } : r)));
   }
 
+  const view = useSyncExternalStore<View>(
+    subscribeHash,
+    () => (location.hash === "#proposals" ? "proposals" : "board"),
+    () => "board",
+  );
+  // 탭 전환은 기록을 쌓지 않는다. replaceState 는 hashchange 를 안 내서 직접 알린다.
+  function show(next: View) {
+    history.replaceState(null, "", next === "proposals" ? "#proposals" : location.pathname + location.search);
+    dispatchEvent(new HashChangeEvent("hashchange"));
+  }
+
+  const proposals = topics.filter((t) => t.proposed && !t.discardedAt && t.droppedReason === null);
+  const today = monthDay(new Date().toISOString());
+  const freshToday = proposals.filter((t) => monthDay(t.createdAt) === today).length;
+  const inProgress = topics.filter(
+    (t) => !t.proposed && t.droppedReason === null && t.stage !== "published",
+  ).length;
+
   return (
     <>
-      <ProposalBoard
-        topics={topics}
-        onChange={(topic) => setTopics((ts) => ts.map((t) => (t.id === topic.id ? topic : t)))}
-        onSkipped={markSkipped}
-      />
-      <TopicBoard
-        topics={topics}
-        onTopicsChange={setTopics}
-        candidates={rows.filter((r) => r.status !== "skipped")}
-        onQueued={markQueued}
-        onSkipped={markSkipped}
-      />
+      <div role="group" aria-label="릴리스 글감 화면" className="mb-[22px] flex gap-[22px] border-b border-border-token">
+        <ViewTab on={view === "board"} onClick={() => show("board")} label="집필 진행" n={inProgress} />
+        <ViewTab
+          on={view === "proposals"}
+          onClick={() => show("proposals")}
+          label="제안"
+          n={proposals.length}
+          badge={freshToday ? `오늘 +${freshToday}` : null}
+        />
+      </div>
+      {/* 숨기기만 한다. 탭을 오가도 펼친 주제·필터·페이지가 남는다. */}
+      <div hidden={view !== "proposals"}>
+        <ProposalBoard
+          topics={topics}
+          onChange={(topic) => setTopics((ts) => ts.map((t) => (t.id === topic.id ? topic : t)))}
+          onSkipped={markSkipped}
+          onOpenBoard={() => show("board")}
+        />
+      </div>
+      <div hidden={view !== "board"}>
+        <TopicBoard
+          topics={topics}
+          onTopicsChange={setTopics}
+          candidates={rows.filter((r) => r.status !== "skipped")}
+          onQueued={markQueued}
+          onSkipped={markSkipped}
+        />
+      </div>
       <ReleaseQueue rows={rows} setRows={setRows} topicsOf={topicsOf} />
     </>
+  );
+}
+
+function ViewTab({
+  on,
+  label,
+  n,
+  badge = null,
+  onClick,
+}: {
+  on: boolean;
+  label: string;
+  n: number;
+  badge?: string | null;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={on}
+      onClick={onClick}
+      className={`-mb-px flex items-baseline gap-1.5 border-b-2 pb-2.5 font-sans text-[15px] font-semibold transition-colors ${
+        on ? "border-ink text-ink" : "border-transparent text-ink-muted hover:text-ink"
+      }`}
+    >
+      {label}
+      <span className="font-mono text-[13px] font-normal tabular-nums text-ink-muted">{n}</span>
+      {badge && (
+        <span className="rounded-full bg-[color:var(--callout-tip-bg)] px-[7px] py-px text-[11px] font-semibold text-[color:var(--callout-tip-ink)]">
+          {badge}
+        </span>
+      )}
+    </button>
   );
 }

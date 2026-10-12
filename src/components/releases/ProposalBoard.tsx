@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { API } from "@/lib/api-routes";
 import { renderMarkdown } from "@/lib/markdown";
 import { SCOUTS, type ScoutKey } from "@/lib/release-scouts";
@@ -9,6 +9,9 @@ import { monthDay } from "@/components/releases/TopicBoard";
 
 /** 버린 제안에 남는 이유. 탐색기가 같은 것을 다시 올리지 않는 근거가 된다. */
 const DISCARD_REASON = "제안에서 버림";
+
+/** 한 페이지 카드 수. 데스크톱 3열로 세 줄. */
+const PAGE_SIZE = 9;
 
 /**
  * 제안 — 탐색기(릴리스·트렌드·도구·인기 스킬·개념)가 올린 주제를 같은 틀의 카드로
@@ -19,16 +22,22 @@ export function ProposalBoard({
   topics,
   onChange,
   onSkipped,
+  onOpenBoard,
 }: {
   topics: TopicRow[];
   onChange: (topic: TopicRow) => void;
   /** 버린 제안에 혼자 묶였던 쓸래 글감은 서버가 무시로 옮긴다. 목록도 맞춘다. */
   onSkipped: (ids: string[], note: string) => void;
+  /** 채택한 주제를 맡기러 집필 진행 탭으로. */
+  onOpenBoard: () => void;
 }) {
   const [filter, setFilter] = useState<ScoutKey | "all">("all");
+  const [page, setPage] = useState(0);
   const [busy, setBusy] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notesOf, setNotesOf] = useState<number | null>(null);
+  const [adopted, setAdopted] = useState<string | null>(null);
+  const top = useRef<HTMLElement>(null);
 
   const scoutOf = (t: TopicRow): ScoutKey => t.proposal?.scout ?? (t.kind === "concept" ? "concept" : "release");
   const proposals = topics
@@ -38,6 +47,16 @@ export function ProposalBoard({
   // 고른 칸이 비면(마지막 하나를 채택하면) 전체로 돌아간다.
   const current = counts.some((s) => s.key === filter) ? filter : "all";
   const shown = current === "all" ? proposals : proposals.filter((t) => scoutOf(t) === current);
+  const pages = Math.max(1, Math.ceil(shown.length / PAGE_SIZE));
+  // 마지막 페이지의 마지막 카드를 채택·버리면 앞 페이지로 당긴다.
+  const at = Math.min(page, pages - 1);
+  const paged = shown.slice(at * PAGE_SIZE, (at + 1) * PAGE_SIZE);
+
+  function goPage(n: number) {
+    setPage(n);
+    setNotesOf(null);
+    top.current?.scrollIntoView({ block: "start" });
+  }
 
   async function act(t: TopicRow, action: "adopt" | "discard") {
     setBusy(t.id);
@@ -54,21 +73,36 @@ export function ProposalBoard({
       return;
     }
     onChange(json.topic);
+    setAdopted(action === "adopt" ? t.title : null);
     if (json.skipped?.length) onSkipped(json.skipped, `버린 주제 '${t.title}': ${DISCARD_REASON}`);
   }
 
+  // 이름은 위 탭(제안 N)이 대신한다.
   return (
-    <section className="mb-14">
-      <div className="mb-4">
-        <div className="mb-1 font-sans text-[11px] font-bold uppercase tracking-[0.1em] text-ink-muted">Proposals</div>
-        <h2 className="m-0 flex items-baseline gap-2 font-sans text-[20px] font-semibold tracking-[-0.02em] text-ink">
-          제안
-          <span className="font-mono text-[13px] font-normal tabular-nums text-ink-muted">{proposals.length}</span>
-        </h2>
-        <p className="m-0 mt-1 text-[13px] text-ink-muted">
-          탐색기가 올린 글감입니다. 채택하면 아래 집필 진행의 맡기기 전으로 내려갑니다.
-        </p>
-      </div>
+    <section ref={top} aria-label="제안" className="mb-14">
+      {adopted && (
+        <div
+          role="status"
+          className="mb-3.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 rounded-[10px] bg-[color:var(--callout-tip-bg)] px-3.5 py-2 text-[13px] text-[color:var(--callout-tip-ink)]"
+        >
+          <span>
+            <b className="font-semibold">{adopted}</b> 채택함. 맡기기 전으로 옮겼습니다.
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              setAdopted(null);
+              onOpenBoard();
+            }}
+            className="ml-auto font-semibold underline underline-offset-2"
+          >
+            집필 진행에서 맡기기
+          </button>
+        </div>
+      )}
+      <p className="m-0 mb-3.5 text-[13px] text-ink-muted">
+        탐색기가 올린 글감입니다. 채택하면 집필 진행의 맡기기 전으로 내려갑니다.
+      </p>
 
       {proposals.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border-token px-6 py-8 text-center">
@@ -85,7 +119,10 @@ export function ProposalBoard({
                   key={s.key}
                   type="button"
                   aria-pressed={current === s.key}
-                  onClick={() => setFilter(s.key)}
+                  onClick={() => {
+                    setFilter(s.key);
+                    setPage(0);
+                  }}
                   className={`rounded-full border px-3 py-1 font-sans text-[12.5px] transition-colors ${
                     current === s.key
                       ? "border-ink bg-surface text-ink"
@@ -99,7 +136,7 @@ export function ProposalBoard({
           )}
           {error && <p className="m-0 mb-3 text-[13px] text-danger">{error}</p>}
           <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(300px,1fr))]">
-            {shown.map((t) => (
+            {paged.map((t) => (
               <ProposalCard
                 key={t.id}
                 topic={t}
@@ -112,6 +149,7 @@ export function ProposalBoard({
               />
             ))}
           </div>
+          {pages > 1 && <Pager at={at} pages={pages} onGo={goPage} />}
         </>
       )}
     </section>
@@ -205,6 +243,44 @@ function ProposalCard({
         </div>
       )}
     </article>
+  );
+}
+
+/** 이전 · 페이지 번호 · 다음. 제안은 많아야 수십 개라 번호를 다 보인다. */
+function Pager({ at, pages, onGo }: { at: number; pages: number; onGo: (n: number) => void }) {
+  const base = "rounded-full px-3 py-1 font-sans text-[12.5px] transition-colors disabled:opacity-40";
+  return (
+    <nav aria-label="제안 페이지" className="mt-4 flex flex-wrap items-center justify-center gap-1.5">
+      <button
+        type="button"
+        onClick={() => onGo(at - 1)}
+        disabled={at === 0}
+        className={`${base} border border-border-token text-ink-muted enabled:hover:text-ink`}
+      >
+        이전
+      </button>
+      {Array.from({ length: pages }, (_, i) => (
+        <button
+          key={i}
+          type="button"
+          onClick={() => onGo(i)}
+          aria-current={i === at ? "page" : undefined}
+          className={`${base} min-w-8 font-mono tabular-nums ${
+            i === at ? "bg-ink text-bg" : "text-ink-muted hover:text-ink"
+          }`}
+        >
+          {i + 1}
+        </button>
+      ))}
+      <button
+        type="button"
+        onClick={() => onGo(at + 1)}
+        disabled={at === pages - 1}
+        className={`${base} border border-border-token text-ink-muted enabled:hover:text-ink`}
+      >
+        다음
+      </button>
+    </nav>
   );
 }
 
