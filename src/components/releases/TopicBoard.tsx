@@ -100,8 +100,10 @@ export function TopicBoard({ topics, onTopicsChange, candidates, onQueued, onSki
   /** 펼쳐 둔 접힘 구역 — 발행함, 접은 주제, 버린 주제. */
   const [unfolded, setUnfolded] = useState<Set<string>>(new Set());
 
-  const active = topics.filter((t) => t.droppedReason === null);
-  const aiCount = topics.filter((t) => t.ai.status === "running").length;
+  // 제안은 위의 제안 카드(ProposalBoard)에 선다. 판에는 채택한 주제만.
+  const board = topics.filter((t) => !t.proposed);
+  const active = board.filter((t) => t.droppedReason === null);
+  const aiCount = board.filter((t) => t.ai.status === "running").length;
 
   // 구역 안에서는 AI 가 쓰고 있는 주제, 대기 중인 주제가 먼저. 그다음 진행이
   // 덜 된 순, 같은 단계면 먼저 만든 순. 작성 중인 주제는 단계가 넘어가도
@@ -121,7 +123,7 @@ export function TopicBoard({ topics, onTopicsChange, candidates, onQueued, onSki
       hint: "",
       color: "var(--ink-muted)",
       fold: true,
-      items: topics.filter((t) => t.droppedReason !== null && !t.discardedAt),
+      items: board.filter((t) => t.droppedReason !== null && !t.discardedAt),
     },
     {
       key: "discarded",
@@ -129,7 +131,7 @@ export function TopicBoard({ topics, onTopicsChange, candidates, onQueued, onSki
       hint: "",
       color: "var(--ink-muted)",
       fold: true,
-      items: topics.filter((t) => t.discardedAt),
+      items: board.filter((t) => t.discardedAt),
     },
   ].filter((g) => g.items.length > 0);
 
@@ -594,7 +596,7 @@ const CHIP: Record<ChipTone, string> = {
 };
 
 /** "2026-10-07T…" → "10.07". DB 시각은 UTC 라 한국 날짜로 바꿔 자른다. */
-const monthDay = (iso: string) =>
+export const monthDay = (iso: string) =>
   new Date(iso).toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" }).slice(5).replace("-", ".");
 
 /** 상태는 이 칩 하나로만 말한다. */

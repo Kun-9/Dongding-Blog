@@ -418,6 +418,14 @@ export type Database = {
       }
       release_topics: {
         Row: {
+          ai_local: boolean
+          ai_log: Json
+          ai_message: string | null
+          ai_prompt: string | null
+          ai_started_at: string | null
+          ai_status: string | null
+          ai_until: string | null
+          ai_updated_at: string | null
           angle: string | null
           checks: Json
           created_at: string
@@ -425,21 +433,23 @@ export type Database = {
           dropped_reason: string | null
           id: number
           kind: string
+          notes: string
           post_slug: string | null
+          proposal: Json | null
+          proposed: boolean
           stage: string
           title: string
           updated_at: string
-          ai_message: string | null
-          ai_status: string | null
-          ai_until: string | null
-          ai_updated_at: string | null
-          notes: string
-          ai_log: Json
-          ai_started_at: string | null
-          ai_local: boolean
-          ai_prompt: string | null
         }
         Insert: {
+          ai_local?: boolean
+          ai_log?: Json
+          ai_message?: string | null
+          ai_prompt?: string | null
+          ai_started_at?: string | null
+          ai_status?: string | null
+          ai_until?: string | null
+          ai_updated_at?: string | null
           angle?: string | null
           checks?: Json
           created_at?: string
@@ -447,21 +457,23 @@ export type Database = {
           dropped_reason?: string | null
           id?: never
           kind?: string
+          notes?: string
           post_slug?: string | null
+          proposal?: Json | null
+          proposed?: boolean
           stage?: string
           title: string
           updated_at?: string
+        }
+        Update: {
+          ai_local?: boolean
+          ai_log?: Json
           ai_message?: string | null
+          ai_prompt?: string | null
+          ai_started_at?: string | null
           ai_status?: string | null
           ai_until?: string | null
           ai_updated_at?: string | null
-          notes?: string
-          ai_log?: Json
-          ai_started_at?: string | null
-          ai_local?: boolean
-          ai_prompt?: string | null
-        }
-        Update: {
           angle?: string | null
           checks?: Json
           created_at?: string
@@ -469,19 +481,13 @@ export type Database = {
           dropped_reason?: string | null
           id?: never
           kind?: string
+          notes?: string
           post_slug?: string | null
+          proposal?: Json | null
+          proposed?: boolean
           stage?: string
           title?: string
           updated_at?: string
-          ai_message?: string | null
-          ai_status?: string | null
-          ai_until?: string | null
-          ai_updated_at?: string | null
-          notes?: string
-          ai_log?: Json
-          ai_started_at?: string | null
-          ai_local?: boolean
-          ai_prompt?: string | null
         }
         Relationships: []
       }

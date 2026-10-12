@@ -13,6 +13,7 @@ import { loadPost } from "@/lib/mcp-blog";
 import { checkVoice, REVIEW_ONLY_RULES, type PostKind } from "@/lib/voice";
 import { fireReleaseRoutine } from "@/lib/routine-fire";
 import type { Json } from "@/lib/database.types";
+import type { Proposal } from "@/lib/release-scouts";
 import {
   STAGES,
   nextStage,
@@ -62,6 +63,10 @@ export interface TopicRow {
   };
   /** 작업 노트(markdown) — 조사 요약, 링크, 비교 표, 그림 목록. */
   notes: string;
+  /** 탐색기가 올리고 아직 채택하지 않은 주제. 집필 진행판이 아니라 제안 카드에 선다. */
+  proposed: boolean;
+  /** 탐색기가 붙인 요약·근거. 사람이 만든 주제는 null. */
+  proposal: Proposal | null;
 }
 
 export type AiStatus = "queued" | "running" | "failed";
@@ -120,6 +125,8 @@ type DbTopic = {
   ai_prompt?: string | null;
   discarded_at?: string | null;
   kind?: string;
+  proposed?: boolean;
+  proposal?: Json | null;
 };
 
 const BASE_COLUMNS =
@@ -129,16 +136,17 @@ const TOPIC_COLUMNS = `${AI_COLUMNS}, ai_log, ai_started_at`;
 const LOCAL_COLUMNS = `${TOPIC_COLUMNS}, ai_local`;
 const PROMPT_COLUMNS = `${LOCAL_COLUMNS}, ai_prompt`;
 const DISCARD_COLUMNS = `${PROMPT_COLUMNS}, discarded_at`;
-const FULL_COLUMNS = `${DISCARD_COLUMNS}, kind`;
+const KIND_COLUMNS = `${DISCARD_COLUMNS}, kind`;
+const FULL_COLUMNS = `${KIND_COLUMNS}, proposed, proposal`;
 
 /**
  * 마이그레이션보다 배포가 먼저 나가도 화면은 살아 있어야 한다. 없는
- * 컬럼(42703)이면 한 단계씩 덜 읽는다: 종류 → 버림 → 고치기 → 예약 → 로그 → AI 상태 → 기본 컬럼.
+ * 컬럼(42703)이면 한 단계씩 덜 읽는다: 제안 → 종류 → 버림 → 고치기 → 예약 → 로그 → AI 상태 → 기본 컬럼.
  */
 async function selectTopics(
   build: (columns: string) => PromiseLike<{ data: unknown; error: { code?: string; message: string } | null }>,
 ) {
-  for (const cols of [FULL_COLUMNS, DISCARD_COLUMNS, PROMPT_COLUMNS, LOCAL_COLUMNS, TOPIC_COLUMNS, AI_COLUMNS]) {
+  for (const cols of [FULL_COLUMNS, KIND_COLUMNS, DISCARD_COLUMNS, PROMPT_COLUMNS, LOCAL_COLUMNS, TOPIC_COLUMNS, AI_COLUMNS]) {
     const res = await build(cols);
     if (res.error?.code !== "42703") return res;
   }
@@ -180,6 +188,8 @@ function toRow(t: DbTopic, candidateIds: string[]): TopicRow {
       prompt: t.ai_status ? (t.ai_prompt ?? null) : null,
     },
     notes: t.notes ?? "",
+    proposed: t.proposed ?? false,
+    proposal: (t.proposal ?? null) as Proposal | null,
   };
 }
 
@@ -264,11 +274,18 @@ export async function createTopic(input: {
   angle?: string | null;
   candidateIds?: string[];
   kind?: PostKind;
+  /** 탐색기가 올린 주제. 있으면 사람이 채택할 때까지 제안으로 둔다. */
+  proposal?: Proposal;
 }): Promise<TopicRow> {
   const { data, error } = await dbAdmin()
     .from("release_topics")
     // 릴리스가 기본값이라 개념 글일 때만 싣는다. 마이그레이션 전에도 릴리스 주제는 만들어진다.
-    .insert({ title: input.title, angle: input.angle ?? null, ...(input.kind === "concept" ? { kind: "concept" } : {}) })
+    .insert({
+      title: input.title,
+      angle: input.angle ?? null,
+      ...(input.kind === "concept" ? { kind: "concept" } : {}),
+      ...(input.proposal ? { proposed: true, proposal: input.proposal as unknown as Json } : {}),
+    })
     .select("id")
     .single();
   if (error) throw new Error(error.message);
@@ -434,6 +451,14 @@ export async function revertTopic(id: number): Promise<TopicRow> {
   const checks = { ...topic.checks };
   delete checks[topic.stage];
   await save(id, { stage: STAGES[i - 1].key, checks });
+  return getTopic(id);
+}
+
+/** 제안을 채택한다. 집필 진행판의 맡기기 전으로 내려간다. 안 쓸 제안은 버린다(discardTopic). */
+export async function adoptTopic(id: number): Promise<TopicRow> {
+  const topic = notDiscarded(await getTopic(id));
+  if (!topic.proposed) throw new TopicError("제안이 아니다. 이미 채택한 주제다");
+  await save(id, { proposed: false });
   return getTopic(id);
 }
 
@@ -619,6 +644,7 @@ export async function queueAi(
   prompt: string | null = null,
 ): Promise<TopicRow> {
   const topic = notDiscarded(await getTopic(id));
+  if (topic.proposed) throw new TopicError("제안은 채택한 뒤에 맡길 수 있다");
   if (topic.droppedReason !== null) throw new TopicError("접은 주제는 맡길 수 없다");
   if (topic.ai.status === "running") throw new TopicError("이미 작업 중이다");
   if (prompt) {

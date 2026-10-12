@@ -23,8 +23,9 @@ export default async function Page() {
     getTopics(),
   ]);
   const fresh = queue.filter((r) => r.status === "new").length;
+  const proposals = topics.filter((t) => t.proposed && t.droppedReason === null).length;
   const inProgress = topics.filter(
-    (t) => t.droppedReason === null && t.stage !== "published",
+    (t) => !t.proposed && t.droppedReason === null && t.stage !== "published",
   ).length;
 
   return (
@@ -37,8 +38,8 @@ export default async function Page() {
           릴리스 글감
         </h1>
         <p className="m-0 mt-2.5 max-w-[560px] text-[14.5px] leading-[1.6] text-ink-muted">
-          진행 중 주제 {inProgress} · 새 글감 {fresh} · 추적 {sources.length}곳.
-          주제는 글감 묶음 → 2차 소스 → 자료 → 초안 → 점검 → 발행 순으로
+          제안 {proposals} · 진행 중 주제 {inProgress} · 새 글감 {fresh} · 추적 {sources.length}곳.
+          탐색기가 올린 제안을 채택하면 주제가 되고, 주제는 글감 묶음 → 2차 소스 → 자료 → 초안 → 점검 → 발행 순으로
           넘어갑니다. 점검은 본문을 문체·구성 기준으로 직접 검사합니다.
         </p>
       </header>

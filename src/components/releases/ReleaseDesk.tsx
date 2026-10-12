@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { API } from "@/lib/api-routes";
 import type { QueueRow } from "@/lib/release-queue";
 import type { TopicRow } from "@/lib/release-topics";
+import { ProposalBoard } from "@/components/releases/ProposalBoard";
 import { ReleaseQueue } from "@/components/releases/ReleaseQueue";
 import { TopicBoard } from "@/components/releases/TopicBoard";
 
@@ -73,6 +74,11 @@ export function ReleaseDesk({
 
   return (
     <>
+      <ProposalBoard
+        topics={topics}
+        onChange={(topic) => setTopics((ts) => ts.map((t) => (t.id === topic.id ? topic : t)))}
+        onSkipped={markSkipped}
+      />
       <TopicBoard
         topics={topics}
         onTopicsChange={setTopics}

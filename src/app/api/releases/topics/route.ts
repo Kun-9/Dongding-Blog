@@ -1,5 +1,5 @@
 /**
- * 글 주제 — 목록(GET), 만들기(POST), 단계 이동·편집·AI 맡기기·접기·버리기(PATCH).
+ * 글 주제 — 목록(GET), 만들기(POST), 제안 채택·단계 이동·편집·AI 맡기기·접기·버리기(PATCH).
  *
  * 지우는 길은 없다. 쓰지 않을 주제는 버린다 — 초안과 노트는 지워도 무엇을
  * 왜 버렸는지는 남는다.
@@ -12,6 +12,7 @@ import { requireApiUser } from "@/lib/api-shared";
 import {
   AI_UNTIL,
   TopicError,
+  adoptTopic,
   advanceTopic,
   cancelAi,
   queueAi,
@@ -44,6 +45,7 @@ const PatchSchema = z.discriminatedUnion("action", [
     expect: z.enum(STAGES.map((s) => s.key) as [StageKey, ...StageKey[]]).optional(),
   }),
   z.object({ action: z.literal("revert"), id: z.number().int() }),
+  z.object({ action: z.literal("adopt"), id: z.number().int() }),
   z.object({
     action: z.literal("drop"),
     id: z.number().int(),
@@ -144,13 +146,15 @@ export async function PATCH(req: Request) {
         ? await advanceTopic(input.id, input, { allowPublish: true })
         : input.action === "revert"
           ? await revertTopic(input.id)
-          : input.action === "drop"
-            ? await dropTopic(input.id, input.reason)
-            : input.action === "ai"
-              ? await queueAi(input.id, input.until as (typeof AI_UNTIL)[number], input.local, input.prompt ?? null)
-              : input.action === "ai_cancel"
-                ? await cancelAi(input.id)
-                : await editTopic(input.id, input);
+          : input.action === "adopt"
+            ? await adoptTopic(input.id)
+            : input.action === "drop"
+              ? await dropTopic(input.id, input.reason)
+              : input.action === "ai"
+                ? await queueAi(input.id, input.until as (typeof AI_UNTIL)[number], input.local, input.prompt ?? null)
+                : input.action === "ai_cancel"
+                  ? await cancelAi(input.id)
+                  : await editTopic(input.id, input);
     return NextResponse.json({ topic });
   } catch (e) {
     return failed(e);

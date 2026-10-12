@@ -4,8 +4,9 @@
  * 실행기 API(../worker)와 같은 토큰(RELEASE_WORKER_TOKEN)을 쓴다. 할 수 있는
  * 일은 탐색기 몫으로 좁힌다: 새 글감 읽기, 트렌드 신호 읽기, 주제 만들기,
  * new 글감 건너뛰기. 사람이 정한 글감 상태와 이미 있는 주제는 바꾸지 못한다.
+ * 탐색기가 만드는 주제는 모두 제안(proposed)이다. 사람이 어드민에서 채택해야 집필로 넘어간다.
  * 트렌드 탐색기 루틴도 같은 API 를 쓴다(signals·volume·read·topics·topic_create).
- * 개념 글감 탐색기는 questions·posts·read·topics·topic_create(kind concept).
+ * 개념 글감 탐색기는 questions·posts·read·topics·topic_create(scout concept).
  * 도구 글감 탐색기는 tools·volume·posts·read·topics·topic_create.
  * 인기 스킬 탐색기는 skills·posts·read·topics·topic_create.
  *
@@ -22,6 +23,7 @@ import { CONCEPT_PROMPT, SCOUT_PROMPT, SKILLS_PROMPT, TOOLS_PROMPT, TREND_PROMPT
 import { collectSignals, collectToolSignals, conceptQuestions, keywordVolume, popularSkills, readPage } from "@/lib/trends";
 import { CONCEPT_AREA_KEYS } from "@/lib/concept-areas";
 import { TopicError, createTopic, getTopics, saveNotes } from "@/lib/release-topics";
+import { SCOUT_KEYS } from "@/lib/release-scouts";
 
 /** 글감 본문은 분류에 이 정도면 족하다. 수십 건을 한 세션에서 읽는다. */
 const BODY_LIMIT = 8_000;
@@ -51,7 +53,12 @@ const Action = z.discriminatedUnion("action", [
     angle: z.string().min(1).max(300),
     candidateIds: IDS.max(50).optional(),
     notes: z.string().min(1).max(20_000),
-    kind: z.enum(["release", "concept"]).optional(),
+    // 제안 카드. 개념 탐색기(scout concept)가 올린 주제는 개념 글이 된다.
+    scout: z.enum(SCOUT_KEYS),
+    summary: z.string().min(1).max(200),
+    signals: z.array(z.string().min(1).max(40)).min(1).max(4),
+    unverified: z.string().min(1).max(160).optional(),
+    trend: z.array(z.number().int().min(0)).length(8).optional(),
   }),
   z.object({ action: z.literal("skip"), ids: IDS.max(50), note: z.string().min(1).max(200) }),
   z.object({ action: z.literal("signals") }),
@@ -133,6 +140,7 @@ export async function POST(req: Request) {
             angle: t.angle,
             stage: t.stage,
             droppedReason: t.droppedReason,
+            proposed: t.proposed,
             kind: t.kind,
             discardedAt: t.discardedAt,
             candidateIds: t.candidates.map((c) => c.id),
@@ -149,7 +157,19 @@ export async function POST(req: Request) {
           const rejected = ids.filter((id) => !fresh.has(id));
           if (rejected.length) return bad(`new 가 아니거나 없는 글감: ${rejected.join(", ")}`);
         }
-        const created = await createTopic({ title: input.title, angle: input.angle, candidateIds: ids, kind: input.kind });
+        const created = await createTopic({
+          title: input.title,
+          angle: input.angle,
+          candidateIds: ids,
+          kind: input.scout === "concept" ? "concept" : "release",
+          proposal: {
+            scout: input.scout,
+            summary: input.summary,
+            signals: input.signals,
+            unverified: input.unverified ?? null,
+            trend: input.trend ?? null,
+          },
+        });
         const t = await saveNotes(created.id, input.notes, "replace");
         return ok({ created: { id: t.id, title: t.title, candidateIds: t.candidates.map((c) => c.id) } });
       }
