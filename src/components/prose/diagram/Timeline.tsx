@@ -185,7 +185,7 @@ export function Sequence({ actors, messages }: { actors: string[]; messages: Mes
               <Badge m={m} n={k + 1} />
               <span className="min-w-0 text-[13.5px] leading-[1.5]">
                 <span className="font-semibold text-ink">{actors[m.from]}</span>
-                <span className="mx-1.5 text-ink-muted">{m.reply ? "⇠" : "→"}</span>
+                <span className="mx-1.5 text-ink-muted">{m.reply ? "⇢" : "→"}</span>
                 <span className="font-semibold text-ink">{actors[m.to]}</span>
                 {m.label ? <span className="block text-ink-soft">{m.label}</span> : null}
               </span>
