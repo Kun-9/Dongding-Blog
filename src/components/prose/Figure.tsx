@@ -13,6 +13,7 @@ import { createPortal } from "react-dom";
 import { useMounted } from "@/lib/hooks";
 import {
   colsFor,
+  isTabs,
   ratioFor,
   widthOf,
   type ImageItem,
@@ -178,6 +179,104 @@ export function ImageGroup({
 }: {
   items: ImageItem[];
   opt?: string;
+}) {
+  if (isTabs(opt)) return <ImageTabs items={items} />;
+  return <ImageGrid items={items} opt={opt} />;
+}
+
+/**
+ * `{tabs}` 묶음 — 버튼(이미지 alt)으로 한 자리에서 바꿔 보는 전·후 그림. 모든 이미지를 같은 칸에
+ * 겹쳐 두고 고른 것만 보이게 해, 높이는 가장 큰 이미지가 정하고 바꿔도 흔들리지 않는다.
+ * 그리드 묶음처럼 4:3 으로 자르지 않는다. 서버가 그린 첫 모습은 첫 이미지다.
+ */
+function ImageTabs({ items }: { items: ImageItem[] }) {
+  const [on, setOn] = useState(0);
+  const [zoom, setZoom] = useState(false);
+  const id = useId();
+  const tabs = useRef<(HTMLButtonElement | null)[]>([]);
+  const move = (d: number) => setOn((v) => (v + d + items.length) % items.length);
+  const pick = (next: number) => {
+    setOn(next);
+    tabs.current[next]?.focus();
+  };
+  return (
+    <figure className="my-[26px]">
+      <div
+        role="tablist"
+        aria-label="비교할 화면"
+        className="mb-2.5 flex flex-wrap gap-1.5"
+        onKeyDown={(e) => {
+          const last = items.length - 1;
+          const next =
+            e.key === "ArrowRight" ? (on + 1) % items.length
+            : e.key === "ArrowLeft" ? (on - 1 + items.length) % items.length
+            : e.key === "Home" ? 0
+            : e.key === "End" ? last
+            : -1;
+          if (next < 0) return;
+          e.preventDefault();
+          pick(next);
+        }}
+      >
+        {items.map((it, idx) => (
+          <button
+            key={idx}
+            ref={(el) => {
+              tabs.current[idx] = el;
+            }}
+            type="button"
+            role="tab"
+            id={`${id}-t${idx}`}
+            aria-selected={idx === on}
+            aria-controls={`${id}-p${idx}`}
+            tabIndex={idx === on ? 0 : -1}
+            onClick={() => setOn(idx)}
+            className={[
+              "rounded-full border px-3.5 py-1.5 font-sans text-[13px] font-semibold leading-none transition-colors",
+              idx === on
+                ? "border-ink bg-ink text-bg"
+                : "border-border-strong bg-transparent text-ink-muted hover:text-ink",
+            ].join(" ")}
+          >
+            {it.alt || `${idx + 1}`}
+          </button>
+        ))}
+      </div>
+      {/* 패널을 같은 칸에 겹친다. 숨긴 패널은 invisible 이라 자리는 차지하고 포커스는 받지 않는다. */}
+      <div className="grid">
+        {items.map((it, idx) => (
+          <div
+            key={idx}
+            role="tabpanel"
+            id={`${id}-p${idx}`}
+            aria-labelledby={`${id}-t${idx}`}
+            className={[
+              "[grid-area:1/1] self-start motion-safe:transition-opacity motion-safe:duration-150",
+              idx === on ? "opacity-100" : "invisible opacity-0",
+            ].join(" ")}
+          >
+            <button
+              type="button"
+              onClick={() => setZoom(true)}
+              aria-label={`${it.alt || "이미지"} 확대`}
+              className="block w-full cursor-zoom-in border-0 bg-transparent p-0"
+            >
+              {/\.svg(\?|$)/i.test(it.src) ? <InlineSvg src={it.src} alt={it.alt} /> : <ImgSlot src={it.src} alt={it.alt} />}
+            </button>
+          </div>
+        ))}
+      </div>
+      {zoom && <Lightbox items={items} index={on} onClose={() => setZoom(false)} onMove={move} />}
+    </figure>
+  );
+}
+
+function ImageGrid({
+  items,
+  opt,
+}: {
+  items: ImageItem[];
+  opt: string;
 }) {
   const [zoom, setZoom] = useState(-1);
   const cols = colsFor(items.length, opt);

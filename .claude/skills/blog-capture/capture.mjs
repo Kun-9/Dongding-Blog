@@ -363,14 +363,29 @@ rows.forEach((r, y) => {
     const ink = run.slice(a, z);
     if (!ink.length) continue;
     const attrs = [
-      `x="${ink.map(x).join(" ")}"`,
       `y="${top + 15}"`,
       `fill="var(--term-fg-${(c0.fg ?? FG).slice(1)}, ${c0.fg ?? FG})"`,
       c0.b && `font-weight="700"`,
       c0.d && `opacity="0.6"`,
       c0.i && `font-style="italic"`,
     ].filter(Boolean);
-    body.push(`<text ${attrs.join(" ")}>${esc(ink.map((c) => c.ch).join(""))}</text>`);
+    // 공백이 두 칸 이상 이어진 뒤(표의 열 간격, 오른쪽 테두리 앞 여백)마다 tspan 으로 칸 좌표를 다시 둔다.
+    // 두 칸 글자(한글·한자)가 든 조각은 첫 칸에만 좌표를 두고 글꼴대로 이어 그린다. 글자마다 칸 좌표를 박으면
+    // 읽는 쪽 글꼴의 한글이 두 칸보다 좁아 "실 행 했 고"처럼 벌어졌고, 단어마다 칸으로 돌아오면 단어 사이가
+    // 벌어졌다(2026-10-13). 한글이 없는 조각은 글자마다 칸에 맞춘다. 공백은 글자로 남겨 복사·검색이 된다.
+    const words = [];
+    let gap = 0;
+    for (const c of ink) {
+      const w = words[words.length - 1];
+      if (!w || (c.ch !== " " && gap >= 2)) words.push([c]);
+      else w.push(c);
+      gap = c.ch === " " ? gap + 1 : 0;
+    }
+    const spans = words.map((w) => {
+      const xs = w.some((c) => wide(c.ch.codePointAt(0))) ? x(w[0]) : w.map(x).join(" ");
+      return `<tspan x="${xs}">${esc(w.map((c) => c.ch).join(""))}</tspan>`;
+    });
+    body.push(`<text ${attrs.join(" ")}>${spans.join("")}</text>`);
   }
 });
 

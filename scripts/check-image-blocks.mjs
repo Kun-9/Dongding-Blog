@@ -9,6 +9,7 @@ import {
   widthOf,
   colsFor,
   ratioFor,
+  isTabs,
 } from "../src/lib/image-blocks.ts";
 
 // ── 줄 단독일 때만 블록으로 승격 ─────────────────────────────────────────
@@ -55,5 +56,11 @@ assert.equal(colsFor(3, "wide"), 3, "폭 옵션은 열 수가 아니다");
 assert.equal(ratioFor(1), "16 / 9");
 assert.equal(ratioFor(4), "1 / 1");
 assert.equal(ratioFor(7), "4 / 3", "모르는 열 수는 기본 비율");
+
+// ── 전·후 토글 ───────────────────────────────────────────────────────────
+assert.ok(isImageLine("![설정 없음](/posts/a/before.svg){tabs}"), "{tabs} 도 이미지 줄");
+assert.ok(isTabs("tabs"), "{tabs} 는 토글");
+assert.ok(!isTabs("wide") && !isTabs("2") && !isTabs(""), "다른 옵션은 토글이 아니다");
+assert.equal(asImageSize("tabs"), "", "{tabs} 는 폭이 아니다");
 
 console.log("그림 블록 문법 자체 점검 통과");
