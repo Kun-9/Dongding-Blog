@@ -56,7 +56,7 @@ curl -sS -X POST "$APP/api/releases/worker/" -H "Authorization: Bearer $TOKEN" -
 | post_create | slug, title, summary, category, tags, body | draft 글 생성 |
 | post_update | slug, title?, summary?, tags?, replacements?[{old,new}] 또는 body | 이 주제의 draft 글만 수정. replacements 는 본문에 정확히 한 번 나오는 문자열만 바꾼다. body(통째 교체)는 초안 단계에서 다시 쓸 때, 고치기 지시가 다시 쓰라고 할 때만 |
 | check | slug 또는 title+body, kind? | 문체·구성 점검. \`passed\` 가 true 여야 점검 단계를 넘긴다. slug 면 주제 종류에 맞춰 본다. body 만 넘길 때 개념 글이면 kind "concept" |
-| image | slug, name, svg 또는 base64 | 글 이미지 업로드. 돌려받은 path 를 본문에 쓴다 |
+| image | slug, name, svg 또는 base64 (.html 은 html) | 글 이미지 업로드. 돌려받은 path 를 본문에 쓴다. 눌러 보는 결과물 HTML 은 \`\`\`embed 블록으로 |
 | read | url | 웹 페이지를 서버가 대신 읽어 글자만 준다(\`title\`, \`text\` 2만 자). 이 환경에서 열리지 않는 사이트(프록시 403·ENOTFOUND)용. 긴 명세는 주소에 \`#절-id\` 를 붙이면 그 절부터 준다 |
 | guide | kind | 쓰기 기준 문서(markdown). kind 는 release·concept |
 

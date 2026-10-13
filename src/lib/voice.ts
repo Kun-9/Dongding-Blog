@@ -13,6 +13,7 @@
 import type { Issue } from "./lint";
 import { findDiagrams, findFences, isDiagramLang, parseDiagram } from "./diagram";
 import { parseFigureHtml } from "./html-figure";
+import { parseEmbed } from "./embed";
 import { ANIMS, LOOPS } from "./figure/anims";
 import { KITS } from "./figure/kits";
 import { SCENE_ATTRS } from "./figure/scene-attrs";
@@ -106,7 +107,7 @@ export const CLARITY_RULES = [
   "근거는 링크로만 단다. 'RFC 6819 3.3절이 그대로 적습니다', '가이드는 ~라고 적었으니', 'Stack Overflow 답변은 ~에만 맞습니다'처럼 문서·절 번호·문서 상태·커뮤니티 반응을 문장 주어로 세우지 않는다. 내용을 단정하고 핵심 낱말에 링크를 건다",
   "문장·섹션마다 '독자가 이걸 읽고 무엇을 하거나 고르나'에 답이 있어야 남긴다. 작성자 뒷얘기(도구 호출 순서, 문서끼리 어긋난 값, 이슈·PR 상태), 남의 벤치마크 세부, 제목 밖 릴리스 항목, 발표 뉴스 맥락, 쓰지 말라는 선택지를 길게 시연하는 우회는 지운다",
   "따라 칠 코드·설정은 생략 없이 쓴다(`opts`·`...`로 핵심 인자를 가리지 않는다). 문제를 짚었으면 해법(코드·설정 한 덩어리)까지 쓴다",
-  "스킬·플러그인·CLI 처럼 써 보는 도구를 다룰 때는 네 가지를 꼭 둔다. ① 설치·실행 명령을 실제 값으로(복사해 바로 되게) ② 예시 프롬프트 원문 ③ 같은 요청을 적용 전(도구 없이)·후로 돌린 결과 ④ 실제 스크린샷. 스크린샷은 '조작 한 줄 → 캡처 → 결과 한 줄'로 잇고, 같은 요청의 전·후 두 장은 이미지 묶음 첫 줄에 `{tabs}` 를 붙여 한 자리에서 바꿔 보게 한다. `{tabs}` 없이 연달아 두면 그리드 묶음이 되어 4:3 칸으로 잘린다. 터미널은 blog-capture 의 capture.mjs(`--plugin` 을 빼고 넣어 전·후 두 번), 브라우저에 그려지는 결과는 PNG 로 뜬다. figure 로 다시 그린 화면은 실제 캡처를 대신하지 않는다(장면은 원리·움직임 자리). 태그가 skill·plugin 인 글은 실제 캡처가 두 장 미만이면 점검에서 막힌다",
+  "스킬·플러그인·CLI 처럼 써 보는 도구를 다룰 때는 네 가지를 꼭 둔다. ① 설치·실행 명령을 실제 값으로(복사해 바로 되게) ② 예시 프롬프트 원문 ③ 같은 요청을 적용 전(도구 없이)·후로 돌린 결과 ④ 실제 스크린샷. 스크린샷은 '조작 한 줄 → 캡처 → 결과 한 줄'로 잇고, 같은 요청의 전·후 두 장은 이미지 묶음 첫 줄에 `{tabs}` 를 붙여 한 자리에서 바꿔 보게 한다. `{tabs}` 없이 연달아 두면 그리드 묶음이 되어 4:3 칸으로 잘린다. 터미널은 blog-capture 의 capture.mjs(`--plugin` 을 빼고 넣어 전·후 두 번)로 뜬다. 결과가 브라우저에서 눌러 보는 HTML(위젯·인터랙티브 그림)이면 스크린샷 대신 그 HTML 을 `.html` 로 올려 ```embed 블록으로 띄워 독자가 직접 눌러 보게 한다(전·후는 `src: 경로 | 버튼 이름` 두 줄, 외부 스크립트 없이 한 파일, localStorage·alert·클립보드에 기대지 않게. 창 높이를 채우는 위젯(100vh·화면 전체 absolute)은 `height:` 를 적는다). 움직이지 않는 결과만 PNG 로 뜬다. figure 로 다시 그린 화면은 실제 캡처를 대신하지 않는다(장면은 원리·움직임 자리). 태그가 skill·plugin 인 글은 실제 캡처가 두 장 미만이면 점검에서 막힌다",
   "비유는 기준 독자가 이미 아는 것에만 댄다. \"Express나 Koa의 미들웨어와 같은 모양\"처럼 그 독자가 모를 수 있는 것에 빗대면 비유를 또 설명해야 한다",
   "링크는 더 읽을 거리다. 링크를 누르지 않아도 이 글만으로 이해되게, 링크를 단 문장 안에서 필요한 만큼 풀어 쓴다",
   "이전 글을 읽었다고 가정하지 않는다. 이전 글이 필요하면 첫 문단에서 이 글에 필요한 부분을 한두 문장으로 요약하고 그 요약에 링크를 건다. '먼저 읽고 오라'고 하지 않는다. 느슨하게 관련된 글은 전편처럼 다루지 말고 본문 링크로 둔다",
@@ -145,7 +146,7 @@ export const VISUAL_RULES = [
   "그림 블록·figure 의 캡션은 첫 줄 `caption: …`, 이미지는 alt 자리에. 그림이 보여 주는 것을 40자 안팎 명사구로",
   "모션은 블로그가 정한다. 그림 블록은 아무것도 안 써도 칸이 화면 가운데에 오면 차례로 나타나고, figure 는 키트 기본 모션이 있다. figure·SVG 에서 바꾸거나 더할 때만 `data-anim`·`data-loop` 을 의미가 있는 곳에 단다. 모션이 없어도 읽히게 그린다",
   "그림은 지우면 어느 문장이 막히는지 답할 수 있을 때만 둔다. 글당 서너 개 안쪽(다섯 개를 넘으면 점검이 참고로 알린다). 한 번에 다 보여야 하는 정보(표·목록·우선순위·숫자 두셋)는 정적 표·번호 목록·문장으로 둔다. 2026-10-13 auto mode 글은 그림 여섯 개 중 이해를 돕는 것이 전·후 캡처 둘뿐이었고, 5박자 장면 표는 스크롤을 다섯 번 해야 다 보였다",
-  "같은 요청·설정의 전·후 화면은 이미지 묶음 첫 줄에 `{tabs}` 를 붙여 한 자리에서 버튼으로 바꿔 보게 한다. 이미지의 alt 가 버튼 이름이니 8자 안팎으로 짧게(\"설정 없음\", \"manual 설정\"). 높이는 큰 화면에 맞춰 고정되고 잘리지 않는다",
+  "같은 요청·설정의 전·후 화면은 이미지 묶음 첫 줄에 `{tabs}` 를 붙여 한 자리에서 버튼으로 바꿔 보게 한다(작동하는 HTML 이면 ```embed 에 src 두 줄). 이미지의 alt 가 버튼 이름이니 8자 안팎으로 짧게(\"설정 없음\", \"manual 설정\"). 높이는 큰 화면에 맞춰 고정되고 잘리지 않는다",
   "장면(`scene: on`)은 순서가 곧 내용일 때만 쓴다(값·토큰이 옮겨 가거나 단계마다 상태가 바뀌는 과정). 그림이 화면에 붙어 스크롤 박자마다 다음 단계로 넘어가고, 단계마다 `> ` 설명이 바뀐다. 무엇을 그릴지는 그림 종류가 아니라 내용에서 일어나는 움직임으로 고른다(아래 '핵심 장면 고르기' 표: 옮겨 간다·복사된다·덮어쓴다·번진다·바뀐다·늘고 준다·시점이 온다). 터미널 화면 장면은 직접 돌린 결과·활용 예를 보이는 증거 자리라 글의 유일한 장면이 되지 않게 한다(점검의 scene-evidence-only). 한 글에 하나, 많아야 둘. 장면이 없는 글도 된다. 장면이 아닌 그림의 `> ` 줄은 그려지지 않으니 쓰지 않는다. 배포일·출처·계산 내역 같은 보충은 본문 문장이나 캡션에 쓴다",
   "실제 화면은 사람 몫으로 남기지 않는다. blog-capture 스킬대로 ① 직접 뜬다: `node .claude/skills/blog-capture/capture.mjs --run \"claude\" --keys /model --keys Enter --from \"Select model\" --to \"Esc to cancel\" --out /tmp/<이름>.svg` 한 줄로 SVG 를 만들어 올리고, 본문에는 'v2.1.292에서 열어 보니'처럼 버전과 함께 밝힌다 ② 띄울 수 없으면(끝 코드 3·4) 자료 조사: 공식 문서·릴리스·이슈의 같은 화면이나 출력 예시를 코드 블록으로 옮기고 출처를 단다 ③ 그것도 없으면 화면의 구조·숫자를 그림 블록·figure 로 다시 그린다",
   "셋 다 안 될 때만 그 자리에 `![캡션](/posts/<slug>/todo-<이름>.png)` 를 남기고 못 뜬 이유를 노트에 적는다. 본문에 '캡처 필요' 자리로 보이고, 남아 있으면 발행이 막힌다. 점검은 경로에 `/todo-` 가 있으면 캡처 대기로 보므로, 실제 캡처는 todo- 없는 이름으로 올리고 경로를 바꾼다",
@@ -683,7 +684,9 @@ export function checkVoice(post: VoiceInput, kind: PostKind = "release"): VoiceR
     return fenced ? "" : l;
   });
   const imageBlocks = rawLines.filter((l, i) => isImg(l) && !isImg(rawLines[i - 1])).length;
-  const visuals = drawn.length + htmlFigures.length + imageBlocks;
+  // ```embed 는 실제로 작동하는 결과물이다. 그림 하나로 세고, 도구 글에서는 src 하나를 실제 화면 한 장으로 친다.
+  const embeds = findFences(post.body).filter((f) => f.lang === "embed" && !f.file).map((f) => parseEmbed(f.source).embed).filter((e) => e !== null);
+  const visuals = drawn.length + htmlFigures.length + imageBlocks + embeds.length;
   if (visuals > MAX_VISUALS) {
     issues.push({
       rule: "too-many-figures",
@@ -693,12 +696,12 @@ export function checkVoice(post: VoiceInput, kind: PostKind = "release"): VoiceR
   }
   // 도구 글 — 2026-10-12 "스킬을 설명할 땐 예시·방법·적용 전후·실제 스크린샷을 적극 쓰라"는 지적.
   // figure 로 다시 그린 화면만 있던 스킬 글들은 무엇이 뜨는지 와닿지 않았다.
-  const shots = figures.length - captures.length;
+  const shots = figures.length - captures.length + embeds.reduce((n, e) => n + e.items.length, 0);
   if (post.tags?.some((t) => TOOL_TAGS.includes(t)) && shots < TOOL_MIN_SHOTS) {
     issues.push({
       rule: "tool-no-capture",
       severity: "warning",
-      message: `스킬·플러그인 글인데 실제 화면 캡처가 ${shots}장입니다. 예시 프롬프트의 실제 화면과, 같은 요청을 도구 없이·있이 뜬 전·후 화면을 이미지로 ${TOOL_MIN_SHOTS}장 이상 실으세요(blog-capture 의 capture.mjs --plugin)`,
+      message: `스킬·플러그인 글인데 실제 화면 캡처가 ${shots}장입니다. 예시 프롬프트의 실제 화면과, 같은 요청을 도구 없이·있이 뜬 전·후 화면을 이미지로 ${TOOL_MIN_SHOTS}장 이상 실으세요(blog-capture 의 capture.mjs --plugin). 결과가 작동하는 HTML 이면 \`\`\`embed 로 띄운 것도 센다`,
     });
   }
   if (captures.length) {
@@ -766,7 +769,7 @@ export function checkVoice(post: VoiceInput, kind: PostKind = "release"): VoiceR
     "summary-box": /^>\s?\[!(INFO|NOTE|TIP)\]/im.test(head),
     table: /^\s*\|.*\|\s*\n\s*\|\s*:?-{3,}/m.test(post.body) || drawn.some((d) => d.kind === "compare" || d.kind === "matrix"),
     // 캡처 자리(todo-)는 그림으로 치지 않는다.
-    visual: drawn.length > 0 || htmlFigures.length > 0 || figures.some((f) => !/\/todo-[^/]*$/.test(f[2])),
+    visual: drawn.length > 0 || htmlFigures.length > 0 || embeds.length > 0 || figures.some((f) => !/\/todo-[^/]*$/.test(f[2])),
     // 개념 글은 표준·공식 문서 주소가 제각각이라 링크가 있으면 된다.
     source:
       kind === "concept"

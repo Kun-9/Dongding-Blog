@@ -5,7 +5,8 @@
  *
  *   node .claude/skills/release-post/upload-image.mjs <slug> <파일> [--name <이름>] [--base https://blog.dongding.dev]
  *
- * 이름을 빼면 파일 이름(소문자)을 쓴다. 이름은 영소문자·숫자·하이픈 + .svg·.png·.jpg·.jpeg·.webp.
+ * 이름을 빼면 파일 이름(소문자)을 쓴다. 이름은 영소문자·숫자·하이픈 + .svg·.png·.jpg·.jpeg·.webp·.html.
+ * .html 은 실제로 작동하는 결과물을 본문 ```embed 블록으로 띄울 때 쓴다(외부 스크립트 없이 한 파일로).
  * 같은 이름이 있으면 덮어쓴다. 끝나면 본문에 넣을 경로(/posts/<slug>/<이름>)를 출력한다.
  * 토큰은 .env.local 의 MCP_TOKEN 을 파일에서 읽어 쓰고 출력하지 않는다.
  */
@@ -30,8 +31,8 @@ if (!existsSync(file)) {
 }
 const target = name ?? basename(file).toLowerCase();
 // 서버(src/app/api/mcp/route.ts)와 같은 규칙. 미리 막아야 무엇이 틀렸는지 바로 보인다.
-if (!/^[a-z0-9][a-z0-9-]*\.(svg|png|jpg|jpeg|webp)$/.test(target)) {
-  console.error(`이름은 영소문자·숫자·하이픈 + .svg·.png·.jpg·.jpeg·.webp 입니다: ${target} (--name 으로 정한다)`);
+if (!/^[a-z0-9][a-z0-9-]*\.(svg|png|jpg|jpeg|webp|html)$/.test(target)) {
+  console.error(`이름은 영소문자·숫자·하이픈 + .svg·.png·.jpg·.jpeg·.webp·.html 입니다: ${target} (--name 으로 정한다)`);
   process.exit(2);
 }
 
@@ -54,7 +55,11 @@ if (!env.MCP_TOKEN) {
 }
 
 const bytes = readFileSync(file);
-const input = target.endsWith(".svg") ? { svg: bytes.toString("utf8") } : { base64: bytes.toString("base64") };
+const input = target.endsWith(".svg")
+  ? { svg: bytes.toString("utf8") }
+  : target.endsWith(".html")
+    ? { html: bytes.toString("utf8") }
+    : { base64: bytes.toString("base64") };
 const res = await fetch(`${base}/api/mcp/`, {
   method: "POST",
   headers: {

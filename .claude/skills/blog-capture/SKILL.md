@@ -59,6 +59,21 @@ node .claude/skills/blog-capture/capture.mjs --timeout 180 --setup "$SETUP" --pl
 
 자리표시(`<…>`)는 처음 한 번 짐작으로 띄워 끝 코드 5 가 보여 주는 화면을 보고 채운다. 브라우저에 그려지는 결과(고친 카드, 기본 달력과 직접 만든 달력)는 dev-browser 스킬로 띄워 PNG 로 찍어 `upload_post_image` 로 올린다. 본문은 "조작 한 줄 → 캡처 → 결과 한 줄"로 잇는다.
 
+**눌러 보는 결과는 찍지 말고 띄운다.** 스킬이 만든 위젯·인터랙티브 그림처럼 HTML 한 파일로 돌아가는 결과는 스크린샷 대신 그 HTML 을 `.html` 로 올려(`node .claude/skills/release-post/upload-image.mjs <slug> <파일>.html`) 본문에 ```embed 블록으로 띄운다. 독자가 버튼을 누르고 숫자를 바꿔 보는 것이 그 결과의 전부라, 정지 화면은 절반만 보여 준다(2026-10-13 anatomy 글: 토큰 버킷 위젯·기계를 PNG 로 실었다가 "실제 작동 가능한 건 실제로 작동하게"라는 지적).
+
+```embed
+caption: 같은 토큰 버킷 요청을 스킬 없이와 /anatomy로 만든 결과
+src: /posts/<slug>/before.html | 스킬 없이
+src: /posts/<slug>/after.html | /anatomy
+```
+
+- 외부 스크립트·폰트 없이 한 파일이어야 한다. npm 패키지로 나온 그림(예: `anatomy-figures` 의 커스텀 엘리먼트)은 `bun build <진입>.js --minify --target=browser` 로 묶어 `<script type="module">` 에 넣고, 라이선스 머리말(`/*! 이름 버전 | MIT | Copyright */`)을 남긴다.
+- `src` 가 둘 이상이면 `| 버튼 이름` 으로 전·후 탭이 된다. `height` 를 빼면 안쪽 문서 높이에 맞춘다. 안쪽이 창 높이를 따르면(`100vh`, `height: 100%`, 화면 전체를 덮는 `position: absolute`) 재는 높이가 틀리니 `height: 560` 처럼 적는다.
+- 화면에서는 스크립트·폼만 허용한 sandbox iframe 이라 블로그 쿠키·저장소에 닿지 못한다. 안쪽 `localStorage` 는 예외를 던지고 `alert`·클립보드는 조용히 안 되며 링크·팝업도 열리지 않는다. 이것에 기대는 위젯은 고쳐서 올린다.
+- 외부 `<script src>` 가 있으면 업로드가 거부된다. 140만 자 안쪽. 같은 이름으로 다시 올리면 1분 안에 새 판이 보인다.
+- 실행기는 `image` 액션에 `name: <이름>.html`, `html: <원문>` 으로 올린다.
+- 움직이지 않는 결과(달라진 카드 한 장)만 PNG 로 찍는다.
+
 스킬이 만든 파일(그린 HTML, 고친 컴포넌트)을 브라우저로 찍으려면 `--keep <폴더>` 로 캡처 폴더를 남긴다. 같은 문장으로는 스킬이 불리지 않을 수 있다. 2026-10-12 diagram-design 은 스킬을 실어도 Claude 가 SVG 를 직접 그렸다. 그러면 후 캡처는 `/<스킬 이름> <프롬프트>` 로 부르고, 본문에 이름을 붙여 불러야 한다는 것을 반 문장으로 적는다.
 
 스킬이 몇 분씩 일하는 전·후(그림을 그리고 스스로 찍어 보는 스킬 등)는 이렇게 뜬다. 2026-10-13 anatomy 글에서 겪은 것이다.

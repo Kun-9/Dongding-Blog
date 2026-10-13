@@ -129,7 +129,8 @@ export async function loadTaxonomy(): Promise<Taxonomy> {
 async function loadImages(posts: LintablePost[]): Promise<Set<string>> {
   const folders = new Set<string>();
   for (const p of posts) {
-    for (const m of p.body.matchAll(/!\[[^\]]*\]\(\/posts\/([^/)\s]+)\//g)) {
+    // 이미지 줄과 ```embed 의 src 줄
+    for (const m of p.body.matchAll(/(?:!\[[^\]]*\]\(|^\s*src:\s*)\/posts\/([^/)\s]+)\//gm)) {
       folders.add(m[1]);
     }
   }

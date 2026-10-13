@@ -49,6 +49,7 @@ import {
 } from "@/lib/release-topics";
 import { STAGES, nextStage } from "@/lib/release-stages";
 import { guide, releaseDay } from "@/lib/voice";
+import { EMBED_UPLOAD, embedHtmlProblem } from "@/lib/embed";
 
 const VISIBILITY = z.enum(["published", "private", "draft", "review"]);
 const SEVERITY = z.enum(["error", "warning", "info"]);
@@ -577,18 +578,32 @@ const handler = createMcpHandler(
           "글에 넣을 그림을 Storage(post-images/<slug>/<name>)에 올리고 본문에 쓸 경로(/posts/<slug>/<name>)를 돌려준다. " +
           "SVG 는 svg 에 원문을, PNG·JPEG 는 base64 에 넣는다. 올리기 전에 그림 블록(```flow 등 10종)이나 ```figure(디자인 키트 HTML)로 되는지 먼저 본다 — 둘 다 안 되는 모양만 SVG 로. " +
           "본문에 인라인으로 그려지므로 색은 블로그 변수로 쓴다(var(--ink, #1c1c1c) 처럼 대체값과 함께) — 양식은 get_release_writing_guide 의 'SVG 그림 양식'. " +
-          "같은 이름이 있으면 덮어쓴다.",
+          "같은 이름이 있으면 덮어쓴다. " +
+          "스킬이 만든 위젯처럼 실제로 작동하는 HTML 은 .html 이름으로 html 에 원문을 넣고, 본문에는 ```embed 블록(src: /posts/<slug>/<name>)으로 띄운다.",
         inputSchema: z.object({
           slug: z.string().regex(SLUG_PATTERN),
-          name: z.string().regex(/^[a-z0-9][a-z0-9-]*\.(svg|png|jpg|jpeg|webp)$/),
+          name: z.string().regex(/^[a-z0-9][a-z0-9-]*\.(svg|png|jpg|jpeg|webp|html)$/),
           svg: z.string().max(500_000).optional(),
           base64: z.string().max(8_000_000).optional(),
+          html: z.string().optional(),
         }),
       },
-      async ({ slug, name, svg, base64 }) => {
-        if (!svg && !base64) return fail("svg 나 base64 중 하나는 있어야 합니다.");
+      async ({ slug, name, svg, base64, html }) => {
+        if (!svg && !base64 && !html) return fail("svg·base64·html 중 하나는 있어야 합니다.");
         if (await slugDiscarded(slug)) return fail(`'${slug}' 는 버린 릴리스 주제의 slug 입니다. 작업을 멈출 것.`);
         const ext = name.split(".").pop()!;
+        if (ext === "html") {
+          if (!html) return fail(".html 은 html 에 원문을 넣으세요.");
+          const problem = embedHtmlProblem(html);
+          if (problem) return fail(problem);
+          // 화면에서는 sandbox iframe 의 srcdoc 으로만 돈다(lib/embed).
+          const { error } = await dbAdmin()
+            .storage.from(IMAGE_BUCKET)
+            .upload(`${slug}/${name}`, new TextEncoder().encode(html), EMBED_UPLOAD);
+          if (error) return fail(`업로드 실패: ${error.message}`);
+          return json({ path: `/posts/${slug}/${name}`, markdown: `\`\`\`embed\ncaption: 설명\nsrc: /posts/${slug}/${name}\n\`\`\`` });
+        }
+        if (!svg && !base64) return fail("svg 나 base64 중 하나는 있어야 합니다.");
         const type =
           ext === "svg" ? "image/svg+xml" : ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "image/jpeg";
         if (ext === "svg" && !svg) return fail(".svg 는 svg 에 원문을 넣으세요.");

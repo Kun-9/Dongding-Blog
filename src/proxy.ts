@@ -66,6 +66,6 @@ export const config = {
   // 도구 호출마다 Supabase 세션 갱신을 왕복시킬 이유가 없다. 릴리스 실행기 API 도
   // Bearer 로만 인증한다.
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|api/mcp|api/releases/worker|\\.well-known|posts/.*\\.(?:png|jpg|jpeg|gif|webp|svg)).*)",
+    "/((?!_next/static|_next/image|favicon.ico|api/mcp|api/releases/worker|\\.well-known|posts/.*\\.(?:png|jpg|jpeg|gif|webp|svg|html)).*)",
   ],
 };

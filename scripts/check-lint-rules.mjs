@@ -97,6 +97,18 @@ assert.ok(!has("[태그](/tags/jpa)\n", "broken-link", ctx), "있는 태그 링�
 assert.ok(has("![그림](/posts/sample/none.png)\n", "missing-image", ctx), "없는 이미지");
 assert.ok(!has("![그림](/posts/sample/a.png)\n", "missing-image", ctx), "있는 이미지");
 assert.ok(has("![그림](posts/sample/a.png)\n", "image-path", ctx), "앞 슬래시 누락");
+// ```embed — 작동하는 HTML. 문법이 틀리면 코드로 보이고, Storage 에 없으면 빈 판.
+assert.ok(has("```embed\nsrc: /posts/sample/none.html\n```\n", "missing-image", ctx), "없는 embed HTML");
+assert.ok(!has("```embed\nsrc: /posts/sample/a.html\n```\n", "missing-image", { ...ctx, images: new Set(["/posts/sample/a.html"]) }), "있는 embed HTML");
+assert.ok(has("```embed\nsrc: https://example.com/a.html\n```\n", "embed-error"), "embed 는 /posts/ 경로만");
+assert.ok(has("```embed\nsrc: /posts/sample/a.html\nsrc: /posts/sample/b.html\n```\n", "embed-error"), "탭 이름 없는 src 둘");
+assert.ok(has("```embed\ncaption: 비었다\n```\n", "embed-error"), "src 없는 embed");
+assert.ok(has("```embed\nsrc: /posts/sample/a.html | 가\nsrc: /posts/sample/a.html | 나\n```\n", "embed-error"), "같은 src 두 번");
+assert.ok(has("```embed\nsrc: /posts/sample/a.html\nheight: 9999\n```\n", "embed-error"), "height 범위 밖");
+assert.ok(
+  !has("```embed\ncaption: 전·후\nsrc: /posts/sample/a.html | 전\nsrc: /posts/sample/b.html | 후\nheight: 560\n```\n", "embed-error"),
+  "정상 embed 탭",
+);
 assert.ok(
   has("![그림](/posts/sample/a.png){huge}\n", "image-option", ctx),
   "알 수 없는 이미지 옵션",

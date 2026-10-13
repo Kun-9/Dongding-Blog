@@ -24,6 +24,7 @@ import { applyReplacements, checkVoiceWithHistory, loadPost, loadTaxonomy } from
 import { checkVoice, guide, releaseDay } from "@/lib/voice";
 import { WORKER_PROMPT } from "@/lib/release-worker";
 import { readPage } from "@/lib/trends";
+import { EMBED_UPLOAD, embedHtmlProblem } from "@/lib/embed";
 import {
   TopicError,
   advanceTopic,
@@ -137,9 +138,10 @@ const Action = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("image"),
     slug: SLUG,
-    name: z.string().regex(/^[a-z0-9][a-z0-9-]*\.(svg|png|jpg|jpeg|webp)$/),
+    name: z.string().regex(/^[a-z0-9][a-z0-9-]*\.(svg|png|jpg|jpeg|webp|html)$/),
     svg: z.string().max(500_000).optional(),
     base64: z.string().max(8_000_000).optional(),
+    html: z.string().optional(),
   }),
   z.object({ action: z.literal("read"), url: z.string().url() }),
   z.object({ action: z.literal("guide"), kind: KIND }),
@@ -264,8 +266,19 @@ export async function POST(req: Request) {
 
       case "image": {
         await assertWorkerPost(input.slug);
-        if (!input.svg && !input.base64) return bad("svg 나 base64 중 하나는 있어야 한다");
         const ext = input.name.split(".").pop()!;
+        if (ext === "html") {
+          if (!input.html) return bad(".html 은 html 에 원문을 넣는다");
+          const problem = embedHtmlProblem(input.html);
+          if (problem) return bad(problem);
+          const { error } = await dbAdmin()
+            .storage.from(BUCKET)
+            .upload(`${input.slug}/${input.name}`, new TextEncoder().encode(input.html), EMBED_UPLOAD);
+          if (error) throw new Error(`업로드 실패: ${error.message}`);
+          const path = `/posts/${input.slug}/${input.name}`;
+          return ok({ path, markdown: `\`\`\`embed\ncaption: 설명\nsrc: ${path}\n\`\`\`` });
+        }
+        if (!input.svg && !input.base64) return bad("svg 나 base64 중 하나는 있어야 한다");
         if (ext === "svg" && !input.svg) return bad(".svg 는 svg 에 원문을 넣는다");
         if (input.svg && /<script|\son\w+\s*=|<foreignObject|(?:xlink:)?href\s*=\s*["']\s*(?:https?:|\/\/)/i.test(input.svg)) {
           return bad("SVG 에 script·이벤트 속성·foreignObject·외부 링크는 넣을 수 없다");

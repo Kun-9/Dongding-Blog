@@ -16,6 +16,8 @@ import BananaSlug from "github-slugger";
 // 거치므로 `@/` alias 가 풀리지 않는다. 이 모듈만 상대 경로 + 확장자로 쓴다.
 import { CARD_LINE_RE, cardSlug } from "./link-cards.ts";
 import { MAX_PX, isTabs } from "./image-blocks.ts";
+import { findFences } from "./diagram.ts";
+import { parseEmbed } from "./embed.ts";
 import { lintPhrases } from "./phrases.ts";
 
 export type Severity = "error" | "warning" | "info";
@@ -597,6 +599,33 @@ function lintMeta(
   }
 }
 
+/** ```embed — 문법이 틀리면 코드 블록으로 보이고, Storage 에 없는 HTML 은 빈 판으로 보인다. */
+function lintEmbeds(body: string, ctx: LintContext, out: Issue[]): void {
+  for (const f of findFences(body)) {
+    if (f.lang !== "embed" || f.file) continue;
+    const { embed, errors } = parseEmbed(f.source);
+    if (!embed) {
+      out.push({
+        rule: "embed-error",
+        severity: "error",
+        line: f.line,
+        message: `embed 블록이 코드로 보입니다: ${errors.join(" / ")}`,
+      });
+      continue;
+    }
+    for (const it of embed.items) {
+      if (ctx.images && !ctx.images.has(it.src)) {
+        out.push({
+          rule: "missing-image",
+          severity: "error",
+          line: f.line,
+          message: `Storage(post-images)에 없는 embed HTML 입니다: ${it.src}`,
+        });
+      }
+    }
+  }
+}
+
 export interface PostLint {
   slug: string;
   title: string;
@@ -613,6 +642,7 @@ export function lintPost(post: LintablePost, ctx: LintContext = {}): PostLint {
 
   lintSyntax(s, issues);
   lintReferences(s, ctx, issues, post.visibility === "published");
+  lintEmbeds(post.body, ctx, issues);
   lintMeta(post, stats, ctx, issues);
   issues.push(...lintPhrases(post.body, "info"));
 

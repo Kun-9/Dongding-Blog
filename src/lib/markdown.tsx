@@ -1,6 +1,6 @@
 /**
  * Shared markdown parser — used by Studio preview AND post detail page.
- * Block: # ## ### ####, ```lang:filename (그림 블록·```figure 는 그림), > [!KIND] title (multi-line),
+ * Block: # ## ### ####, ```lang:filename (그림 블록·```figure 는 그림, ```embed 는 작동하는 HTML), > [!KIND] title (multi-line),
  *        - / 1. lists, ---, blank lines.
  *        URL 또는 /posts/slug 만 있는 줄 → 링크 카드.
  *        줄에 이미지만 있으면 그림 블록, 연속 줄이면 묶음.
@@ -28,6 +28,8 @@ import { Diagram, HtmlFigure } from "@/components/prose/Diagram";
 import { isAsciiTree, isDiagramLang, parseDiagram } from "@/lib/diagram";
 import { parseFigureHtml } from "@/lib/html-figure";
 import { EditableImage } from "@/components/prose/EditableImage";
+import { Embed } from "@/components/prose/Embed";
+import { parseEmbed } from "@/lib/embed";
 import { Figure, ImageGroup } from "@/components/prose/Figure";
 import {
   IMG_LINE_RE,
@@ -427,7 +429,14 @@ export function renderMarkdown(
       }
       i++; // skip closing fence
       // 그림 블록(```flow 등) → 그림. 문법이 틀리면 코드로 보인다. 아스키 트리를 담은 text 블록도 tree 그림.
-      // ```figure → 디자인 키트 HTML(허용 목록으로 거른 뒤).
+      // ```figure → 디자인 키트 HTML(허용 목록으로 거른 뒤). ```embed → 실제로 작동하는 HTML(sandbox iframe).
+      if (lang === "embed" && !filename) {
+        const { embed } = parseEmbed(code.join("\n"));
+        if (embed) {
+          out.push(<Embed key={k()} embed={embed} />);
+          continue;
+        }
+      }
       if (lang === "figure" && !filename) {
         const figure = parseFigureHtml(code.join("\n"));
         if (figure.html.trim()) {
