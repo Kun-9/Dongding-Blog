@@ -68,7 +68,7 @@ src: /posts/<slug>/after.html | /anatomy
 ```
 
 - 외부 스크립트·폰트 없이 한 파일이어야 한다. npm 패키지로 나온 그림(예: `anatomy-figures` 의 커스텀 엘리먼트)은 `bun build <진입>.js --minify --target=browser` 로 묶어 `<script type="module">` 에 넣고, 라이선스 머리말(`/*! 이름 버전 | MIT | Copyright */`)을 남긴다.
-- `src` 가 둘 이상이면 `| 버튼 이름` 으로 전·후 탭이 된다. `height` 를 빼면 안쪽 문서 높이에 맞춘다. 안쪽이 창 높이를 따르면(`100vh`, `height: 100%`, 화면 전체를 덮는 `position: absolute`) 재는 높이가 틀리니 `height: 560` 처럼 적는다.
+- `src` 가 둘 이상이면 `| 버튼 이름` 으로 전·후 탭이 된다. `height` 를 빼면 안쪽 문서 높이에 맞춘다. 판 안은 스크롤되지 않으니(`overflow: hidden`), `height` 를 적었는데 내용이 더 길면 아래가 잘린다. 안쪽이 창 높이를 따르면(`100vh`, `height: 100%`, 화면 전체를 덮는 `position: absolute`) 재는 높이가 틀리니 `height: 560` 처럼 적는다.
 - 화면에서는 스크립트·폼만 허용한 sandbox iframe 이라 블로그 쿠키·저장소에 닿지 못한다. 안쪽 `localStorage` 는 예외를 던지고 `alert`·클립보드는 조용히 안 되며 링크·팝업도 열리지 않는다. 이것에 기대는 위젯은 고쳐서 올린다.
 - 외부 `<script src>` 가 있으면 업로드가 거부된다. 140만 자 안쪽. 같은 이름으로 다시 올리면 1분 안에 새 판이 보인다.
 - 실행기는 `image` 액션에 `name: <이름>.html`, `html: <원문>` 으로 올린다.
