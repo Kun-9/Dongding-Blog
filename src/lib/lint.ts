@@ -15,7 +15,7 @@ import BananaSlug from "github-slugger";
 // `node scripts/check-lint-rules.mjs` 가 이 파일을 직접 로드한다 — 번들러를 안
 // 거치므로 `@/` alias 가 풀리지 않는다. 이 모듈만 상대 경로 + 확장자로 쓴다.
 import { CARD_LINE_RE, cardSlug } from "./link-cards.ts";
-import { MAX_PX } from "./image-blocks.ts";
+import { MAX_PX, isTabs } from "./image-blocks.ts";
 import { lintPhrases } from "./phrases.ts";
 
 export type Severity = "error" | "warning" | "info";
@@ -87,7 +87,7 @@ const LINK_RE = /(!?)\[([^\]]*)\]\(([^)\s]+)[^)]*\)/g;
  * 1~4 는 열 수라 px 으로 읽히지 않지만 표기 자체는 유효하다.
  */
 function isImageOption(opt: string): boolean {
-  if (opt === "xs" || opt === "sm" || opt === "wide") return true;
+  if (opt === "xs" || opt === "sm" || opt === "wide" || isTabs(opt)) return true;
   const n = Number(opt);
   return Number.isInteger(n) && n >= 1 && n <= MAX_PX;
 }

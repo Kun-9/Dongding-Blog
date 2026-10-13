@@ -99,6 +99,10 @@ assert.ok(
   "정상 열 옵션",
 );
 assert.ok(
+  !has("![전](/posts/sample/a.png){tabs}\n![후](/posts/sample/a.png)\n", "image-option", ctx),
+  "전·후 토글 옵션",
+);
+assert.ok(
   has("![그림|480](/posts/sample/a.png)\n", "image-width-legacy", ctx),
   "옛 너비 표기",
 );
