@@ -11,6 +11,7 @@
  *   node .claude/skills/release-post/mobile-check.mjs <slug> [--base https://blog.dongding.dev] [--shots <폴더>]
  *
  * --shots 를 주면 장면 설명이 바뀔 때마다(박자마다) 화면을 <폴더>/<테마>-NN.png 로 남긴다. 장면은 이 사진으로 눈으로 본다.
+ * 장면이 아닌 그림은 끝까지 내린 뒤 그림마다 <폴더>/<테마>-fig-NN.png 로 한 장씩 남긴다.
  * 끝 코드: 0 문제 없음 · 1 문제 있음(목록 출력) · 3 브라우저나 로그인을 못 함(사람 몫으로 남긴다).
  * 로그인은 .env.local 의 STUDIO_EMAIL·STUDIO_PASSWORD 를 파일에서 읽어 쓰고 출력하지 않는다.
  */
@@ -300,6 +301,15 @@ try {
       last = y;
       await page.mouse.wheel(0, 422);
       await page.waitForTimeout(900);
+    }
+    // 장면이 아닌 그림(표·이미지 묶음·터미널 캡처 등)은 박자가 없어 위에서 한 장도 남지 않는다. 끝까지 내려
+    // 등장 모션이 다 끝난 뒤에 그림마다 한 장씩 <테마>-fig-NN.png 로 남긴다(2026-10-13 anatomy·bigarrow 글은
+    // 장면이 없어 --shots 폴더가 비었고, 그림을 따로 찍어 봐야 했다).
+    if (shots) {
+      const still = page.locator("article figure:not(.sc-board)");
+      for (let k = 0, count = await still.count(); k < count; k++) {
+        await still.nth(k).screenshot({ path: join(shots, `${theme}-fig-${String(k + 1).padStart(2, "0")}.png`) }).catch(() => {});
+      }
     }
   }
 } finally {

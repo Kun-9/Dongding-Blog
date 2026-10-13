@@ -356,46 +356,58 @@ rows.forEach((r, y) => {
     if (last && style(last[0]) === style(c)) last.push(c);
     else runs.push([c]);
   }
+  const x = (c) => (PAD_X + (c.col - indent) * CW).toFixed(1);
   for (const run of runs) {
     const c0 = run[0];
-    const x = (c) => (PAD_X + (c.col - indent) * CW).toFixed(1);
     if (c0.bg) {
       const w = (run[run.length - 1].col - c0.col + 1) * CW;
       body.push(`<rect x="${x(c0)}" y="${top}" width="${w.toFixed(1)}" height="${LH}" fill="var(--term-bg-${c0.bg.slice(1)}, ${c0.bg})"/>`);
     }
-    // 글자마다 칸 좌표를 박아 읽는 쪽 글꼴이 달라도 줄이 맞는다. 띄어쓰기도 남겨야
-    // 복사·검색할 때 단어가 붙지 않는다. 양 끝 공백만 버린다.
-    let a = 0;
-    let z = run.length;
-    while (a < z && run[a].ch === " ") a++;
-    while (z > a && run[z - 1].ch === " ") z--;
-    const ink = run.slice(a, z);
-    if (!ink.length) continue;
-    const attrs = [
-      `y="${top + 15}"`,
-      `fill="var(--term-fg-${(c0.fg ?? FG).slice(1)}, ${c0.fg ?? FG})"`,
-      c0.b && `font-weight="700"`,
-      c0.d && `opacity="0.6"`,
-      c0.i && `font-style="italic"`,
-    ].filter(Boolean);
-    // 공백이 두 칸 이상 이어진 뒤(표의 열 간격, 오른쪽 테두리 앞 여백)마다 tspan 으로 칸 좌표를 다시 둔다.
-    // 두 칸 글자(한글·한자)가 든 조각은 첫 칸에만 좌표를 두고 글꼴대로 이어 그린다. 글자마다 칸 좌표를 박으면
-    // 읽는 쪽 글꼴의 한글이 두 칸보다 좁아 "실 행 했 고"처럼 벌어졌고, 단어마다 칸으로 돌아오면 단어 사이가
-    // 벌어졌다(2026-10-13). 한글이 없는 조각은 글자마다 칸에 맞춘다. 공백은 글자로 남겨 복사·검색이 된다.
-    const words = [];
-    let gap = 0;
-    for (const c of ink) {
-      const w = words[words.length - 1];
-      if (!w || (c.ch !== " " && gap >= 2)) words.push([c]);
-      else w.push(c);
-      gap = c.ch === " " ? gap + 1 : 0;
-    }
-    const spans = words.map((w) => {
-      const xs = w.some((c) => wide(c.ch.codePointAt(0))) ? x(w[0]) : w.map(x).join(" ");
-      return `<tspan x="${xs}">${esc(w.map((c) => c.ch).join(""))}</tspan>`;
-    });
-    body.push(`<text ${attrs.join(" ")}>${spans.join("")}</text>`);
   }
+  // 줄 하나를 <text> 하나로 그리고, 글자 모양(색·굵기)이 바뀌는 곳은 tspan 으로 나눈다.
+  // 공백이 두 칸 이상 이어진 뒤(표의 열 간격, 오른쪽 테두리 앞 여백)마다 조각을 새로 시작해 칸 좌표를 다시 둔다.
+  // 두 칸 글자(한글·한자)가 든 조각은 첫 칸에만 좌표를 두고 글꼴대로 이어 그린다. 글자마다 칸 좌표를 박으면
+  // 읽는 쪽 글꼴의 한글이 두 칸보다 좁아 "실 행 했 고"처럼 벌어졌고, 단어마다 칸으로 돌아오면 단어 사이가
+  // 벌어졌다(2026-10-13). 글자 모양이 바뀌는 덩어리마다 칸으로 돌아와도 "화면 왼쪽 위    Apple 메뉴"처럼
+  // 벌어져(같은 날 bigarrow 글), 조각 안에서는 모양이 바뀌어도 이어 그린다. 한글이 없는 조각은 글자마다 칸에 맞춘다.
+  // 공백은 글자로 남겨 복사·검색이 된다. 줄 양 끝 공백만 버린다.
+  let a = 0;
+  let z = r.length;
+  while (a < z && r[a].ch === " ") a++;
+  while (z > a && r[z - 1].ch === " ") z--;
+  const ink = r.slice(a, z);
+  if (!ink.length) return;
+  const pieces = [];
+  let gap = 0;
+  for (const c of ink) {
+    const w = pieces[pieces.length - 1];
+    if (!w || (c.ch !== " " && gap >= 2)) pieces.push([c]);
+    else w.push(c);
+    gap = c.ch === " " ? gap + 1 : 0;
+  }
+  const spans = [];
+  for (const piece of pieces) {
+    while (piece.length && piece[piece.length - 1].ch === " ") piece.pop();
+    const flow = piece.some((c) => wide(c.ch.codePointAt(0)));
+    let start = true;
+    for (let i = 0; i < piece.length; ) {
+      let j = i;
+      while (j < piece.length && style(piece[j]) === style(piece[i])) j++;
+      const part = piece.slice(i, j);
+      const c0 = part[0];
+      const xs = flow ? (start ? ` x="${x(c0)}"` : "") : ` x="${part.map(x).join(" ")}"`;
+      const attrs = [
+        `fill="var(--term-fg-${(c0.fg ?? FG).slice(1)}, ${c0.fg ?? FG})"`,
+        c0.b && `font-weight="700"`,
+        c0.d && `fill-opacity="0.6"`,
+        c0.i && `font-style="italic"`,
+      ].filter(Boolean);
+      spans.push(`<tspan${xs} ${attrs.join(" ")}>${esc(part.map((c) => c.ch).join(""))}</tspan>`);
+      start = false;
+      i = j;
+    }
+  }
+  body.push(`<text y="${top + 15}">${spans.join("")}</text>`);
 });
 
 // 색은 var(--term-*, #hex) 라 본문 SVG 테마 변환(lib/svg-theme)이 바꾸지 않는다. 판은 다크 고정.
