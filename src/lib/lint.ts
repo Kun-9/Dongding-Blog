@@ -45,6 +45,8 @@ export interface LintablePost {
 export interface LintContext {
   /** draft 포함 전체 글 slug. 없으면 내부 링크 검사를 건너뛴다. */
   slugs?: Set<string>;
+  /** 발행된 글 slug. 있으면 발행 글이 아직 발행되지 않은 글을 가리키는지 본다. */
+  published?: Set<string>;
   categoryIds?: Set<string>;
   seriesIds?: Set<string>;
   tags?: Set<string>;
@@ -365,9 +367,19 @@ function lintSyntax(s: Scan, out: Issue[]): void {
   }
 }
 
-/** 이미지·링크가 실제로 가리키는 대상이 있는지. */
-function lintReferences(s: Scan, ctx: LintContext, out: Issue[]): void {
+/** 이미지·링크가 실제로 가리키는 대상이 있는지. live 면 발행 글이라 발행 전 글을 가리키는 것도 잡는다. */
+function lintReferences(s: Scan, ctx: LintContext, out: Issue[], live: boolean): void {
   const anchors = headingIds(s.lines);
+  // 2026-10-13 발행된 JWT 글이 draft 인 토큰 글을 링크해 방문자에게 404 가 났다.
+  const unpublished = (slug: string, n: number, href: string) => {
+    if (!live || !ctx.published || ctx.published.has(slug) || (ctx.slugs && !ctx.slugs.has(slug))) return;
+    out.push({
+      rule: "unpublished-post-ref",
+      severity: "warning",
+      line: n,
+      message: `아직 발행되지 않은 글을 가리킵니다: ${href}. 방문자에게는 찾을 수 없는 글로 보입니다. 그 글을 같이 발행하거나 링크를 빼세요.`,
+    });
+  };
 
   for (const { n, text, fenced } of s.lines) {
     if (fenced) continue;
@@ -384,6 +396,7 @@ function lintReferences(s: Scan, ctx: LintContext, out: Issue[]): void {
           message: `없는 글을 카드로 걸었습니다: /posts/${slug}. 본문에 "찾을 수 없는 글" 점선 박스가 그대로 나갑니다.`,
         });
       }
+      if (slug) unpublished(slug, n, `/posts/${slug}`);
       continue;
     }
 
@@ -477,6 +490,7 @@ function lintReferences(s: Scan, ctx: LintContext, out: Issue[]): void {
 
       if (seg[0] === "posts" && seg[1]) {
         if (ctx.slugs && !ctx.slugs.has(seg[1])) missing("글");
+        unpublished(seg[1], n, href);
       } else if (seg[0] === "category" && seg[1]) {
         if (ctx.categoryIds && !ctx.categoryIds.has(seg[1])) missing("카테고리");
       } else if (seg[0] === "series" && seg[1]) {
@@ -598,7 +612,7 @@ export function lintPost(post: LintablePost, ctx: LintContext = {}): PostLint {
   const issues: Issue[] = [];
 
   lintSyntax(s, issues);
-  lintReferences(s, ctx, issues);
+  lintReferences(s, ctx, issues, post.visibility === "published");
   lintMeta(post, stats, ctx, issues);
   issues.push(...lintPhrases(post.body, "info"));
 

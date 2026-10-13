@@ -157,6 +157,7 @@ export async function buildContext(
 
   return {
     slugs: new Set(posts.map((p) => p.slug)),
+    published: new Set(posts.filter((p) => p.visibility === "published").map((p) => p.slug)),
     categoryIds: new Set(tax.categories.map((c) => c.id)),
     seriesIds: new Set(tax.series.map((s) => s.id)),
     tags: new Set(posts.flatMap((p) => p.tags)),

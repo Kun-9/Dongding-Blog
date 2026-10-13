@@ -83,6 +83,17 @@ const ctx = {
 assert.ok(has("[다른 글](/posts/nope)\n", "broken-link", ctx), "없는 글 링크");
 assert.ok(!has("[다른 글](/posts/other)\n", "broken-link", ctx), "있는 글 링크");
 assert.ok(!has("[태그](/tags/jpa)\n", "broken-link", ctx), "있는 태그 링크");
+{
+  const live = { ...ctx, published: new Set(["sample"]) };
+  assert.ok(has("[다른 글](/posts/other)\n", "unpublished-post-ref", live), "발행 글 → draft 글 링크");
+  assert.ok(has("/posts/other\n", "unpublished-post-ref", live), "발행 글 → draft 글 카드");
+  assert.ok(!has("[다른 글](/posts/other)\n", "unpublished-post-ref", { ...live, published: new Set(["sample", "other"]) }), "발행 글 → 발행 글 링크");
+  assert.ok(!has("[다른 글](/posts/nope)\n", "unpublished-post-ref", live), "없는 글은 broken-link 만");
+  assert.ok(
+    !lintPost({ ...base, visibility: "draft", body: "[다른 글](/posts/other)\n" }, live).issues.some((i) => i.rule === "unpublished-post-ref"),
+    "draft 글 → draft 글 링크는 괜찮다",
+  );
+}
 assert.ok(has("![그림](/posts/sample/none.png)\n", "missing-image", ctx), "없는 이미지");
 assert.ok(!has("![그림](/posts/sample/a.png)\n", "missing-image", ctx), "있는 이미지");
 assert.ok(has("![그림](posts/sample/a.png)\n", "image-path", ctx), "앞 슬래시 누락");
