@@ -15,7 +15,8 @@
  * --plugin <폴더> 로 그 플러그인만 싣는다(--setting-sources project 는 그대로).
  * --setup "<셸 명령>" 은 띄우기 전에 캡처 폴더에서 돈다(지울 파일 만들기 등). --wait <글자> 는
  * --keys 사이에 끼워 그 글자가 화면에 뜰 때까지 기다린다(턴이 끝난 뒤 키 누르기). --keep <폴더> 는 끝난 뒤
- * 캡처 폴더를 그 폴더로 복사해 둔다(모델이 만든 파일을 브라우저로 띄워 찍을 때).
+ * 캡처 폴더를 그 폴더로 복사해 둔다(모델이 만든 파일을 브라우저로 띄워 찍을 때). 원본 화면은 <폴더>.ansi,
+ * 세션 기록은 <폴더>-log/ 로 함께 남긴다. 모델이 몇 분 일한 화면은 다시 띄우기 비싸니 --ansi 로 다시 자른다.
  *
  * 끝 코드: 0 성공 · 1 사용법 · 2 개인 정보가 보임 · 3 띄우지 못함(설치·로그인)
  *          4 tmux 없음 · 5 --from/--to 를 화면에서 못 찾음
@@ -172,6 +173,12 @@ function shoot() {
     rmSync(dir, { recursive: true, force: true });
     // Claude Code 는 끝나면서 기록을 한 번 더 쓴다. 잠깐 기다렸다 지운다(남아도 다음 캡처가 시작할 때 지운다).
     sleep(1500);
+    // 남긴 기록으로 걸린 시간·토큰을 센다(2026-10-13 anatomy 글은 스킬 없이 37초·5.6K, /anatomy 9분 48초·61K).
+    if (opt.keep) {
+      try {
+        cpSync(log, `${opt.keep}-log`, { recursive: true });
+      } catch {}
+    }
     rmSync(log, { recursive: true, force: true });
   }
 }
@@ -217,6 +224,8 @@ try {
     held = true;
   }
   ansi = noOsc(opt.ansi ? readFileSync(opt.ansi, "utf8") : shoot());
+  // 자르기 전에 남긴다. --from/--to 가 틀려 끝 코드 5 로 끝나도 --ansi 로 다시 자를 수 있다.
+  if (opt.keep && !opt.ansi) writeFileSync(`${opt.keep}.ansi`, ansi);
   unlock();
 } catch (e) {
   unlock();
