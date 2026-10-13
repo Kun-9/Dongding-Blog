@@ -169,9 +169,7 @@ const handler = createMcpHandler(
         if (!post) return fail(`'${slug}' 글이 없습니다.`);
 
         const all = await loadPosts();
-        const ctx = await buildContext([post]);
-        ctx.slugs = new Set(all.map((p) => p.slug));
-        ctx.tags = new Set(all.flatMap((p) => p.tags));
+        const ctx = await buildContext([post], { all });
 
         return json({ post, report: reportFor(post, ctx, all) });
       },
@@ -208,9 +206,8 @@ const handler = createMcpHandler(
 
         const ctx = await buildContext(target, {
           images: args.checkImages !== false,
+          all,
         });
-        ctx.slugs = new Set(all.map((p) => p.slug));
-        ctx.tags = new Set(all.flatMap((p) => p.tags));
 
         const rank = { info: 0, warning: 1, error: 2 };
         const floor = rank[args.minSeverity ?? "info"];
@@ -309,9 +306,7 @@ const handler = createMcpHandler(
         if (!created) return fail("생성 직후 글을 다시 읽지 못했습니다.");
 
         const all = await loadPosts();
-        const ctx = await buildContext([created]);
-        ctx.slugs = new Set(all.map((p) => p.slug));
-        ctx.tags = new Set(all.flatMap((p) => p.tags));
+        const ctx = await buildContext([created], { all });
 
         return json({ created: created.slug, report: reportFor(created, ctx, all) });
       },
@@ -401,9 +396,7 @@ const handler = createMcpHandler(
         if (!updated) return fail("수정 직후 글을 다시 읽지 못했습니다.");
 
         const all = await loadPosts();
-        const ctx = await buildContext([updated]);
-        ctx.slugs = new Set(all.map((p) => p.slug));
-        ctx.tags = new Set(all.flatMap((p) => p.tags));
+        const ctx = await buildContext([updated], { all });
 
         return json({
           slug: updated.slug,

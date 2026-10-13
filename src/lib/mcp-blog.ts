@@ -145,22 +145,27 @@ async function loadImages(posts: LintablePost[]): Promise<Set<string>> {
   return new Set(listed.flat());
 }
 
-/** 링크·카테고리·이미지 존재 검사에 필요한 사전 정보를 한 번에 모은다. */
+/**
+ * 링크·카테고리·이미지 존재 검사에 필요한 사전 정보를 한 번에 모은다.
+ * posts 는 이미지를 확인할 글, all 은 링크·태그·발행 여부를 대조할 전체 글(없으면 posts).
+ * 한 편만 볼 때 all 을 빼면 다른 글로 가는 링크가 모두 없는 글·발행 전 글로 잡힌다.
+ */
 export async function buildContext(
   posts: LintablePost[],
-  opts: { images?: boolean } = {},
+  opts: { images?: boolean; all?: LintablePost[] } = {},
 ): Promise<LintContext> {
+  const all = opts.all ?? posts;
   const [tax, images] = await Promise.all([
     loadTaxonomy(),
     opts.images === false ? Promise.resolve(undefined) : loadImages(posts),
   ]);
 
   return {
-    slugs: new Set(posts.map((p) => p.slug)),
-    published: new Set(posts.filter((p) => p.visibility === "published").map((p) => p.slug)),
+    slugs: new Set(all.map((p) => p.slug)),
+    published: new Set(all.filter((p) => p.visibility === "published").map((p) => p.slug)),
     categoryIds: new Set(tax.categories.map((c) => c.id)),
     seriesIds: new Set(tax.series.map((s) => s.id)),
-    tags: new Set(posts.flatMap((p) => p.tags)),
+    tags: new Set(all.flatMap((p) => p.tags)),
     images,
     today: new Date().toISOString().slice(0, 10),
   };

@@ -53,12 +53,12 @@ mkdirSync(out, { recursive: true });
 const browser = await pw.chromium.launch().catch(() => give("브라우저를 띄우지 못했습니다"));
 try {
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 }, colorScheme: "light" });
-  await page.goto(`${base}/login/`);
+  await page.goto(`${base}/login/`).catch(() => give(`${base} 에 닿지 못했습니다`));
   await page.fill('input[name="email"]', env.STUDIO_EMAIL);
   await page.fill('input[name="password"]', env.STUDIO_PASSWORD);
   await page.click('button[type="submit"]');
   await page.waitForURL((u) => !u.pathname.startsWith("/login"), { timeout: 20000 }).catch(() => give("로그인에 실패했습니다"));
-  const res = await page.goto(`${base}/preview/${slug}/`, { waitUntil: "networkidle" });
+  const res = await page.goto(`${base}/preview/${slug}/`, { waitUntil: "networkidle" }).catch(() => null);
   if (!res || res.status() >= 400) give(`미리보기를 열지 못했습니다(${res?.status()})`);
   const total = await page.evaluate(() => document.documentElement.scrollHeight);
   let i = 0;
