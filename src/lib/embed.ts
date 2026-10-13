@@ -34,10 +34,10 @@ export const EMBED_MAX_H = 2000;
 export const EMBED_MAX_CHARS = 1_400_000;
 
 /**
- * Storage 에 올릴 때의 옵션. Storage 는 HTML 을 어차피 text/plain 으로 내주니 그대로 둔다.
+ * Storage 에 올릴 때의 옵션. Storage 는 HTML 을 어차피 text/plain 으로 내주니 그대로 둔다. 버킷 허용 목록이 파라미터까지 비교해 charset 은 붙이지 않는다(마이그레이션 20261013173000).
  * 위젯은 고쳐 올리는 일이 잦아 브라우저 캐시를 1분으로 줄인다(기본 1시간).
  */
-export const EMBED_UPLOAD = { contentType: "text/plain; charset=utf-8", cacheControl: "60", upsert: true } as const;
+export const EMBED_UPLOAD = { contentType: "text/plain", cacheControl: "60", upsert: true } as const;
 
 /** 올리기 전에 거를 것. 문제가 없으면 null. */
 export function embedHtmlProblem(html: string): string | null {
