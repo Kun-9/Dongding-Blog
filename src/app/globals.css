@@ -658,9 +658,9 @@ html.sc-snap { scroll-snap-type: y proximity; }
 /* 링크 popover — `[문구](url "한 줄 설명")`. 올리거나 포커스하면 문구 위에 한 줄로 뜬다.
    `/ ""` 는 화면 낭독기가 설명을 링크 이름에 붙여 읽지 않게 한다(설명은 aria-description 으로 간다). */
 .link-tip[data-tip] { position: relative; }
+/* 말풍선은 올렸을 때만 만든다. 늘 그려 두면 투명해도 자리를 차지해, 오른쪽에 놓인 링크마다
+   좁은 화면에 가로 스크롤이 생긴다(2026-10-14 접힌 칸 안 링크에서 390px 문서가 499px 로 늘었다). */
 .link-tip[data-tip]::after {
-  content: attr(data-tip);
-  content: attr(data-tip) / "";
   position: absolute; left: 0; bottom: calc(100% + 6px); z-index: 20;
   max-width: min(28rem, 86vw); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   padding: 5px 10px; border-radius: 7px;
@@ -670,7 +670,15 @@ html.sc-snap { scroll-snap-type: y proximity; }
   transition: opacity 0.15s, transform 0.15s;
 }
 .link-tip[data-tip]:hover::after,
-.link-tip[data-tip]:focus-visible::after { opacity: 1; transform: none; }
+.link-tip[data-tip]:focus-visible::after {
+  content: attr(data-tip);
+  content: attr(data-tip) / "";
+  opacity: 1; transform: none;
+}
+@starting-style {
+  .link-tip[data-tip]:hover::after,
+  .link-tip[data-tip]:focus-visible::after { opacity: 0; transform: translateY(3px); }
+}
 @media (prefers-reduced-motion: reduce) {
   .link-tip[data-tip]::after { transition: none; }
 }
