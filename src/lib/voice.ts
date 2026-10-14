@@ -147,10 +147,11 @@ const FOLD_PROSE_MAX = 600;
 const SUMMARY_MAX = 200;
 const SUMMARY_LABELS = ["해당", "문제", "할 일"] as const;
 
-/** 그림·코드·이미지 줄·주석·링크 주소를 뺀 산문 글자 수. */
+/** 그림·코드·표·이미지 줄·주석·링크 주소를 뺀 산문 글자 수. */
 function proseLength(md: string): number {
   return md
     .replace(/^(```|~~~)[\s\S]*?^\1\s*$/gm, "")
+    .replace(/^\s*\|.*$/gm, "")
     .replace(/^!\[.*$/gm, "")
     .replace(/<!--[\s\S]*?-->/g, "")
     .replace(/\]\([^)]*\)/g, "]")

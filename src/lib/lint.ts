@@ -659,9 +659,11 @@ function lintFolds(body: string, out: Issue[]): void {
       }
       if (fenced) continue;
       if (/^#{1,4}\s/.test(l)) found.add("소제목");
-      else if (/^!\[/.test(l.trim())) found.add("이미지");
       else if (CARD_LINE_RE.test(l.trim())) found.add("링크 카드");
-      else if (l.startsWith(">")) found.add("박스");
+      // `> [!MORE] a` 바로 아래 줄에 붙인 `> [!TIP]` 은 칸 안 글자로 찍힌다.
+      else if (l.startsWith(">") || /^\[![A-Za-z]+\]/.test(l.trim())) found.add("박스");
+      // 문장 속 이미지도 — 칸 안 렌더는 이미지 번호를 0부터 다시 세어 Studio 의 크기 조절이 어긋난다.
+      if (/!\[[^\]]*\]\(/.test(stripInlineCode(l))) found.add("이미지");
     }
     if (found.size) {
       out.push({ rule: "fold-content", severity: "warning", line: f.line, message: `접힌 칸 안에 ${[...found].join("·")}이 있습니다. 접힌 칸에는 문단·코드·표·목록만 두고, 그림·이미지·소제목·카드·박스는 본문에 두세요.` });
