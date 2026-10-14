@@ -1,6 +1,7 @@
 /**
  * Shared markdown parser — used by Studio preview AND post detail page.
  * Block: # ## ### ####, ```lang:filename (그림 블록·```figure 는 그림, ```embed 는 작동하는 HTML), > [!KIND] title (multi-line),
+ *        > [!MORE] title 은 접힌 칸(안쪽은 본문 문법),
  *        - / 1. lists, ---, blank lines.
  *        URL 또는 /posts/slug 만 있는 줄 → 링크 카드.
  *        줄에 이미지만 있으면 그림 블록, 연속 줄이면 묶음.
@@ -32,6 +33,7 @@ import { EditableImage } from "@/components/prose/EditableImage";
 import { Embed } from "@/components/prose/Embed";
 import { parseEmbed } from "@/lib/embed";
 import { Figure, ImageGroup } from "@/components/prose/Figure";
+import { Fold } from "@/components/prose/Fold";
 import {
   IMG_LINE_RE,
   asImageSize,
@@ -492,7 +494,7 @@ export function renderMarkdown(
     if (ln.startsWith(">")) {
       const first = ln.replace(/^>\s?/, "");
       const kindMatch = first.match(
-        /^\[!(INFO|WARNING|TIP|NOTE)\]\s*(.*)$/i,
+        /^\[!(INFO|WARNING|TIP|NOTE|MORE)\]\s*(.*)$/i,
       );
       const rawKind = kindMatch ? kindMatch[1].toLowerCase() : "info";
       const kind: CalloutKind = isCalloutKind(rawKind) ? rawKind : "info";
@@ -509,6 +511,16 @@ export function renderMarkdown(
         bodyLines[bodyLines.length - 1].trim() === ""
       )
         bodyLines.pop();
+
+      // 접힌 칸 — 안쪽은 본문과 같은 문법(코드·표·목록)으로 그린다. 그림·이미지·소제목은 점검이 막는다.
+      if (rawKind === "more") {
+        out.push(
+          <Fold key={k()} title={title || undefined}>
+            {renderMarkdown(bodyLines.join("\n"), opts)}
+          </Fold>,
+        );
+        continue;
+      }
 
       const paragraphs: string[][] = [];
       let cur: string[] = [];

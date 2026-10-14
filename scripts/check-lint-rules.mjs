@@ -5,7 +5,7 @@
  * 통과시킨다. 파서(`lib/markdown`)를 고칠 때 이 파일부터 돌려 볼 것.
  */
 import assert from "node:assert/strict";
-import { lintPost, lintCollection } from "../src/lib/lint.ts";
+import { lintPost, lintCollection, estimateReadTime } from "../src/lib/lint.ts";
 import { extractCardTargets, linkKey } from "../src/lib/link-cards.ts";
 
 const base = {
@@ -277,6 +277,24 @@ assert.equal(stats.images, 1);
   assert.ok(!has("처음부터 읽어 주세요. 로그를 읽고 오세요.\n", "sequel-intro"), "이전 글이 아닌 읽기 요청");
   assert.ok(!has("이전 글자를 지운다. 앞 편집기는 닫는다.\n", "sequel-intro"), "글자·편집은 낱말");
   assert.ok(!has("RLS를 켠다.\n\n## 가\n\n지난 글에서 만든 정책을 쓴다.\n", "sequel-intro"), "첫 H2 뒤는 본문");
+}
+
+// ── 접힌 칸 `> [!MORE] 제목` ────────────────────────────────────────────
+{
+  const fold = "> [!MORE] nixpkgs를 쓴다면\n> 기본값이 꺼져 있습니다.\n>\n> ```toml\n> [features]\n> x = false\n> ```\n>\n> | 판 | 값 |\n> | --- | --- |\n> | nix | 꺼짐 |\n";
+  const rs = rulesOf(fold);
+  for (const r of ["unknown-callout", "plain-blockquote", "fold-no-title", "fold-content", "fold-empty"]) {
+    assert.ok(!rs.includes(r), `문단·코드·표만 든 접힌 칸은 통과: ${r}`);
+  }
+  assert.ok(has("> [!MORE]\n> 내용\n", "fold-no-title"), "제목 없는 접힌 칸");
+  assert.ok(has("> [!MORE] 제목\n", "fold-empty"), "빈 접힌 칸");
+  assert.ok(has("> [!MORE] 제목\n> ## 소제목\n", "fold-content"), "접힌 칸 안 소제목");
+  assert.ok(has("> [!MORE] 제목\n> ![캡션](/posts/a/b.png)\n", "fold-content"), "접힌 칸 안 이미지");
+  assert.ok(has("> [!MORE] 제목\n> ```flow\n> 가 | 나\n> ```\n", "fold-content"), "접힌 칸 안 그림 블록");
+  assert.ok(!has("> [!MORE] 제목\n> ```text\n> ## 코드 안 샵\n> ```\n", "fold-content"), "접힌 칸 코드 안의 표기는 통과");
+  assert.ok(!has("```md\n> [!MORE]\n```\n", "fold-no-title"), "코드 펜스 안의 접힌 칸 표기는 칸이 아니다");
+  const long = "가".repeat(1000);
+  assert.equal(estimateReadTime(`> [!MORE] 제목\n> ${long}\n`), estimateReadTime(""), "접힌 칸은 읽기 시간에 넣지 않는다");
 }
 
 console.log("lint 규칙 자체 점검 통과");

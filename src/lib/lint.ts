@@ -16,9 +16,10 @@ import BananaSlug from "github-slugger";
 // 거치므로 `@/` alias 가 풀리지 않는다. 이 모듈만 상대 경로 + 확장자로 쓴다.
 import { CARD_LINE_RE, cardSlug } from "./link-cards.ts";
 import { MAX_PX, isTabs } from "./image-blocks.ts";
-import { findFences } from "./diagram.ts";
+import { findFences, isDiagramLang } from "./diagram.ts";
 import { parseEmbed } from "./embed.ts";
 import { lintPhrases } from "./phrases.ts";
+import { splitFolds } from "./folds.ts";
 
 export type Severity = "error" | "warning" | "info";
 
@@ -71,7 +72,7 @@ export interface PostStats {
 }
 
 /** 파서가 지원하는 callout 종류. 이 밖의 이름은 제목 자리에 그대로 찍힌다. */
-const CALLOUT_KINDS = new Set(["INFO", "WARNING", "TIP", "NOTE"]);
+const CALLOUT_KINDS = new Set(["INFO", "WARNING", "TIP", "NOTE", "MORE"]);
 
 /** 글 본문에서 링크로 걸 수 있는 정적 경로. */
 const STATIC_ROUTES = new Set([
@@ -205,10 +206,10 @@ const WORDS_PER_MIN = 200;
 /**
  * 사이트가 보여 주는 읽기 시간. `lib/posts` 도 이 함수를 쓴다.
  * reading-time 은 한글 한 자를 한 단어로 세어 분당 200자가 되고, 실제보다 두세 배 길게 나왔다.
- * figure·svg 블록은 태그를 빼고 화면에 보이는 글자만 센다.
+ * figure·svg 블록은 태그를 빼고 화면에 보이는 글자만 센다. 접힌 칸(`> [!MORE]`)은 연 독자만 읽으니 세지 않는다.
  */
 export function estimateReadTime(body: string): number {
-  const visible = body.replace(/^(```|~~~)(?:figure|svg)[^\n]*\n([\s\S]*?)^\1\s*$/gm, (_m, _f, src: string) =>
+  const visible = splitFolds(body).main.replace(/^(```|~~~)(?:figure|svg)[^\n]*\n([\s\S]*?)^\1\s*$/gm, (_m, _f, src: string) =>
     src.replace(/<[^>]*>/g, " "),
   );
   const hangul = (visible.match(/[\uac00-\ud7a3]/g) ?? []).length;
@@ -280,7 +281,7 @@ function lintSyntax(s: Scan, out: Issue[]): void {
             rule: "unknown-callout",
             severity: "error",
             line: n,
-            message: `[!${kind[1]}] 는 지원하지 않는 callout 종류입니다. INFO/WARNING/TIP/NOTE 중 하나여야 하며, 지금은 대괄호 표기가 본문에 그대로 출력됩니다.`,
+            message: `[!${kind[1]}] 는 지원하지 않는 callout 종류입니다. INFO/WARNING/TIP/NOTE(접힌 칸은 MORE) 중 하나여야 하며, 지금은 대괄호 표기가 본문에 그대로 출력됩니다.`,
           });
         } else if (!kind) {
           out.push({
@@ -634,6 +635,40 @@ export interface PostLint {
   stats: PostStats;
 }
 
+/**
+ * 접힌 칸 — 안쪽은 문단·코드·표·목록만. 그림·이미지는 닫힌 칸 안에서 크기를 못 재고(Studio 의
+ * 이미지 번호도 어긋난다), 소제목은 목차에 안 잡히고, 카드·박스는 무엇의 짝인지 흐려진다.
+ */
+function lintFolds(body: string, out: Issue[]): void {
+  for (const f of splitFolds(body).folds) {
+    if (!f.title) {
+      out.push({ rule: "fold-no-title", severity: "warning", line: f.line, message: "접힌 칸에 제목이 없어 '더 보기'로만 보입니다. 누구에게 필요한 칸인지 제목으로 쓰세요(예: `> [!MORE] 창마다 프록시를 다르게 쓴다면`)." });
+    }
+    if (!f.body) {
+      out.push({ rule: "fold-empty", severity: "warning", line: f.line, message: "접힌 칸이 비었습니다. 다음 줄부터 `>` 로 이어 쓰세요." });
+      continue;
+    }
+    const found = new Set<string>();
+    let fenced = false;
+    for (const l of f.body.split("\n")) {
+      if (/^(```|~~~)/.test(l)) {
+        const lang = l.replace(/^(```|~~~)/, "").split(":")[0].trim();
+        if (!fenced && (isDiagramLang(lang) || /^(figure|svg|embed)$/.test(lang))) found.add("그림");
+        fenced = !fenced;
+        continue;
+      }
+      if (fenced) continue;
+      if (/^#{1,4}\s/.test(l)) found.add("소제목");
+      else if (/^!\[/.test(l.trim())) found.add("이미지");
+      else if (CARD_LINE_RE.test(l.trim())) found.add("링크 카드");
+      else if (l.startsWith(">")) found.add("박스");
+    }
+    if (found.size) {
+      out.push({ rule: "fold-content", severity: "warning", line: f.line, message: `접힌 칸 안에 ${[...found].join("·")}이 있습니다. 접힌 칸에는 문단·코드·표·목록만 두고, 그림·이미지·소제목·카드·박스는 본문에 두세요.` });
+    }
+  }
+}
+
 /** 글 한 편 점검. */
 export function lintPost(post: LintablePost, ctx: LintContext = {}): PostLint {
   const s = scan(post.body);
@@ -643,6 +678,7 @@ export function lintPost(post: LintablePost, ctx: LintContext = {}): PostLint {
   lintSyntax(s, issues);
   lintReferences(s, ctx, issues, post.visibility === "published");
   lintEmbeds(post.body, ctx, issues);
+  lintFolds(post.body, issues);
   lintMeta(post, stats, ctx, issues);
   issues.push(...lintPhrases(post.body, "info"));
 

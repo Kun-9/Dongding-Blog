@@ -67,7 +67,8 @@ export function proseLines(body: string): { n: number; text: string }[] {
   const out: { n: number; text: string }[] = [];
   let fenced = false;
   body.split("\n").forEach((raw, i) => {
-    if (/^\s*(```|~~~)/.test(raw)) {
+    // 접힌 칸(`> [!MORE]`) 안의 코드도 `> ```` 로 열고 닫는다.
+    if (/^\s*(>\s?)?(```|~~~)/.test(raw)) {
       fenced = !fenced;
       return;
     }
