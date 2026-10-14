@@ -14,7 +14,7 @@ import { useEffect } from "react";
 
 const EXCLUDED_PREFIXES = ["/admin", "/settings", "/studio"];
 
-function isExcluded(pathname: string): boolean {
+export function isExcluded(pathname: string): boolean {
   return EXCLUDED_PREFIXES.some(
     (p) => pathname === p || pathname.startsWith(`${p}/`),
   );

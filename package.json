@@ -12,6 +12,7 @@
     "@modelcontextprotocol/server": "^2.0.0",
     "@supabase/ssr": "^0.12.4",
     "@supabase/supabase-js": "^2.112.1",
+    "@vercel/analytics": "^2.0.1",
     "github-slugger": "^2.0.0",
     "gray-matter": "^4.0.3",
     "jose": "^6.2.8",

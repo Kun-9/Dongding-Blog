@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Umami } from "@/components/analytics/Umami";
+import { VercelAnalytics } from "@/components/analytics/VercelAnalytics";
 import { getCategories } from "@/lib/categories";
 import { getAllPosts } from "@/lib/posts";
 import { getSite } from "@/lib/site-db";
@@ -64,6 +65,7 @@ export default async function RootLayout({
           <Footer />
         </ThemeProvider>
         <Umami />
+        <VercelAnalytics />
       </body>
     </html>
   );
