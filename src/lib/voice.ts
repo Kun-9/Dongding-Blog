@@ -19,6 +19,7 @@ import { KITS } from "./figure/kits";
 import { SCENE_ATTRS } from "./figure/scene-attrs";
 import { SCENE_VERBS } from "./figure/verbs";
 import { AVOID, excerpt, lintPhrases, proseLines } from "./phrases";
+import { cardSlug, linksTo } from "./link-cards";
 
 /* ── 기준 ─────────────────────────────────────────────────────────────── */
 
@@ -111,8 +112,8 @@ export const CLARITY_RULES = [
   "비유는 기준 독자가 이미 아는 것에만 댄다. \"Express나 Koa의 미들웨어와 같은 모양\"처럼 그 독자가 모를 수 있는 것에 빗대면 비유를 또 설명해야 한다",
   "링크는 더 읽을 거리다. 링크를 누르지 않아도 이 글만으로 이해되게, 링크를 단 문장 안에서 필요한 만큼 풀어 쓴다",
   "문장 속 링크에는 올리면 뜨는 한 줄 설명을 단다: `[로컬 범위](https://… \"이 폴더에서만 쓰도록 하는 등록\")`. 링크 너머에 무엇이 있는지 30자 안팎 한 줄로, 괄호·큰따옴표 없이 쓴다. 링크 문구를 되풀이하지 않는다",
-  "이 블로그의 다른 글은 렌더 문법으로 가리킨다. '자세한 건 그 글'이라는 뜻뿐인 링크(…에서 다룹니다, 괄호 속 안내)는 문장에서 빼고 그 단락 바로 뒤에 `/posts/<slug>` 만 있는 줄(앞뒤 빈 줄)을 둔다. 블로그가 카테고리·요약이 든 글 카드로 펼친다. 낱말 뜻에 붙는 링크만 문장 안에 `[RLS](/posts/supabase-database-rls \"행마다 읽기·쓰기를 거르는 Postgres 정책\")` 처럼 둔다. 사이트 주소(https://blog.dongding.dev/…)나 미리보기 주소(/preview/…)는 쓰지 않는다. 2026-10-14 다른 글을 가리킨 16곳이 전부 문장 속 링크였고 글 카드는 한 번도 쓰이지 않았다",
-  "이전 글을 읽었다고 가정하지 않는다. 이전 글이 필요하면 첫 문단에서 이 글에 필요한 부분을 한두 문장으로 요약하고 그 요약에 링크를 건다. '먼저 읽고 오라'고 하지 않는다. 느슨하게 관련된 글은 전편처럼 다루지 말고 관련 단락 뒤 글 카드로 둔다",
+  "이 블로그의 다른 글은 문장 속 링크로 걸고 설명에 그 글이 무엇을 다루는지 쓴다: `[BFF가 토큰을 쥐고 쿠키만 주는](/posts/jwt-storage-logout \"JWT를 HttpOnly 쿠키로 옮기고 로그아웃을 처리하는 글\")`. 더 읽을 거리면 그 단락 바로 뒤에 같은 글의 `/posts/<slug>` 만 있는 줄(앞뒤 빈 줄)을 둔다. 블로그가 링크와 카드에 같은 번호를 붙이고 링크에 올리면 카드가 밝아져 짝이 보인다. 문장에 링크 없이 카드만 두지 않는다(어느 문장의 더 읽을 거리인지 모른다, 점검의 card-unpaired). 사이트 주소(https://blog.dongding.dev/…)나 미리보기 주소(/preview/…)는 쓰지 않는다. 2026-10-14 다른 글을 가리킨 16곳이 전부 카드 없는 문장 속 링크였고, 카드만 따로 두자 무엇의 북마크인지 애매하다는 지적을 받아 짝 번호(B안)로 정했다",
+  "이전 글을 읽었다고 가정하지 않는다. 이전 글이 필요하면 첫 문단에서 이 글에 필요한 부분을 한두 문장으로 요약하고 그 요약에 링크를 건다. '먼저 읽고 오라'고 하지 않는다. 느슨하게 관련된 글은 전편처럼 다루지 말고 본문 링크와 짝 카드로 둔다",
   "순서·구조·전후 차이는 글로 길게 풀기 전에 그림 블록으로 먼저 보여 주고, 문단은 그림이 못 하는 이유를 말한다",
   "한 문단에 새 개념은 하나만. 개념이 둘이면 문단을 나눈다",
   "새 기능·개념은 어디에 쓰는지 보여 준다. 활용 예 두세 개(무엇을 하는지와 그때 쓰는 설정·이벤트·명령)와 독자가 바로 따라 할 최소 예제(명령·설정·코드) 하나를 붙인다. 공식 예제·샘플 저장소·문서 예시에서 고르되 러닝 예시와 이어지는 것만 고르고(날짜 선택 글에 다른 저장소의 피드 버그를 섞지 않는다), 돌려 보거나 출처를 단다. 이름·이벤트만 적은 카드로 끝내지 말고, 예제가 화면에 띄우는 것을 보여 준다. 예: Mods 글이면 공식 샘플 mod 셋이 띄우는 화면(편집 되감기 pane, 컨텍스트 날씨 띠, rm -rf 를 붙잡은 pane)을 figure 장면의 터미널로 차례로 재현하고 `--plugin-dir` 로 불러오는 명령 한 줄",
@@ -621,6 +622,25 @@ export function checkVoice(post: VoiceInput, kind: PostKind = "release"): VoiceR
       rule: "link-no-tip",
       severity: "warning",
       message: `설명 없는 링크가 ${bare.length}개입니다. \`[문구](url "한 줄 설명")\` 꼴로 링크 너머에 무엇이 있는지 30자 안팎으로 다세요: ${bare.slice(0, 4).map((t) => `[${excerpt(t)}]`).join(", ")}`,
+    });
+  }
+
+  // 짝 없는 글 카드 — `/posts/slug` 카드 줄은 바로 위 단락에 같은 글 링크가 있어야 번호로 짝이 보인다.
+  const cardLines = post.body.replace(/^(```|~~~)[\s\S]*?^\1\s*$/gm, "").split("\n");
+  const unpaired = cardLines.flatMap((l, idx) => {
+    const s = cardSlug(l.trim());
+    if (!s) return [];
+    let j = idx - 1;
+    while (j >= 0 && (cardLines[j].trim() === "" || cardSlug(cardLines[j].trim()))) j--;
+    const para: string[] = [];
+    while (j >= 0 && cardLines[j].trim() !== "") para.unshift(cardLines[j--]);
+    return linksTo(para.join("\n"), s) ? [] : [s];
+  });
+  if (unpaired.length) {
+    issues.push({
+      rule: "card-unpaired",
+      severity: "warning",
+      message: `바로 위 단락에 같은 글 링크가 없는 카드가 있습니다(${unpaired.join(", ")}). 카드만 두면 어느 문장의 더 읽을 거리인지 모릅니다. 위 단락의 문구에 \`[문구](/posts/<slug> "그 글이 다루는 것")\` 링크를 거세요`,
     });
   }
 

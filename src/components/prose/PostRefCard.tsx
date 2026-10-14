@@ -12,9 +12,11 @@ import { fmtDate } from "@/lib/tokens";
 interface Props {
   slug: string;
   post?: PostRefMeta;
+  /** 바로 위 단락의 링크와 짝이면 그 링크와 같은 번호. order 는 단락 뒤 몇 번째 카드인지(올림 강조 CSS 용). */
+  pair?: { no: number; order: number };
 }
 
-export function PostRefCard({ slug, post }: Props) {
+export function PostRefCard({ slug, post, pair }: Props) {
   if (!post) {
     return (
       <div className="my-[22px] rounded-[10px] border border-dashed border-border-token px-3.5 py-3 font-sans text-[13px] text-ink-muted">
@@ -29,9 +31,18 @@ export function PostRefCard({ slug, post }: Props) {
   return (
     <Link
       href={`/posts/${slug}`}
-      className="group my-[22px] block rounded-[10px] border border-border-token bg-surface px-[17px] py-[15px] no-underline transition-colors hover:border-border-strong hover:bg-surface-alt"
+      data-ref={pair?.order}
+      className="post-ref group my-[22px] block rounded-[10px] border border-border-token bg-surface px-[17px] py-[15px] no-underline transition-colors hover:border-border-strong hover:bg-surface-alt"
     >
       <div className="flex items-center gap-[7px] font-sans text-[12px] text-ink-muted">
+        {pair && (
+          <>
+            <span className="font-mono text-[11.5px] font-semibold text-ink">
+              {pair.no}
+            </span>
+            <span className="text-ink-subtle">·</span>
+          </>
+        )}
         <span>이 블로그의 글</span>
         {post.category && (
           <>

@@ -45,6 +45,11 @@ export function cardSlug(line: string): string | null {
   return line.match(POST_REF_RE)?.[1] ?? null;
 }
 
+/** 단락에 `/posts/slug` 링크가 있는지 — 바로 뒤 카드와 짝을 짓는 기준. 끝 슬래시·설명이 붙어도 같은 글이다. */
+export function linksTo(text: string, slug: string): boolean {
+  return new RegExp(`\\]\\(/posts/${slug}/?(?:\\s+"[^"]*")?\\)`).test(text);
+}
+
 /**
  * 본문에서 카드 줄을 걷어낸다. 코드 펜스 안은 건너뛴다 — 예시로 적어 둔 URL 을
  * 남의 사이트에 요청하러 나가면 안 된다.

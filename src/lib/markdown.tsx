@@ -19,6 +19,7 @@ import {
   CARD_LINE_RE,
   cardSlug,
   linkKey,
+  linksTo,
   type LinkCardMeta,
   type PostRefMeta,
 } from "@/lib/link-cards";
@@ -65,8 +66,15 @@ interface InlineCtx {
   imageCounter: { value: number };
   editable: boolean;
   onImageResize?: (imageIndex: number, size: ImageSize) => void;
+  /** 단락 바로 뒤 카드와 짝인 글 — slug → 번호·카드 순서. 링크에 같은 번호를 단다. */
+  refs?: Record<string, PostRefPair>;
 }
 
+/** 문장 속 `/posts/slug` 링크와 바로 아래 같은 글 카드의 짝. no 는 글 전체 번호, order 는 단락 뒤 몇 번째 카드인지. */
+interface PostRefPair {
+  no: number;
+  order: number;
+}
 
 function renderInline(text: string, ctx: InlineCtx): ReactNode {
   if (!text) return null;
@@ -116,18 +124,26 @@ function renderInline(text: string, ctx: InlineCtx): ReactNode {
     if (m) {
       const url = m[2];
       const isExternal = /^https?:/.test(url);
+      const pair = ctx.refs?.[cardSlug(url) ?? ""];
       push(
-        <a
-          key={`${ctx.keyBase}-a-${n}`}
-          href={url}
-          {...(isExternal
-            ? { target: "_blank", rel: "noopener noreferrer" }
-            : {})}
-          {...(m[3] ? { "data-tip": m[3], "aria-description": m[3] } : {})}
-          className="link-tip text-ink underline decoration-ink-subtle decoration-1 underline-offset-2 hover:decoration-ink"
-        >
-          {renderInline(m[1], { ...ctx, keyBase: `${ctx.keyBase}-a-${n}-i` })}
-        </a>,
+        <Fragment key={`${ctx.keyBase}-a-${n}`}>
+          <a
+            href={url}
+            {...(isExternal
+              ? { target: "_blank", rel: "noopener noreferrer" }
+              : {})}
+            {...(m[3] ? { "data-tip": m[3], "aria-description": m[3] } : {})}
+            {...(pair ? { "data-ref": pair.order } : {})}
+            className="link-tip text-ink underline decoration-ink-subtle decoration-1 underline-offset-2 hover:decoration-ink"
+          >
+            {renderInline(m[1], { ...ctx, keyBase: `${ctx.keyBase}-a-${n}-i` })}
+          </a>
+          {pair && (
+            <sup className="ml-0.5 font-mono text-[11px] font-semibold text-ink-muted">
+              {pair.no}
+            </sup>
+          )}
+        </Fragment>,
       );
       i += m[0].length;
       continue;
@@ -285,6 +301,9 @@ export function renderMarkdown(
   let key = 0;
   const k = () => `md-${key++}`;
   const imageCounter = { value: 0 };
+  // 단락이 미리 짝지어 둔 카드 줄 — 줄 번호 → 짝.
+  const cardPairs = new Map<number, PostRefPair>();
+  let refNo = 0;
   const inlineBase = {
     imageCounter,
     editable: opts?.editable ?? false,
@@ -325,7 +344,12 @@ export function renderMarkdown(
       const slug = cardSlug(target);
       out.push(
         slug ? (
-          <PostRefCard key={k()} slug={slug} post={opts?.posts?.[slug]} />
+          <PostRefCard
+            key={k()}
+            slug={slug}
+            post={opts?.posts?.[slug]}
+            pair={cardPairs.get(i)}
+          />
         ) : (
           <LinkCard
             key={k()}
@@ -677,6 +701,16 @@ export function renderMarkdown(
       paraLines.push(lines[i]);
       i++;
     }
+    // 바로 뒤에 이어지는 `/posts/slug` 카드 줄 중 이 단락이 링크로 가리킨 글은 짝을 짓는다.
+    const paraText = paraLines.join("\n");
+    const refs: Record<string, PostRefPair> = {};
+    for (let j = i, order = 1; ; j++) {
+      while (j < lines.length && lines[j].trim() === "") j++;
+      const s = j < lines.length ? cardSlug(lines[j].trim()) : null;
+      if (!s || refs[s] || !linksTo(paraText, s)) break;
+      refs[s] = { no: ++refNo, order: order++ };
+      cardPairs.set(j, refs[s]);
+    }
     const baseKey = k();
     out.push(
       <p
@@ -686,6 +720,7 @@ export function renderMarkdown(
         {renderLines(paraLines, {
           ...inlineBase,
           keyBase: `${baseKey}-p`,
+          refs,
         })}
       </p>,
     );

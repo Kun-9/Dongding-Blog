@@ -675,6 +675,15 @@ html.sc-snap { scroll-snap-type: y proximity; }
   .link-tip[data-tip]::after { transition: none; }
 }
 
+/* 짝 카드 — 단락 속 `/posts/slug` 링크에 올리면 바로 아래 같은 번호 카드가 함께 밝아진다.
+   카드는 단락 바로 뒤 형제로 이어지므로 order 번째 카드를 형제 사슬로 찾는다(단락당 셋까지). */
+p:has(a[data-ref="1"]:is(:hover, :focus-visible)) + .post-ref[data-ref="1"],
+p:has(a[data-ref="2"]:is(:hover, :focus-visible)) + .post-ref + .post-ref[data-ref="2"],
+p:has(a[data-ref="3"]:is(:hover, :focus-visible)) + .post-ref + .post-ref + .post-ref[data-ref="3"] {
+  border-color: var(--border-strong);
+  background: var(--surface-alt);
+}
+
 /* ============================================================
    모달(ui/Modal)·셀렉트(ui/Select) — 떠오르는 판
    ============================================================ */
