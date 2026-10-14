@@ -614,6 +614,16 @@ export function checkVoice(post: VoiceInput, kind: PostKind = "release"): VoiceR
     });
   }
 
+  // 링크 설명 — 문장 속 링크는 `[문구](url "한 줄 설명")` 으로 popover 를 단다. 2026-10-14 링크 223개 중 12개만 있었다.
+  const bare = [...post.body.replace(/^(```|~~~)[\s\S]*?^\1\s*$/gm, "").matchAll(/(?<!!)\[([^\]]+)\]\([^)\s]+\)/g)].map((m) => m[1]);
+  if (bare.length) {
+    issues.push({
+      rule: "link-no-tip",
+      severity: "warning",
+      message: `설명 없는 링크가 ${bare.length}개입니다. \`[문구](url "한 줄 설명")\` 꼴로 링크 너머에 무엇이 있는지 30자 안팎으로 다세요: ${bare.slice(0, 4).map((t) => `[${excerpt(t)}]`).join(", ")}`,
+    });
+  }
+
   // 그림 — 캡션, 캡처 자리.
   const figures = [...post.body.matchAll(/^!\[([^\]]*)\]\(([^)\s]+)\)(?:\{[A-Za-z0-9]+\})?\s*$/gm)];
   for (const f of figures) {
