@@ -271,6 +271,9 @@ try {
   await page.fill('input[name="password"]', env.STUDIO_PASSWORD);
   await page.click('button[type="submit"]');
   await page.waitForURL((u) => !u.pathname.startsWith("/login"), { timeout: 20000 }).catch(() => give("로그인에 실패했습니다"));
+  // 로그인 버튼을 누른 자리에 마우스가 남으면, 내리는 동안 그 아래를 지나는 링크에 말풍선이 떠
+  // 휴대폰에서는 없는 가로 넘침을 잡는다(2026-10-15 supabase-realtime). 왼쪽 위로 치운다.
+  await page.mouse.move(0, 0);
 
   for (const theme of ["light", "dark"]) {
     const res = await page.goto(`${base}/preview/${slug}/`);
