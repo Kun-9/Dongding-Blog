@@ -655,6 +655,26 @@ html.sc-snap { scroll-snap-type: y proximity; }
   .sc-spot [style*="--i"], .sc-html [data-step], .sc-html [data-on], .sc-html[data-ready] [data-at], .sc-html .fig-bar::after { transition: none; }
 }
 
+/* 링크 popover — `[문구](url "한 줄 설명")`. 올리거나 포커스하면 문구 위에 한 줄로 뜬다.
+   `/ ""` 는 화면 낭독기가 설명을 링크 이름에 붙여 읽지 않게 한다(설명은 aria-description 으로 간다). */
+.link-tip[data-tip] { position: relative; }
+.link-tip[data-tip]::after {
+  content: attr(data-tip);
+  content: attr(data-tip) / "";
+  position: absolute; left: 0; bottom: calc(100% + 6px); z-index: 20;
+  max-width: min(28rem, 86vw); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  padding: 5px 10px; border-radius: 7px;
+  background: var(--ink); color: var(--bg);
+  font: 500 13px/1.4 var(--font-sans); letter-spacing: 0;
+  pointer-events: none; opacity: 0; transform: translateY(3px);
+  transition: opacity 0.15s, transform 0.15s;
+}
+.link-tip[data-tip]:hover::after,
+.link-tip[data-tip]:focus-visible::after { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  .link-tip[data-tip]::after { transition: none; }
+}
+
 /* ============================================================
    모달(ui/Modal)·셀렉트(ui/Select) — 떠오르는 판
    ============================================================ */

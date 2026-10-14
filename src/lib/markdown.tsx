@@ -4,7 +4,7 @@
  *        - / 1. lists, ---, blank lines.
  *        URL 또는 /posts/slug 만 있는 줄 → 링크 카드.
  *        줄에 이미지만 있으면 그림 블록, 연속 줄이면 묶음.
- * Inline: **bold**, *italic*, `code`, [text](url), ![alt](url), 맨 URL.
+ * Inline: **bold**, *italic*, `code`, [text](url), [text](url "설명" → popover), ![alt](url), 맨 URL.
  * Image: 줄 단독 → 캡션(alt) 달린 그림. `{xs}` 120px · `{sm}` 380px · 기본
  *        본문 폭 · `{wide}` 880px · `{240}` 처럼 px 직접. 열 수는 `{2}`~`{4}`.
  *        문장 안 이미지는 인라인 그대로.
@@ -111,8 +111,8 @@ function renderInline(text: string, ctx: InlineCtx): ReactNode {
       continue;
     }
 
-    // Link [text](url)
-    m = rest.match(/^\[([^\]]+)\]\(([^)]+)\)/);
+    // Link [text](url) · [text](url "한 줄 설명") — 설명은 올리면 popover 로 뜬다.
+    m = rest.match(/^\[([^\]]+)\]\(([^)\s]+)(?:\s+"([^"]*)")?\)/);
     if (m) {
       const url = m[2];
       const isExternal = /^https?:/.test(url);
@@ -123,7 +123,8 @@ function renderInline(text: string, ctx: InlineCtx): ReactNode {
           {...(isExternal
             ? { target: "_blank", rel: "noopener noreferrer" }
             : {})}
-          className="text-ink underline decoration-ink-subtle decoration-1 underline-offset-2 hover:decoration-ink"
+          {...(m[3] ? { "data-tip": m[3], "aria-description": m[3] } : {})}
+          className="link-tip text-ink underline decoration-ink-subtle decoration-1 underline-offset-2 hover:decoration-ink"
         >
           {renderInline(m[1], { ...ctx, keyBase: `${ctx.keyBase}-a-${n}-i` })}
         </a>,
