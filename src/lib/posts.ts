@@ -237,10 +237,10 @@ export async function getPostsByCategory(
 }
 
 /**
- * 글이 이보다 적은 태그 페이지는 noindex 이고 sitemap 에서도 빠진다.
- * 글 한 편짜리 태그 목록은 그 글과 겹치는 얇은 페이지라 사이트 품질 평가만 깎는다.
+ * 글이 이보다 적은 태그·카테고리 페이지는 noindex 이고 sitemap 에서도 빠진다.
+ * 글 한 편짜리 목록은 그 글과 겹치는 얇은 페이지라 사이트 품질 평가만 깎는다.
  */
-export const MIN_INDEXED_TAG_POSTS = 2;
+export const MIN_INDEXED_LIST_POSTS = 2;
 
 export async function getPostsByTag(tag: string): Promise<PostMeta[]> {
   return (await getAllPosts()).filter((p) => p.tags.includes(tag));

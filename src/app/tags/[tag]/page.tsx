@@ -3,7 +3,7 @@ import { PostList } from "@/components/post/PostList";
 import {
   getAllTags,
   getPostsByTag,
-  MIN_INDEXED_TAG_POSTS,
+  MIN_INDEXED_LIST_POSTS,
 } from "@/lib/posts";
 
 export const revalidate = 3600;
@@ -25,7 +25,7 @@ export async function generateMetadata({
     description: `#${decoded} 태그가 붙은 글 ${count}편`,
     // 한글 태그가 있어 인코딩된 형태로 고정한다 — 디코딩된 값이 들어와도 동일해진다.
     alternates: { canonical: `/tags/${encodeURIComponent(decoded)}` },
-    ...(count < MIN_INDEXED_TAG_POSTS && {
+    ...(count < MIN_INDEXED_LIST_POSTS && {
       robots: { index: false, follow: true },
     }),
   };

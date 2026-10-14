@@ -3,15 +3,17 @@ import type { PostMeta } from "@/lib/types";
 import {
   getAllPosts,
   getPostsByCategory,
-  MIN_INDEXED_TAG_POSTS,
+  MIN_INDEXED_LIST_POSTS,
 } from "@/lib/posts";
 import { getCategories } from "@/lib/categories";
 import { getAllSeries } from "@/lib/series";
 import { getSite } from "@/lib/site-db";
 
-// 글이 늘어도 한 시간 안에는 색인 대상에 들어온다. 발행 즉시 반영이 필요하면
-// 쓰기 경로에서 revalidatePath("/sitemap.xml") 를 부르면 된다.
-export const revalidate = 3600;
+// 요청마다 만든다. revalidate = 3600 이던 때는 글 저장 경로의
+// revalidatePath("/", "layout") 가 route handler 인 sitemap 에 닿지 않았고,
+// 한 시간마다 재생성해도 fetch 데이터 캐시를 다시 써서 발행 글이 몇 시간씩 빠졌다.
+// 구글이 sitemap 을 받는 건 하루 몇 번이라 매번 조회해도 부담이 없다.
+export const dynamic = "force-dynamic";
 
 /**
  * 목록 페이지의 lastmod 는 그 목록에 든 글 중 가장 최근 수정 시각이다.
@@ -54,7 +56,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }));
 
-  // 글이 없는 카테고리는 noindex 라 뺀다. 서브 카테고리도 글이 있으면 넣는다.
+  // 글이 한 편 이하인 카테고리는 noindex 라 뺀다. 서브 카테고리도 같은 기준이다.
   const categoryIds = categories.flatMap((c) => [
     c.id,
     ...(c.subs?.map((s) => s.id) ?? []),
@@ -64,7 +66,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       categoryIds.map(async (id) => ({ id, posts: await getPostsByCategory(id) })),
     )
   )
-    .filter((c) => c.posts.length > 0)
+    .filter((c) => c.posts.length >= MIN_INDEXED_LIST_POSTS)
     .map((c) => ({
       url: `${SITE_URL}/category/${c.id}/`,
       lastModified: latest(c.posts),
@@ -77,7 +79,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   for (const p of posts)
     for (const t of p.tags) byTag.set(t, [...(byTag.get(t) ?? []), p]);
   const tagRoutes: MetadataRoute.Sitemap = [...byTag]
-    .filter(([, ps]) => ps.length >= MIN_INDEXED_TAG_POSTS)
+    .filter(([, ps]) => ps.length >= MIN_INDEXED_LIST_POSTS)
     .map(([tag, ps]) => ({
       url: `${SITE_URL}/tags/${encodeURIComponent(tag)}/`,
       lastModified: latest(ps),

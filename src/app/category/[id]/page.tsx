@@ -5,7 +5,7 @@ import {
   categoryLabel,
   resolveCategory,
 } from "@/lib/categories";
-import { getPostsByCategory } from "@/lib/posts";
+import { getPostsByCategory, MIN_INDEXED_LIST_POSTS } from "@/lib/posts";
 
 export const revalidate = 3600;
 
@@ -31,8 +31,10 @@ export async function generateMetadata({
     title: label,
     description: r?.parent.desc || undefined,
     alternates: { canonical: `/category/${id}` },
-    // 아직 글이 없는 카테고리는 빈 목록이라 색인하지 않는다.
-    ...(posts.length === 0 && { robots: { index: false, follow: true } }),
+    // 글이 없거나 한 편뿐인 카테고리는 얇은 목록이라 색인하지 않는다.
+    ...(posts.length < MIN_INDEXED_LIST_POSTS && {
+      robots: { index: false, follow: true },
+    }),
   };
 }
 

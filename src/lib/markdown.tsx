@@ -78,6 +78,17 @@ interface PostRefPair {
   order: number;
 }
 
+/**
+ * 사이트가 trailingSlash 라 `/posts/slug` 처럼 끝 슬래시 없는 내부 경로는 308 을 한 번 탄다.
+ * 구글은 그 주소를 "리디렉션이 포함된 페이지"로 따로 센다. 경로 끝에만 붙이고
+ * 파일(확장자 있는 경로)·쿼리·앵커는 그대로 둔다.
+ */
+function withTrailingSlash(url: string): string {
+  const m = url.match(/^(\/[^/?#][^?#]*)([?#].*)?$/);
+  if (!m || m[1].endsWith("/") || /\.[a-z0-9]+$/i.test(m[1])) return url;
+  return `${m[1]}/${m[2] ?? ""}`;
+}
+
 function renderInline(text: string, ctx: InlineCtx): ReactNode {
   if (!text) return null;
   const out: ReactNode[] = [];
@@ -130,7 +141,7 @@ function renderInline(text: string, ctx: InlineCtx): ReactNode {
       push(
         <Fragment key={`${ctx.keyBase}-a-${n}`}>
           <a
-            href={url}
+            href={withTrailingSlash(url)}
             {...(isExternal
               ? { target: "_blank", rel: "noopener noreferrer" }
               : {})}
