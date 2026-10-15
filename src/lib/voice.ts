@@ -353,7 +353,7 @@ export const FORMATS: { id: string; name: string; when: string; flow: string[] }
 export const FIRST_DECISIONS = [
   "해당: 이 글이 누구의 일인지 한 줄(\"npm이나 Homebrew로 codex 버전을 맞춰 쓰는 경우\"). 요약 박스 첫 줄이 되고, 독자가 첫 화면에서 읽을지 정한다. 해당이 둘로 갈리면 글을 나눈다",
   "한 줄 결론: 독자가 이 글을 읽고 기억할 문장 하나(\"설정 없는 Claude Code는 이제 묻지 않고 실행한다\"). 제목과 요약 박스 문제 줄은 여기서 뽑는다. 제목은 릴리스·기능 이름이 아니라 독자의 증상·질문·얻는 것으로",
-  "할 일: 독자가 읽고 바로 할 일 하나(\"위험한 저장소는 manual을 커밋해 둔다\"). 요약 박스 할 일 줄과 맺음이 된다",
+  "할 일: 독자가 읽고 바로 할 일 하나(\"위험한 저장소는 manual을 커밋해 둔다\"). 요약 박스 할 일 줄과 첫 섹션(해법)이 된다",
   "포맷: 아래 '글 포맷'에서 성격에 맞는 하나. 이해시키는 글은 설명형, 따라 하는 글은 가이드형",
   "사실 고르기: 모은 사실마다 본문·접힌 칸·노트 중 어디로 갈지 정한다(아래 '설명'의 세 갈래). 본문의 섹션과 그림은 결론과 할 일을 받치는 것만 남긴다. 필수 구성(요약 박스·비교 표·그림·출처)은 이 안에서 채운다",
 ] as const;
@@ -884,7 +884,7 @@ export function checkVoice(post: VoiceInput, kind: PostKind = "release"): VoiceR
     issues.push({
       rule: "too-long",
       severity: "warning",
-      message: `본문이 깁니다(그림·코드·접힌 칸 뺀 산문 ${prose.toLocaleString("ko-KR")}자). 2,000자 안팎으로, 문장을 압축하지 말고 일부 독자만 필요한 세부는 접힌 칸(\`> [!MORE] 누구에게 필요한지\`)으로, 아무의 할 일도 바꾸지 않는 사실은 노트로 보내세요`,
+      message: `본문이 깁니다(그림·코드·접힌 칸 뺀 산문 ${prose.toLocaleString("ko-KR")}자). 1,500자 안팎으로, 문장을 압축하지 말고 일부 독자만 필요한 세부는 접힌 칸(\`> [!MORE] 누구에게 필요한지\`)으로, 아무의 할 일도 바꾸지 않는 사실은 노트로 보내세요`,
     });
   }
   if (folds.length > MAX_FOLDS) {

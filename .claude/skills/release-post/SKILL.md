@@ -42,7 +42,9 @@ description: Use when the user asks you directly (not through the admin "AI에�
 - 본문 산문 1,500자 안팎(2,000자 넘으면 막힘), 장면은 하나에 3박자까지, 본문 코드는 핵심 열두 줄 안팎(16줄 넘으면 막힘, 전체는 접힌 칸).
 - 가이드형은 첫 소제목이 설치·부르기(설치 명령 + 저장소 카드 + 예시 프롬프트 + 전·후 `{tabs}`), 활용 예는 한 섹션에 둘까지.
 
-점검(`check_release_voice`)이 intro-paragraph·answer-late·closing-block·scene-long·code-long 으로 잡는다.
+점검(`check_release_voice`)이 intro-paragraph·answer-late·closing-block·scene-long·code-long·heading-polite(합니다체 소제목)로 잡는다. 모범 글은 `get_post("access-refresh-token")`(설명형)과 `get_post("ponytail-skill-ladder")`(가이드형)이다. 새 글을 쓰기 전에 하나를 읽고 같은 모양을 목표로 한다.
+
+다 쓴 뒤 문장마다 소리 내 읽어 어색한 문장과 생성 말투를 고친다. 점검의 `stock-phrase` 가 잡는 것(문두 그래서·즉·이는, ~한 것입니다, ~함으로써, 예고 문장, 나열 틀, 정의 틀, 홍보 형용사)은 일부다. 인접 문장의 주어 반복, 용어를 먼저 쓰고 다음 문장에서 푸는 뒤늦은 정의, 수치 문장의 보고 과거형("였습니다")은 점검이 못 잡으니 직접 본다.
 
 ## 단계마다
 
