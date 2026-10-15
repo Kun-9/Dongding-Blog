@@ -43,6 +43,11 @@ assert.ok(!has(`${BOX}\n${FIX}## 결론이 다른 이유\n\n설명. ${SRC}\n`, "
 assert.ok(has(`${BOX}\n${FIX}${WHY}지금 설정을 열어 값을 바꿉니다. ${SRC}\n`, "closing-block"), "'지금 …' 할 일 되풀이 끝 문단");
 assert.ok(!has(`${BOX}\n${FIX}${WHY}지금 버전은 서명을 두 번 봅니다. 그래도 같습니다. ${SRC}\n`, "closing-block") || true, "noop");
 
+// ── 소제목 어미 ───────────────────────────────────────────────────────
+assert.ok(has(`${BOX}\n## 수명은 15분으로 둡니다\n\n설정.\n\n\`\`\`toml\nx = 1\n\`\`\`\n${WHY}${SRC}`, "heading-polite"), "합니다체 소제목");
+assert.ok(!has(`${BOX}\n${FIX}${WHY}${SRC}`, "heading-polite"), "서술체 소제목은 통과");
+assert.ok(!has(`${BOX}\n## 설치하고 부르기\n\n\`\`\`sh\nnpx x\n\`\`\`\n${WHY}${SRC}`, "heading-polite"), "명사형 소제목은 통과");
+
 // ── 장면 박자·본문 코드 길이 ──────────────────────────────────────────
 const scene = (n) => "```figure\ncaption: 장면\nscene: on\n" + Array.from({ length: n }, (_, i) => `step: ${i + 1}\n> 설명 ${i + 1}\n`).join("") + '<div class="fig-box" data-step="1">a</div>\n```\n';
 assert.ok(has(`${BOX}\n${FIX}## 왜\n\n${scene(4)}${SRC}`, "scene-long"), "4박자 장면");

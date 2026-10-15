@@ -72,7 +72,7 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
             </Link>
             {topic &&
               (aiBusy ? (
-                <span className="whitespace-nowrap opacity-80">AI 에게 맡긴 일이 있어 발행을 잠시 막았습니다</span>
+                <span className="opacity-80">AI 에게 맡긴 일이 있어 발행을 잠시 막았습니다</span>
               ) : (
                 <PreviewPublish id={topic.id} slug={slug} title={post.meta.title} todo={topic.ai.todo} />
               ))}
