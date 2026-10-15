@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "lint:slop": "oxlint"
   },
   "dependencies": {
     "@modelcontextprotocol/server": "^2.0.0",
@@ -26,6 +27,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@oxlint/plugins": "1.88.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
@@ -34,6 +36,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
     "fast-xml-parser": "^5.7.2",
+    "oxlint": "1.88.0",
     "tailwindcss": "^4",
     "turndown": "^7.2.4",
     "typescript": "^5"
