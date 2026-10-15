@@ -18,6 +18,8 @@
  * 캡처 폴더를 그 폴더로 복사해 둔다(모델이 만든 파일을 브라우저로 띄워 찍을 때). 원본 화면은 <폴더>.ansi,
  * 세션 기록은 <폴더>-log/ 로 함께 남긴다. 모델이 몇 분 일한 화면은 다시 띄우기 비싸니 --ansi 로 다시 자른다.
  *
+ * --no-emoji 는 화면의 이모지를 지운다. --wait 가 시간 안에 안 뜨면 마지막 화면을 <--keep 또는 --out>.ansi 로 남긴다.
+ *
  * 끝 코드: 0 성공 · 1 사용법 · 2 개인 정보가 보임 · 3 띄우지 못함(설치·로그인)
  *          4 tmux 없음 · 5 --from/--to 를 화면에서 못 찾음
  */
@@ -49,6 +51,7 @@ for (let i = 0; i < argv.length; i++) {
   else if (k === "--upload-json") opt.uploadSlug = v();
   else if (k === "--allow") opt.allow.push(v());
   else if (k === "--no-safe-mode") opt.safe = false;
+  else if (k === "--no-emoji") opt.noEmoji = true;
   else fail(1, `모르는 인자: ${k}`);
 }
 if (!opt.out || (!opt.run && !opt.ansi)) {
@@ -156,7 +159,12 @@ function shoot() {
         const end = Date.now() + opt.timeout * 1000;
         let now = "";
         while (!(now = plain(tmux("capture-pane", "-t", session, "-p").stdout ?? "")).includes(k.wait)) {
-          if (Date.now() > end) throw new Fail(5, `--wait "${k.wait}" 이 ${opt.timeout}초 안에 뜨지 않았다. 지금 화면:\n${now.trimEnd()}`);
+          if (Date.now() > end) {
+            // 몇 분 일한 화면을 버리지 않는다. --ansi 로 다시 자를 수 있게 마지막 화면(색 포함)을 남긴다.
+            const keep = `${opt.keep ?? opt.out}.ansi`;
+            writeFileSync(keep, noOsc(tmux("capture-pane", "-t", session, "-e", "-p").stdout ?? ""));
+            throw new Fail(5, `--wait "${k.wait}" 이 ${opt.timeout}초 안에 뜨지 않았다. 마지막 화면을 ${keep} 에 남겼다:\n${now.trimEnd()}`);
+          }
           sleep(500);
         }
         continue;
@@ -226,6 +234,9 @@ try {
   ansi = noOsc(opt.ansi ? readFileSync(opt.ansi, "utf8") : shoot());
   // 자르기 전에 남긴다. --from/--to 가 틀려 끝 코드 5 로 끝나도 --ansi 로 다시 자를 수 있다.
   if (opt.keep && !opt.ansi) writeFileSync(`${opt.keep}.ansi`, ansi);
+  // 블로그는 이모지를 싣지 않는다. Claude Code 의 터미널 기호는 두고 컬러 이모지(Emoji_Presentation, VS16 이 붙은 그림 문자)만
+  // 뒤 공백 하나와 함께 지운다. 원본 .ansi 는 지우기 전 화면으로 남는다.
+  if (opt.noEmoji) ansi = ansi.replace(/(?:\p{Emoji_Presentation}|\p{Extended_Pictographic}\uFE0F)(?:\u200D(?:\p{Emoji_Presentation}|\p{Extended_Pictographic}\uFE0F?))*\uFE0F? ?/gu, "");
   unlock();
 } catch (e) {
   unlock();

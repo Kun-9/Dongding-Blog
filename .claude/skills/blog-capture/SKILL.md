@@ -34,15 +34,16 @@ node .claude/skills/blog-capture/capture.mjs --run "claude --model claude-sonnet
 | `--upload-json <slug>` | 실행기 API 로 올릴 요청 본문을 `<out>.json` 으로 함께 만든다 |
 | `--plugin <폴더>` | 그 플러그인·mod 만 싣고 띄운다(`--setting-sources project --plugin-dir`). safe-mode 는 플러그인을 끄므로 mod 화면은 이걸로 뜬다. 여러 번 줄 수 있다 |
 | `--setup "<셸 명령>"` | 띄우기 전에 캡처 폴더에서 돈다. 예제가 다룰 파일을 만든다(지울 `build/`, 고칠 `greet.js` 등) |
-| `--wait <글자>` | `--keys` 사이에 끼운다. 그 글자가 화면에 뜰 때까지(최대 `--timeout`) 기다렸다가 다음 키를 보낸다. 턴이 끝난 뒤 명령을 칠 때 쓴다 |
+| `--wait <글자>` | `--keys` 사이에 끼운다. 그 글자가 화면에 뜰 때까지(최대 `--timeout`) 기다렸다가 다음 키를 보낸다. 턴이 끝난 뒤 명령을 칠 때 쓴다. 시간 안에 안 뜨면 끝 코드 5 로 끝나고 마지막 화면을 `<--keep 또는 --out>.ansi` 로 남긴다 |
 | `--timeout <초>` | 기다리는 상한(기본 40). 모델이 한 턴 일하는 화면은 120 안팎 |
+| `--no-emoji` | 화면의 컬러 이모지를 지운다(Claude Code 의 터미널 기호는 남는다). `.ansi` 원본은 그대로 |
 | `--keep <폴더>` | 끝난 뒤 캡처 폴더를 그 폴더로, 원본 화면을 `<폴더>.ansi` 로, 세션 기록을 `<폴더>-log/` 로 남긴다. 범위를 다시 자를 때는 띄우지 않고 `--ansi <폴더>.ansi` |
 
 ### 스킬·플러그인 글의 전·후 캡처
 
 스킬·플러그인 글은 같은 예시 프롬프트를 도구 없이 한 번, `--plugin` 으로 싣고 한 번 떠서 두 장을 싣는다. 두 장은 이미지 묶음 첫 줄에 `{tabs}` 를 붙여 한 자리에서 버튼으로 바꿔 보게 싣는다(alt 가 버튼 이름: "설정 없음", "manual 설정"). `{tabs}` 없이 연달아 두면 그리드 묶음이 되어 4:3 칸으로 잘린다(cover).
 
-플러그인이 아닌 스킬(SKILL.md 폴더)은 `--setup` 으로 캡처 폴더의 `.claude/skills/<이름>/` 에 복사한다. safe-mode 는 프로젝트 스킬까지 끄므로 `--no-safe-mode` 를 주고 `--run "CLAUDE_CODE_DISABLE_CLAUDE_MDS=1 CLAUDE_CODE_DISABLE_AUTO_MEMORY=1 claude --setting-sources project --strict-mcp-config …"` 처럼 설정 출처를 직접 붙인다. 이렇게 띄우면 내 플러그인·훅·`~/.claude/skills` 는 실리지 않고(stream-json init 의 skills 에 프로젝트 스킬과 내장 스킬만 나온다) 전역 CLAUDE.md 는 환경 변수가 막는다(safe-mode 로 띄우면 슬래시 명령이 잡히지 않는다). 프롬프트·폴더(`--setup`)·모델·자르는 범위를 똑같이 두고 `--plugin` 만 바꾼다. 태그가 skill·plugin 인 글은 실제 캡처가 두 장 미만이면 점검(`tool-no-capture`)에서 막힌다.
+플러그인이 아닌 스킬(SKILL.md 폴더)은 `--setup` 으로 캡처 폴더의 `.claude/skills/<이름>/` 에 복사한다. safe-mode 는 프로젝트 스킬까지 끄므로 `--no-safe-mode` 를 주고 `--run "CLAUDE_CODE_DISABLE_CLAUDE_MDS=1 CLAUDE_CODE_DISABLE_AUTO_MEMORY=1 claude --setting-sources project --strict-mcp-config …"` 처럼 설정 출처를 직접 붙인다. 이렇게 띄우면 내 플러그인·훅·`~/.claude/skills` 는 실리지 않고(stream-json init 의 skills 에 프로젝트 스킬과 내장 스킬만 나온다) 전역 CLAUDE.md 는 환경 변수가 막는다(safe-mode 로 띄우면 슬래시 명령이 잡히지 않는다). 프롬프트·폴더(`--setup`)·모델·자르는 범위를 똑같이 두고 `--plugin` 만 바꾼다. Artifact 도구가 있는 계정이면 한쪽만 HTML 앱을 게시해 조건이 갈린다. 양쪽 다 `--disallowedTools Artifact` 를 붙이거나, 결과물을 쓸 거면 양쪽 다 허용하고 게시된 아티팩트를 embed 로 옮긴 뒤 원본을 지울지 사용자에게 묻는다. 태그가 skill·plugin 인 글은 실제 캡처가 두 장 미만이면 점검(`tool-no-capture`)에서 막힌다.
 
 ```bash
 P="Add a date picker component to the frontend."
@@ -59,7 +60,7 @@ node .claude/skills/blog-capture/capture.mjs --timeout 180 --setup "$SETUP" --pl
 
 자리표시(`<…>`)는 처음 한 번 짐작으로 띄워 끝 코드 5 가 보여 주는 화면을 보고 채운다. 브라우저에 그려지는 결과(고친 카드, 기본 달력과 직접 만든 달력)는 dev-browser 스킬로 띄워 PNG 로 찍어 `upload_post_image` 로 올린다. 본문은 "조작 한 줄 → 캡처 → 결과 한 줄"로 잇는다.
 
-**눌러 보는 결과는 찍지 말고 띄운다.** 스킬이 만든 위젯·인터랙티브 그림처럼 HTML 한 파일로 돌아가는 결과는 스크린샷 대신 그 HTML 을 `.html` 로 올려(`node .claude/skills/release-post/upload-image.mjs <slug> <파일>.html`) 본문에 ```embed 블록으로 띄운다. 독자가 버튼을 누르고 숫자를 바꿔 보는 것이 그 결과의 전부라, 정지 화면은 절반만 보여 준다.
+**눌러 보는 결과는 찍지 말고 띄운다.** 스킬이 만든 위젯·인터랙티브 그림처럼 HTML 한 파일로 돌아가는 결과는 스크린샷 대신 그 HTML 을 `.html` 로 올려(`node .claude/skills/release-post/upload-image.mjs <slug> <파일>.html`) 본문에 ```embed 블록으로 띄운다. 독자가 버튼을 누르고 숫자를 바꿔 보는 것이 그 결과의 전부라, 정지 화면은 절반만 보여 준다. 전·후는 첫 응답이 아니라 최종 결과물(스킬 없이 만든 앱, 라운드 끝 설계 요약)까지 싣는다. 실행 중에 생긴 HTML(Artifact 로 게시된 페이지 포함)은 사고로 보고 버리지 말고 같은 방법으로 띄운다.
 
 ```embed
 caption: 같은 토큰 버킷 요청을 스킬 없이와 /anatomy로 만든 결과
@@ -69,7 +70,7 @@ src: /posts/<slug>/after.html | /anatomy
 
 - 외부 스크립트·폰트 없이 한 파일이어야 한다. npm 패키지로 나온 그림(예: `anatomy-figures` 의 커스텀 엘리먼트)은 `bun build <진입>.js --minify --target=browser` 로 묶어 `<script type="module">` 에 넣고, 라이선스 머리말(`/*! 이름 버전 | MIT | Copyright */`)을 남긴다.
 - `src` 가 둘 이상이면 `| 버튼 이름` 으로 전·후 탭이 된다. `height` 를 빼면 안쪽 문서 높이에 맞춘다. 판 안은 스크롤되지 않으니(`overflow: hidden`), `height` 를 적었는데 내용이 더 길면 아래가 잘린다. 안쪽이 창 높이를 따르면(`100vh`, `height: 100%`, 화면 전체를 덮는 `position: absolute`) 재는 높이가 틀리니 `height: 560` 처럼 적는다.
-- 화면에서는 스크립트·폼만 허용한 sandbox iframe 이라 블로그 쿠키·저장소에 닿지 못한다. 안쪽 `localStorage` 는 예외를 던지고 `alert`·클립보드는 조용히 안 되며 링크·팝업도 열리지 않는다. 이것에 기대는 위젯은 고쳐서 올린다.
+- 화면에서는 스크립트·폼만 허용한 sandbox iframe 이라 블로그 쿠키·저장소에 닿지 못한다. 안쪽 `localStorage` 는 예외를 던지고 `alert`·클립보드는 조용히 안 되며 링크·팝업도 열리지 않는다. 이것에 기대는 위젯은 고쳐서 올린다. 외부 저장소·로그인(아티팩트 런타임의 저장 API, `localStorage`, 로그인 확인)에 기대는 HTML 은 원본은 그대로 두고, 그 API 를 메모리 객체로 바꾸는 짧은 shim 을 `<head>` 맨 앞 `<script>` 로 덧대 올린다.
 - 외부 `<script src>` 가 있으면 업로드가 거부된다. 140만 자 안쪽. 같은 이름으로 다시 올리면 1분 안에 새 판이 보인다.
 - 실행기는 `image` 액션에 `name: <이름>.html`, `html: <원문>` 으로 올린다.
 - 움직이지 않는 결과(달라진 카드 한 장)만 PNG 로 찍는다.
@@ -80,7 +81,7 @@ src: /posts/<slug>/after.html | /anatomy
 
 - 첫 실행은 `--keep` 을 주고 `--from` 을 일부러 화면에 없는 글자로 둔다. 끝 코드 5 로 끝나도 `<폴더>.ansi` 가 남으니 화면을 읽고 `--ansi` 로 다시 자른다. 턴 중간의 화면(스킬이 크기를 정하는 첫 응답 등)은 실행 중에 `tmux -L blogcap-<pid> capture-pane -e -p -S -` 로 받아 두고 같은 `--ansi` 로 자른다.
 - 프롬프트는 입력창이 뜬 뒤에 친다: `--wait "bypass permissions on"`(권한 모드에 따라 `auto mode on`·`accept edits on`·`for shortcuts`. v2.1.296 기본은 `auto mode on`) → `--keys "<프롬프트>"` → `--wait "<프롬프트 앞 글자>"` → `--keys Enter --keys C-m`. Claude Code 가 늦게 뜨거나 `--setup` 이 몇 초 걸리면 첫 대기가 그 사이에 끝나 키가 셸에 먼저 들어가고, 프롬프트가 입력창에 남은 채 제출되지 않았다.
-- 턴 끝은 `--wait " · done"`(`✻ Baked for 9m 48s · done`). 스크립트를 돌리는 스킬은 권한 확인에서 멈추니, 사용자 동의를 받아 `--permission-mode bypassPermissions` 를 전·후 똑같이 붙인다(캡처 전용 빈 폴더에서만 돈다).
+- 턴 끝은 `--wait " · done"`(2.1.300 은 `✻ Brewed for 25s · done`, 동사는 매번 바뀐다). 서브에이전트를 쓴 턴은 ` · done` 이 붙지 않으니 결과에 나오는 글자로 기다린다. 스크립트를 돌리는 스킬은 권한 확인에서 멈추니, 사용자 동의를 받아 `--permission-mode bypassPermissions` 를 전·후 똑같이 붙인다(캡처 전용 빈 폴더에서만 돈다).
 - 걸린 시간·토큰은 `<폴더>-log/*.jsonl` 의 assistant 메시지 usage(같은 message id 는 한 번만)와 첫·끝 timestamp 로 센다.
 - 바로 끝나는 명령(`npx skills add` 등)은 끝나는 순간 끝 코드 3 이 된다. `--run "<명령>; sleep 20"` 으로 화면을 붙잡고 뜬다.
 
@@ -100,7 +101,7 @@ node .claude/skills/blog-capture/capture.mjs --timeout 150 \
 ```
 
 - 띠·버튼의 글자 단축키(`press r` 같은)는 프롬프트에 글자로 들어갈 수 있다. 플러그인이 등록한 `/명령` 으로 연다.
-- 경고 표시처럼 그림 문자(픽토그램)가 든 줄은 `--from`/`--to` 로 범위에서 뺀다. 블로그는 이모지·픽토그램을 싣지 않는다.
+- 경고 표시처럼 그림 문자(픽토그램)가 든 줄은 `--from`/`--to` 로 범위에서 뺀다. 범위 안에 꼭 있어야 하는 줄이면 `--no-emoji` 로 이모지만 지운다. 블로그는 이모지·픽토그램을 싣지 않는다.
 - 처음 뜰 때 범위를 모르면 `--from`/`--to` 를 짐작으로 주고, 끝 코드 5 가 보여 주는 화면을 보고 고친다.
 
 도구가 창 크기(100×60), 폴더 신뢰 확인, 화면이 멈출 때까지 기다리기, 세션·기록 정리를 모두 맡는다. 폴더 신뢰 기록은 캡처 전용 폴더 하나만 처음 한 번 `~/.claude.json` 에 남는다. 실행이 끝나면 띄운 프로그램의 버전과 잘라 낸 화면을 글자로 보여 준다. 그 글자를 읽고 본문에 쓸 사실을 고른다.
