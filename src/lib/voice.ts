@@ -950,12 +950,12 @@ export function checkVoice(post: VoiceInput, kind: PostKind = "release"): VoiceR
     });
   }
   const lastBlock = bl[bl.length - 1];
-  if (lastBlock?.kind === "para" && bl[bl.length - 2]?.kind === "fold") {
+  if (lastBlock?.kind === "para" && (bl[bl.length - 2]?.kind === "fold" || /^지금 /.test(lastBlock.text))) {
     issues.push({
       rule: "closing-block",
       severity: "warning",
       line: lastBlock.line,
-      message: "접힌 칸 뒤에 끝 문단이 있습니다. 할 일은 첫 섹션에 있으니 지우세요",
+      message: "끝 문단(접힌 칸 뒤 문단이나 '지금 …'으로 시작하는 할 일 되풀이)이 있습니다. 할 일은 첫 섹션에 있으니 지우세요",
     });
   }
   for (const f of findFences(post.body)) {
