@@ -736,6 +736,9 @@ const handler = createMcpHandler(
   },
   {
     serverInfo: { name: "dongding-blog", version: "1.0.0" },
+    // 도구 목록 변경 알림을 광고하면 Claude Code 가 subscriptions/listen 스트림을 열고, 서버는 그걸 닫지 않아
+    // 함수가 300초 최대 실행 시간까지 붙잡힌다. 2026-10-15 이 타임아웃이 Vercel Hobby 메모리 한도를 넘겼다
+    capabilities: { tools: { listChanged: false } },
     instructions: [
       "이 서버는 dongding 블로그의 글 정본(Supabase)을 다룬다.",
       "",
