@@ -42,7 +42,7 @@ node .claude/skills/blog-capture/capture.mjs --run "claude --model claude-sonnet
 
 스킬·플러그인 글은 같은 예시 프롬프트를 도구 없이 한 번, `--plugin` 으로 싣고 한 번 떠서 두 장을 싣는다. 두 장은 이미지 묶음 첫 줄에 `{tabs}` 를 붙여 한 자리에서 버튼으로 바꿔 보게 싣는다(alt 가 버튼 이름: "설정 없음", "manual 설정"). `{tabs}` 없이 연달아 두면 그리드 묶음이 되어 4:3 칸으로 잘린다(cover).
 
-플러그인이 아닌 스킬(SKILL.md 폴더)은 `--setup` 으로 캡처 폴더의 `.claude/skills/<이름>/` 에 복사한다. safe-mode 는 프로젝트 스킬까지 끄므로 `--no-safe-mode` 를 주고 `--run "CLAUDE_CODE_DISABLE_CLAUDE_MDS=1 CLAUDE_CODE_DISABLE_AUTO_MEMORY=1 claude --setting-sources project --strict-mcp-config …"` 처럼 설정 출처를 직접 붙인다. 이렇게 띄우면 내 플러그인·훅·`~/.claude/skills` 는 실리지 않고(stream-json init 의 skills 에 프로젝트 스킬과 내장 스킬만 나온다) 전역 CLAUDE.md 는 환경 변수가 막는다. 2026-10-12 make-interfaces 글에서 safe-mode 로 띄웠더니 슬래시 명령이 잡히지 않았다. 프롬프트·폴더(`--setup`)·모델·자르는 범위를 똑같이 두고 `--plugin` 만 바꾼다. 태그가 skill·plugin 인 글은 실제 캡처가 두 장 미만이면 점검(`tool-no-capture`)에서 막힌다.
+플러그인이 아닌 스킬(SKILL.md 폴더)은 `--setup` 으로 캡처 폴더의 `.claude/skills/<이름>/` 에 복사한다. safe-mode 는 프로젝트 스킬까지 끄므로 `--no-safe-mode` 를 주고 `--run "CLAUDE_CODE_DISABLE_CLAUDE_MDS=1 CLAUDE_CODE_DISABLE_AUTO_MEMORY=1 claude --setting-sources project --strict-mcp-config …"` 처럼 설정 출처를 직접 붙인다. 이렇게 띄우면 내 플러그인·훅·`~/.claude/skills` 는 실리지 않고(stream-json init 의 skills 에 프로젝트 스킬과 내장 스킬만 나온다) 전역 CLAUDE.md 는 환경 변수가 막는다(safe-mode 로 띄우면 슬래시 명령이 잡히지 않는다). 프롬프트·폴더(`--setup`)·모델·자르는 범위를 똑같이 두고 `--plugin` 만 바꾼다. 태그가 skill·plugin 인 글은 실제 캡처가 두 장 미만이면 점검(`tool-no-capture`)에서 막힌다.
 
 ```bash
 P="Add a date picker component to the frontend."
@@ -59,7 +59,7 @@ node .claude/skills/blog-capture/capture.mjs --timeout 180 --setup "$SETUP" --pl
 
 자리표시(`<…>`)는 처음 한 번 짐작으로 띄워 끝 코드 5 가 보여 주는 화면을 보고 채운다. 브라우저에 그려지는 결과(고친 카드, 기본 달력과 직접 만든 달력)는 dev-browser 스킬로 띄워 PNG 로 찍어 `upload_post_image` 로 올린다. 본문은 "조작 한 줄 → 캡처 → 결과 한 줄"로 잇는다.
 
-**눌러 보는 결과는 찍지 말고 띄운다.** 스킬이 만든 위젯·인터랙티브 그림처럼 HTML 한 파일로 돌아가는 결과는 스크린샷 대신 그 HTML 을 `.html` 로 올려(`node .claude/skills/release-post/upload-image.mjs <slug> <파일>.html`) 본문에 ```embed 블록으로 띄운다. 독자가 버튼을 누르고 숫자를 바꿔 보는 것이 그 결과의 전부라, 정지 화면은 절반만 보여 준다(2026-10-13 anatomy 글: 토큰 버킷 위젯·기계를 PNG 로 실었다가 "실제 작동 가능한 건 실제로 작동하게"라는 지적).
+**눌러 보는 결과는 찍지 말고 띄운다.** 스킬이 만든 위젯·인터랙티브 그림처럼 HTML 한 파일로 돌아가는 결과는 스크린샷 대신 그 HTML 을 `.html` 로 올려(`node .claude/skills/release-post/upload-image.mjs <slug> <파일>.html`) 본문에 ```embed 블록으로 띄운다. 독자가 버튼을 누르고 숫자를 바꿔 보는 것이 그 결과의 전부라, 정지 화면은 절반만 보여 준다.
 
 ```embed
 caption: 같은 토큰 버킷 요청을 스킬 없이와 /anatomy로 만든 결과
@@ -74,9 +74,9 @@ src: /posts/<slug>/after.html | /anatomy
 - 실행기는 `image` 액션에 `name: <이름>.html`, `html: <원문>` 으로 올린다.
 - 움직이지 않는 결과(달라진 카드 한 장)만 PNG 로 찍는다.
 
-스킬이 만든 파일(그린 HTML, 고친 컴포넌트)을 브라우저로 찍으려면 `--keep <폴더>` 로 캡처 폴더를 남긴다. 같은 문장으로는 스킬·MCP 도구가 불리지 않는 일이 잦다. 2026-10-12 diagram-design 은 스킬을 실어도 Claude 가 SVG 를 직접 그렸고, 2026-10-14 REA MCP 는 셸로 asar 를 풀었고 emil-design-eng 도 스킬을 부르지 않았다. 후 캡처는 이름 없이 한 번 띄운 뒤 `<폴더>-log/*.jsonl` 의 `tool_use`(`Skill`, `mcp__…`)로 실제로 불렸는지 보고, 안 불렸으면 `/<스킬 이름> <프롬프트>` 로 다시 뜬다. 본문에는 이름을 붙여 불러야 한다는 것을 반 문장으로 적는다.
+스킬이 만든 파일(그린 HTML, 고친 컴포넌트)을 브라우저로 찍으려면 `--keep <폴더>` 로 캡처 폴더를 남긴다. 같은 문장으로는 스킬·MCP 도구가 불리지 않는 일이 잦다(스킬을 실어도 Claude 가 SVG 를 직접 그리거나 셸로 asar 를 푼다). 후 캡처는 이름 없이 한 번 띄운 뒤 `<폴더>-log/*.jsonl` 의 `tool_use`(`Skill`, `mcp__…`)로 실제로 불렸는지 보고, 안 불렸으면 `/<스킬 이름> <프롬프트>` 로 다시 뜬다. 본문에는 이름을 붙여 불러야 한다는 것을 반 문장으로 적는다.
 
-스킬이 몇 분씩 일하는 전·후(그림을 그리고 스스로 찍어 보는 스킬 등)는 이렇게 뜬다. 2026-10-13 anatomy 글에서 겪은 것이다.
+스킬이 몇 분씩 일하는 전·후(그림을 그리고 스스로 찍어 보는 스킬 등)는 이렇게 뜬다.
 
 - 첫 실행은 `--keep` 을 주고 `--from` 을 일부러 화면에 없는 글자로 둔다. 끝 코드 5 로 끝나도 `<폴더>.ansi` 가 남으니 화면을 읽고 `--ansi` 로 다시 자른다. 턴 중간의 화면(스킬이 크기를 정하는 첫 응답 등)은 실행 중에 `tmux -L blogcap-<pid> capture-pane -e -p -S -` 로 받아 두고 같은 `--ansi` 로 자른다.
 - 프롬프트는 입력창이 뜬 뒤에 친다: `--wait "bypass permissions on"`(권한 모드에 따라 `auto mode on`·`accept edits on`·`for shortcuts`. v2.1.296 기본은 `auto mode on`) → `--keys "<프롬프트>"` → `--wait "<프롬프트 앞 글자>"` → `--keys Enter --keys C-m`. Claude Code 가 늦게 뜨거나 `--setup` 이 몇 초 걸리면 첫 대기가 그 사이에 끝나 키가 셸에 먼저 들어가고, 프롬프트가 입력창에 남은 채 제출되지 않았다.

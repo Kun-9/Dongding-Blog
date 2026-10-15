@@ -26,7 +26,7 @@ description: Use when a dongding 블로그 글에 필요한 그림·애니메이
 | 등장 모션 | `anims/<이름>.ts`(길이·준비·재생) | `anims/index.ts` 의 `ANIM_MODULES` | `scaffold.mjs anim <이름>` |
 | 장면 속성 | `scene-attrs/<이름>.ts`(값 검사·단계 점검·적용) + 상태 CSS 는 `states.css` | `scene-attrs/index.ts` 의 `SCENE_ATTRS` | `scaffold.mjs scene-attr <이름>` |
 | 장면 상태(`data-on` 값) | `scene-attrs/on.ts` 의 `STATES` + `states.css` 의 `.sc-html .is-<상태>` | — | 손으로 |
-| 그림 블록 종류 | `lib/diagram.ts`(파서·`sceneCells`) + `components/prose/diagram/*.tsx` + `Diagram.tsx` | `DIAGRAM_LANGS` | 손으로. 드물다(2026-10-11 `grid`) |
+| 그림 블록 종류 | `lib/diagram.ts`(파서·`sceneCells`) + `components/prose/diagram/*.tsx` + `Diagram.tsx` | `DIAGRAM_LANGS` | 손으로. 드물다 |
 | 장면 동사(핵심 장면 고르기 표) | `figure/verbs.ts` 의 한 줄(동사·그림·이런 내용일 때·쓰는 법) | `SCENE_VERBS` | 손으로. 새 어휘를 더하면 그 어휘가 그리는 움직임 동사를 같이 더한다 |
 
 스크립트는 저장소(워크트리) 뿌리에서 `node .claude/skills/blog-figure-extend/<스크립트>` 로 부른다. `.ts` 는 `node_modules/.bin/jiti` 로.
@@ -42,8 +42,8 @@ description: Use when a dongding 블로그 글에 필요한 그림·애니메이
 
 - **색은 테마 변수만.** 라이트·다크 둘 다 본다. 늘 어두운 판(터미널)은 `--code-*` 토큰.
 - **상태가 바뀌어도 높이는 그대로.** 단계 화면은 `fig-layer` 에 겹친다. 그림 아래에 패널을 열지 않는다.
-- **판 안에 세로 스크롤을 만들지 않는다.** 가로만 넘기려고 `overflow-x: auto` 를 쓰면 세로도 auto 가 된다. 칸이 올라오는 모션(16px)만큼 넘치는 사이에 휠이 판 안쪽을 내려 머리줄이 잘린다. `overflow-y: hidden` 을 같이 둔다(2026-10-08 matrix). `release-post/mobile-check.mjs` 가 "그림 안에 세로 스크롤"로 잡는다.
-- **장면이 DOM 에 입힌 상태를 React 가 지우지 않게 한다.** `dangerouslySetInnerHTML` 객체는 `useMemo` 로 고정한다. React 19 는 이 객체를 동일성으로 비교해, 렌더마다 새로 만들면 state 하나만 바뀌어도 innerHTML 을 다시 쓴다. 2026-10-09 `FigureScene` 이 `setReady` 로 다시 그려지며 첫 단계 상태가 지워졌고, 판이 화면에 들어오는 동안 `fig-layer` 화면이 모두 포개졌다. `release-post/mobile-check.mjs` 가 "겹친 단계 화면이 함께 보임"으로 잡는다.
+- **판 안에 세로 스크롤을 만들지 않는다.** 가로만 넘기려고 `overflow-x: auto` 를 쓰면 세로도 auto 가 된다. 칸이 올라오는 모션(16px)만큼 넘치는 사이에 휠이 판 안쪽을 내려 머리줄이 잘린다. `overflow-y: hidden` 을 같이 둔다. `release-post/mobile-check.mjs` 가 "그림 안에 세로 스크롤"로 잡는다.
+- **장면이 DOM 에 입힌 상태를 React 가 지우지 않게 한다.** `dangerouslySetInnerHTML` 객체는 `useMemo` 로 고정한다. React 19 는 이 객체를 동일성으로 비교해, 렌더마다 새로 만들면 state 하나만 바뀌어도 innerHTML 을 다시 써 첫 단계 상태가 지워지고 `fig-layer` 화면이 포개진다. `release-post/mobile-check.mjs` 가 "겹친 단계 화면이 함께 보임"으로 잡는다.
 - **움직이는 것은 opacity·transform·translate·clip-path·선 길이·숫자.** 크기·위치 속성을 애니메이션하지 않는다. 움직임 줄이기 설정이면 바로 끝 모습.
 - **JS 없이도 읽힌다.** 서버가 그린 첫 모습(모션 끝 모습, 장면 1단계)이 그대로 그림이다.
 - **값은 정규식으로 모양을 묶는다.** 글자가 들어가는 속성은 `write` 에서 `escAttr` 로 이스케이프하고 화면엔 `textContent` 로만 넣는다. 스크립트·`on*`·`style` 색은 열지 않는다.
@@ -68,6 +68,6 @@ description: Use when a dongding 블로그 글에 필요한 그림·애니메이
 
 실행기는 코드를 고치지 못한다. 지금 어휘로 그릴 수 없는 그림은 흉내 내지 말고, 노트의 "사람이 확인할 것"에 `키트 필요: 무엇을(화면·움직임), 왜(어느 문단)` 를 남긴 뒤 지금 어휘로 쓴다. 사람이 이 스킬로 추가하고 글을 고친다.
 
-## 예: 터미널 키트와 figure 장면(2026-10-08)
+## 예: 터미널 키트와 figure 장면
 
 Mods 글의 공식 예제를 timeline 장면으로 넘겼다가 "시간 순서가 아닌 예제에 타임라인은 어색하다"는 지적을 받았다. 예제가 띄우는 실제 화면을 재현하려고 `term` 키트(`fig-term`·`fig-t-*`)와 `layer` 키트(`fig-layer`), figure 장면 속성 넷을 더했다. 이 구조로 다시 하면: `scaffold.mjs kit term` → `term.ts` 에 클래스 설명, `term.css` 에 어두운 판 → `sync-docs` → 확인용 글에 터미널 장면 → 미리보기 검사 → 배포 → Mods 글의 timeline 블록을 figure 장면으로 교체.

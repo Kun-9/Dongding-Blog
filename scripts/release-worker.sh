@@ -3,8 +3,9 @@
 #
 # 어드민에서 "AI에게 맡기기"를 '예약'으로 맡긴 작업 하나를 Claude Code 가 집어서
 # 처리한다. '바로 실행'으로 맡긴 것은 클라우드 루틴 몫이라 집지 않는다 — 로컬로
-# 돌리려면 어드민에서 취소하고 예약으로 다시 맡긴다. 지시문은
-# scripts/release-worker-prompt.md.
+# 돌리려면 어드민에서 취소하고 예약으로 다시 맡긴다. 절차는 레포의 release-reserved·
+# release-post 스킬이 정본이라 여기에는 그 스킬을 부르는 한 줄만 둔다(지시문 사본을
+# 따로 두면 쓰기 기준과 어긋난다).
 #
 # 준비 (한 번):
 #   claude mcp add --scope user --transport http dongding-blog \
@@ -30,7 +31,8 @@ fi
 trap 'rmdir "$LOCK"' EXIT
 
 echo "$(date '+%F %T') 시작"
-"$CLAUDE_BIN" -p "$(cat scripts/release-worker-prompt.md)" \
+PROMPT='release-reserved 스킬을 Skill 도구로 불러 그대로 따른다. 예약된 주제가 없으면 "할 일 없음" 한 줄로 끝낸다. 있으면 묻지 말고 가장 오래된 하나를 집어 release-post 절차로 ai.until 까지 처리하고 finish_release_work 를 부른다. 발행은 하지 않는다.'
+"$CLAUDE_BIN" -p "$PROMPT" \
   --allowedTools "mcp__dongding-blog__*" "WebSearch" "WebFetch" "Skill" "Read" \
-    "Bash(node .claude/skills/blog-capture/capture.mjs:*)" "Bash(claude --version)"
+    "Bash(node .claude/skills/blog-capture/capture.mjs:*)" "Bash(node .claude/skills/release-post/*)" "Bash(claude --version)"
 echo "$(date '+%F %T') 끝"
