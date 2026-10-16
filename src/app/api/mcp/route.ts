@@ -755,7 +755,18 @@ const handler = createMcpHandler(
   },
 );
 
+// subscriptions/listen 이 오면 SDK 는 listChanged 와 상관없이 SSE 를 열고 닫지 않아 함수가 300초 최대 실행 시간까지 붙잡힌다.
+// 이 서버는 보낼 알림이 없으니 handler 에 넘기지 않고 바로 거절한다. listChanged: false 뒤에도 타임아웃이 하루 200건 넘게 남았다(2026-10-16)
+async function refuseListen(req: Request): Promise<Response | null> {
+  if (req.method !== "POST") return null;
+  const msg = await req.clone().json().catch(() => null);
+  if (msg?.method !== "subscriptions/listen") return null;
+  return Response.json({ jsonrpc: "2.0", id: msg.id ?? null, error: { code: -32601, message: "subscriptions/listen is not supported" } });
+}
+
 async function guarded(req: Request): Promise<Response> {
+  const refused = await refuseListen(req);
+  if (refused) return refused;
   if (await identify(req)) return handler(req);
 
   const resource = `${getPublicOrigin(req)}/.well-known/oauth-protected-resource`;
