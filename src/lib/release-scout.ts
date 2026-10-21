@@ -137,6 +137,8 @@ signals 의 소스:
 - huggingface: 트렌딩 모델
 - gtrends_us·gtrends_kr: 구글 급상승 검색어와 검색량 구간(traffic, 예 "50K+"). 대부분 일반 검색어라 AI·개발 도구와 닿는 것만 본다
 - geeknews: 국내 개발 뉴스(GeekNews) 첫 화면 순서
+- youtube: 지난 3일 AI·개발 도구 영상, 조회수순(views·comments·channel). 키가 없으면 errors 에 뜬다
+- polymarket: AI 태그 예측 시장, 24시간 거래액순(volume24h, 달러). odds 는 결과별 확률이라 "사람들이 어디에 돈을 걸었나"로만 읽고 사실로 쓰지 않는다
 
 volume 의 값:
 - hn: HN 스토리·댓글에서 키워드를 언급한 수. 실패하면 null 이고 errors 에 이유

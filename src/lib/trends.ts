@@ -134,6 +134,65 @@ async function googleTrends(geo: "US" | "KR") {
   }));
 }
 
+/** 검색 한 번에 100유닛, 무료 할당은 하루 10,000유닛. `|` 는 OR 다. */
+const YT_QUERY = '"Claude Code"|"AI coding"|"AI agent"|Cursor|LLM|MCP';
+
+async function youtube() {
+  const key = process.env.YOUTUBE_API_KEY;
+  if (!key) throw new Error("YOUTUBE_API_KEY 없음");
+  const since = new Date(Date.now() - 3 * DAY * 1000).toISOString();
+  const q = new URLSearchParams({ part: "snippet", type: "video", order: "viewCount", publishedAfter: since, q: YT_QUERY, maxResults: "25", relevanceLanguage: "en", key });
+  const { items } = (await (await get(`https://www.googleapis.com/youtube/v3/search?${q}`)).json()) as {
+    items: { id: { videoId: string }; snippet: { title: string; channelTitle: string; publishedAt: string } }[];
+  };
+  const ids = items.map((v) => v.id.videoId);
+  const stats = new Map<string, { viewCount?: string; commentCount?: string }>();
+  if (ids.length) {
+    const s = new URLSearchParams({ part: "statistics", id: ids.join(","), key });
+    const { items: rows } = (await (await get(`https://www.googleapis.com/youtube/v3/videos?${s}`)).json()) as {
+      items: { id: string; statistics: { viewCount?: string; commentCount?: string } }[];
+    };
+    for (const r of rows) stats.set(r.id, r.statistics);
+  }
+  return items.map((v) => ({
+    title: decode(v.snippet.title),
+    channel: v.snippet.channelTitle,
+    views: Number(stats.get(v.id.videoId)?.viewCount ?? 0),
+    comments: Number(stats.get(v.id.videoId)?.commentCount ?? 0),
+    at: v.snippet.publishedAt,
+    url: `https://www.youtube.com/watch?v=${v.id.videoId}`,
+  }));
+}
+
+/** Polymarket AI 태그 시장, 24시간 거래액순. 한국 IP 는 451 로 막힌다(서버는 미국에서 돈다). */
+async function polymarket() {
+  const q = new URLSearchParams({ active: "true", closed: "false", tag_slug: "ai", order: "volume24hr", ascending: "false", limit: "20" });
+  const events = (await (await get(`https://gamma-api.polymarket.com/events?${q}`)).json()) as {
+    title: string;
+    slug: string;
+    volume24hr?: number;
+    endDate?: string;
+    markets?: { question: string; outcomes?: string; outcomePrices?: string }[];
+  }[];
+  const parse = (s?: string): string[] => {
+    try {
+      return s ? (JSON.parse(s) as string[]) : [];
+    } catch {
+      return [];
+    }
+  };
+  return events.map((e) => ({
+    title: e.title,
+    volume24h: Math.round(e.volume24hr ?? 0),
+    ends: e.endDate ?? null,
+    markets: (e.markets ?? []).slice(0, 3).map((m) => {
+      const prices = parse(m.outcomePrices);
+      return { question: m.question, odds: parse(m.outcomes).map((o, i) => `${o} ${Math.round(Number(prices[i]) * 100)}%`) };
+    }),
+    url: `https://polymarket.com/event/${e.slug}`,
+  }));
+}
+
 async function geeknews() {
   const xml = await (await get("https://news.hada.io/rss/news")).text();
   return blocks(xml, "entry")
@@ -314,6 +373,8 @@ const SOURCES = {
   gtrends_us: () => googleTrends("US"),
   gtrends_kr: () => googleTrends("KR"),
   geeknews,
+  youtube,
+  polymarket,
 };
 
 const TOOL_SOURCES = {
