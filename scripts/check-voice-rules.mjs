@@ -79,5 +79,7 @@ assert.ok(phrase("고치면 됩니다. 이 차이는 사다리에서 나옵니�
 assert.ok(phrase("이렇게 실행 순서에 따라 결과가 달라지는 것을 경쟁 상태라고 합니다.").some((m) => m.includes("정의 틀")), "정의 틀");
 assert.equal(phrase("실행 순서에 따라 결과가 달라지는 이런 상태가 경쟁 상태입니다.").filter((m) => m.includes("정의 틀")).length, 0, "'이런 상태가 X입니다'는 통과");
 assert.ok(phrase("JWT로 같은 효과를 내려면 두 가지가 필요합니다.").some((m) => m.includes("예고형 나열")), "예고형 나열");
+assert.ok(phrase("로그인 화면에서는 순서가 뒤집힙니다.").some((m) => m.includes("반전 연출")), "반전 연출");
+assert.equal(phrase("배열 순서를 뒤집습니다. 결과를 뒤집어 출력합니다.").filter((m) => m.includes("반전 연출")).length, 0, "뒤집는 동작은 통과");
 
 console.log("check-voice-rules: ok");
