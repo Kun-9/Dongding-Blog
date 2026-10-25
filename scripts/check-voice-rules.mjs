@@ -82,4 +82,18 @@ assert.ok(phrase("JWT로 같은 효과를 내려면 두 가지가 필요합니�
 assert.ok(phrase("로그인 화면에서는 순서가 뒤집힙니다.").some((m) => m.includes("반전 연출")), "반전 연출");
 assert.equal(phrase("배열 순서를 뒤집습니다. 결과를 뒤집어 출력합니다.").filter((m) => m.includes("반전 연출")).length, 0, "뒤집는 동작은 통과");
 
+// no-ai-slop 에서 옮긴 패턴 — 참·거짓 짝.
+const hit = (text, label) => phrase(text).some((m) => m.includes(label));
+assert.ok(hit("문제는 모델이 아니라 평가입니다.", "이분 대비"), "문제는 X가 아니라");
+assert.ok(!hit("캐시가 아니라 원본을 읽습니다.", "이분 대비"), "평범한 'A가 아니라 B'는 통과");
+assert.ok(hit("대부분이 놓치는 설정이 하나 있습니다.", "아는 척"), "대부분이 놓치는");
+assert.ok(hit("좋은 점: 쓸수록 빨라집니다.", "콜론 공개"), "콜론 공개");
+assert.ok(!hit("- 설치: npm i -g foo", "콜론 공개"), "라벨 콜론은 통과");
+assert.ok(hit("보시다시피 두 요청이 겹칩니다.", "해석 끼어들기"), "보시다시피");
+assert.ok(hit("전문가들은 회전을 권합니다.", "출처 흐리기"), "전문가들은");
+assert.ok(hit("왜일까요? 서명만 보기 때문입니다.", "수사 질문"), "자문자답");
+assert.ok(hit("에이전트는 팀의 구심점 역할을 합니다.", "역할을 합니다"), "역할을 합니다");
+assert.ok(!hit("요청을 갱신 한 번으로 반영합니다.", "의미 부풀리기"), "'반영합니다'는 통과");
+assert.ok(!hit("이 사실을 노트에 적습니다.", "문두 사실"), "낱말 '사실'은 통과");
+
 console.log("check-voice-rules: ok");
