@@ -10,6 +10,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { BarScene, GridStep, TimelinePoint } from "@/lib/diagram";
+import { READ } from "@/lib/figure/read-line";
 import { SCENE_ATTRS, type SceneCtx } from "@/lib/figure/scene-attrs";
 import { cellClass, GridBoard } from "./Grid";
 import { cx } from "./parts";
@@ -107,11 +108,11 @@ function Stage({
       const rel = -top;
       const first = Number.isNaN(k);
       const at = Math.max(0, Math.min(n - 1, Math.floor(rel / beat + 0.5)));
-      // 시작 전(-1)은 화면 아래로 완전히 나갔을 때만. 다시 들어와 판 가운데가 화면 가운데에
+      // 시작 전(-1)은 화면 아래로 완전히 나갔을 때만. 다시 들어와 판 가운데가 읽는 높이에
       // 닿거나 무대가 붙으면 첫 단계로 움직인다(무대 위끝 기준이던 때는 판이 화면 70% 아래에서
       // 재생돼 눈이 닿기 전이었다). 처음 붙을 때 이미 보이면 서버가 그린 첫 단계를 그대로 둔다.
       const board = (sec.querySelector(".sc-board") as HTMLElement).getBoundingClientRect();
-      const s = top >= innerHeight ? -1 : k === -1 && top > 0 && board.top + board.height / 2 > innerHeight / 2 ? -1 : at;
+      const s = top >= innerHeight ? -1 : k === -1 && top > 0 && board.top + board.height / 2 > innerHeight * READ ? -1 : at;
       if (scrolled) {
         if (top < innerHeight / 2 && bottom > innerHeight / 2) nearScenes.add(sec);
         else nearScenes.delete(sec);
