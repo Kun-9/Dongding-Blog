@@ -12,9 +12,9 @@ import { checkVoice } from "../src/lib/voice.ts";
 import { lintPhrases } from "../src/lib/phrases.ts";
 
 const BOX = `> [!INFO]
-> **해당** 사내 서비스
-> **문제** 막은 계정의 토큰이 통과합니다.
-> **할 일** 수명을 줄입니다.
+> **이런 분께** 사내 서비스
+> **겪는 일** 막은 계정의 토큰이 통과합니다.
+> **이렇게** 수명을 줄입니다.
 `;
 const FIX = "## 수명은 15분으로 둔다\n\n설정에서 값을 바꿉니다.\n\n```toml\nlifespan = 900\n```\n";
 const WHY = "## 왜 만료까지 통과하나\n\nAPI 서버는 서명만 봅니다.\n\n```compare\ncaption: 두 토큰\n| 액세스 | 리프레시\n보내는 곳 | API | 인가 *\n```\n";
