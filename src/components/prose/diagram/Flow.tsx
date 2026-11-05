@@ -137,7 +137,7 @@ export function Cycle({ nodes, center }: { nodes: Item[]; center?: string }) {
             <Label label={node.label} sub={node.sub} m={node} size="sm" />
           </li>
         ))}
-        <li className="flex items-center gap-2 pl-1 text-[12.5px] text-ink-muted">
+        <li className="flex items-center gap-2 pl-1 text-[13.5px] text-ink-muted">
           <svg viewBox="0 0 16 16" aria-hidden className="size-4">
             <path d="M12.5 6.5A5 5 0 1 0 13 10M13 3v3.5H9.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>

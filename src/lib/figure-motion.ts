@@ -53,10 +53,11 @@ function moduleOf(el: Element): AnimModule | null {
 export function attachFigureMotion(root: HTMLElement): () => void {
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return () => {};
 
+  const still = root.hasAttribute("data-still");
   const order = new Map<Element, number>();
   const slots = new Map<number, Prepared[]>();
   let last = -1;
-  for (const el of root.querySelectorAll(`[data-anim], ${KIT_SELECTOR}`)) {
+  for (const el of still ? [] : root.querySelectorAll(`[data-anim], ${KIT_SELECTOR}`)) {
     const mod = moduleOf(el);
     if (!mod || !el.getClientRects().length) continue;
     const own = parseFloat((el as HTMLElement | SVGElement).style.getPropertyValue("--i"));

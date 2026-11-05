@@ -25,7 +25,7 @@ export function Stats({ items }: { items: Stat[] }) {
           >
             {s.value}
           </span>
-          <span className={cx("mt-2 text-[13px] leading-[1.45] break-keep", s.accent ? "" : "text-ink-soft")}>{s.label}</span>
+          <span className={cx("mt-2 text-[14px] leading-[1.5] break-keep", s.accent ? "" : "text-ink-soft")}>{s.label}</span>
           {s.note ? <span className="mt-1 font-mono text-[11px] leading-[1.4] text-ink-muted">{s.note}</span> : null}
         </li>
       ))}
@@ -37,10 +37,11 @@ function fmt(n: number): string {
   return Number.isInteger(n) ? n.toLocaleString("ko-KR") : String(n);
 }
 
-export function Bars({ items, unit }: { items: Bar[]; unit?: string }) {
-  const max = Math.max(...items.map((b) => b.value)) || 1;
+export function Bars({ items, unit, limit }: { items: Bar[]; unit?: string; limit?: { value: number; label?: string } }) {
+  const max = Math.max(...items.map((b) => b.value), limit?.value ?? 0) || 1;
+  const at = limit ? `${(limit.value / max) * 100}%` : null;
   return (
-    <ul className="flex flex-col gap-3 sm:grid sm:grid-cols-[minmax(6rem,9.5rem)_1fr_auto] sm:gap-x-3">
+    <ul className={cx("flex flex-col gap-3 sm:grid sm:grid-cols-[minmax(6rem,9.5rem)_1fr_auto] sm:gap-x-3", limit?.label && "pt-5")}>
       {items.map((b, i) => (
         <li
           key={i}
@@ -48,15 +49,25 @@ export function Bars({ items, unit }: { items: Bar[]; unit?: string }) {
           className="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-1.5 sm:col-span-3 sm:grid-cols-subgrid"
           style={step(i)}
         >
-          <span className={cx("text-[13.5px] leading-[1.4] break-keep", b.accent ? "font-semibold text-ink" : b.muted ? "text-ink-muted" : "text-ink-soft")}>
+          <span className={cx("text-[14.5px] leading-[1.4] break-keep", b.accent ? "font-semibold text-ink" : b.muted ? "text-ink-muted" : "text-ink-soft")}>
             {b.label}
           </span>
-          <span className="order-3 col-span-2 h-2.5 overflow-hidden rounded-full bg-ink/[0.07] sm:order-none sm:col-span-1">
+          <span className="relative order-3 col-span-2 sm:order-none sm:col-span-1">
+          {at ? (
+            <span aria-hidden className="absolute -inset-y-1.5 z-[1] border-l-2 border-dashed border-ink" style={{ left: at }}>
+              {i === 0 && limit?.label ? (
+                <span className="absolute -top-5 left-1 whitespace-nowrap text-[12.5px] font-semibold text-ink">{limit.label}</span>
+              ) : null}
+            </span>
+          ) : null}
+          <span className="block h-2.5 overflow-hidden rounded-full bg-ink/[0.07]">
             <span
               data-anim="grow"
               className={cx(
                 "block h-full rounded-full",
-                b.accent
+                limit && b.value > limit.value && !b.muted
+                  ? "bg-danger"
+                  : b.accent
                   ? "bg-[var(--callout-tip-glyph)]"
                   : b.muted
                     ? "border border-dashed border-ink-muted bg-transparent"
@@ -65,11 +76,12 @@ export function Bars({ items, unit }: { items: Bar[]; unit?: string }) {
               style={{ width: `${Math.max(2, (b.value / max) * 100)}%` }}
             />
           </span>
+          </span>
           <span
             data-anim="count"
             className={cx(
-              "text-right font-mono text-[12.5px] tabular-nums",
-              b.accent ? cx("font-semibold", ACCENT_GLYPH) : "text-ink-muted",
+              "text-right font-mono text-[13.5px] tabular-nums",
+              limit && b.value > limit.value ? "font-semibold text-danger" : b.accent ? cx("font-semibold", ACCENT_GLYPH) : "text-ink-muted",
             )}
           >
             {b.display ?? `${fmt(b.value)}${unit ?? ""}`}

@@ -41,7 +41,7 @@ function Body({ d }: { d: DiagramData }) {
     case "stats":
       return <Stats items={d.items} />;
     case "bars":
-      return <Bars items={d.items} unit={d.unit} />;
+      return <Bars items={d.items} unit={d.unit} limit={d.limit} />;
     case "grid":
       return <GridBoard rows={d.rows} axis={d.axis} />;
   }
@@ -56,6 +56,11 @@ function sigOf(s: string): string {
 
 /** 자체 테두리가 있는 표 모양은 판 없이 둔다 — 상자 안의 상자가 된다. */
 const BARE = new Set<DiagramData["kind"]>(["compare", "matrix"]);
+/**
+ * 한 번에 읽는 그림은 칸을 차례로 띄우지 않는다. 스크롤 중에 빈 줄이 보였다(2026-11-05,
+ * hook 글 matrix 다섯 줄 중 둘이 빈 칸으로 찍힘). 순서가 내용인 flow·sequence·bars 는 그대로.
+ */
+const STILL = new Set<DiagramData["kind"]>(["compare", "matrix", "stats", "layers", "tree"]);
 
 export function Diagram({ diagram }: { diagram: DiagramData }) {
   const sig = sigOf(JSON.stringify(diagram));
@@ -72,7 +77,7 @@ export function Diagram({ diagram }: { diagram: DiagramData }) {
     );
   }
   return (
-    <Shell caption={diagram.caption} bare={BARE.has(diagram.kind)} sig={sig}>
+    <Shell caption={diagram.caption} bare={BARE.has(diagram.kind)} still={STILL.has(diagram.kind)} sig={sig}>
       <Body d={diagram} />
     </Shell>
   );

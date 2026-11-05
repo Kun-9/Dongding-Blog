@@ -14,6 +14,8 @@ import { useMounted } from "@/lib/hooks";
 import {
   colsFor,
   isTabs,
+  parseLineMarks,
+  type LineMark,
   ratioFor,
   widthOf,
   type ImageItem,
@@ -104,10 +106,12 @@ export function Figure({
   src,
   alt,
   size = "",
+  marks,
 }: {
   src: string;
   alt: string;
   size?: ImageSize;
+  marks?: string;
 }) {
   const [zoom, setZoom] = useState(false);
   const width = widthOf(size);
@@ -122,7 +126,7 @@ export function Figure({
         aria-label={alt ? `${alt} — 확대` : "이미지 확대"}
         className="block w-full cursor-zoom-in border-0 bg-transparent p-0"
       >
-        {/\.svg(\?|$)/i.test(src) ? <InlineSvg src={src} alt={alt} /> : <ImgSlot src={src} alt={alt} />}
+        {/\.svg(\?|$)/i.test(src) ? <InlineSvg src={src} alt={alt} marks={marks} /> : <ImgSlot src={src} alt={alt} />}
       </button>
       {alt ? (
         <figcaption className="mt-[9px] font-sans text-[12.5px] leading-[1.5] tracking-[-0.005em] text-ink-muted">
@@ -141,11 +145,72 @@ export function Figure({
  * 받아오기 전이나 처리에 실패하면 <img> 로 보여 준다. 안의 `data-anim`·
  * `data-loop` 은 그림 블록과 같은 모션으로 움직인다.
  */
-function InlineSvg({ src, alt }: { src: string; alt: string }) {
+const MARK_COLOR = { warn: "#d4b56a", bad: "#e08a63", good: "#9bb88a" } as const;
+
+/**
+ * 터미널 캡처의 볼 줄만 밝힌다. 줄은 capture.mjs 가 <text> 하나로 그린다.
+ * 표시한 줄에는 띠와 칩, 나머지 줄은 흐리게. 판은 두 테마 모두 어두워 색은 고정값이다.
+ */
+function markLines(svg: SVGSVGElement, marks: LineMark[]) {
+  const W = svg.viewBox.baseVal?.width || svg.getBBox().width;
+  const texts = [...svg.querySelectorAll("text")];
+  const used = new Set<SVGTextElement>();
+  const NS = "http://www.w3.org/2000/svg";
+  for (const m of marks) {
+    const t = texts.find((x) => !used.has(x) && (x.textContent ?? "").trim().endsWith(m.key));
+    if (!t) continue;
+    used.add(t);
+    const box = t.getBBox();
+    const color = MARK_COLOR[m.tone];
+    const band = document.createElementNS(NS, "rect");
+    band.setAttribute("x", "0");
+    band.setAttribute("y", String(box.y - 3));
+    band.setAttribute("width", String(W));
+    band.setAttribute("height", String(box.height + 6));
+    band.setAttribute("fill", color);
+    band.setAttribute("fill-opacity", "0.16");
+    const bar = document.createElementNS(NS, "rect");
+    bar.setAttribute("x", "0");
+    bar.setAttribute("y", String(box.y - 3));
+    bar.setAttribute("width", "4");
+    bar.setAttribute("height", String(box.height + 6));
+    bar.setAttribute("fill", color);
+    t.before(band, bar);
+    if (m.label) {
+      const label = document.createElementNS(NS, "text");
+      label.textContent = m.label;
+      label.setAttribute("font-family", "var(--font-sans), sans-serif");
+      label.setAttribute("font-size", "14");
+      label.setAttribute("font-weight", "700");
+      label.setAttribute("fill", "#1c1c1c");
+      label.setAttribute("text-anchor", "end");
+      label.setAttribute("x", String(W - 22));
+      label.setAttribute("y", String(box.y + box.height - 3));
+      svg.append(label);
+      const lb = label.getBBox();
+      const chip = document.createElementNS(NS, "rect");
+      chip.setAttribute("x", String(lb.x - 10));
+      chip.setAttribute("y", String(lb.y - 3));
+      chip.setAttribute("width", String(lb.width + 20));
+      chip.setAttribute("height", String(lb.height + 6));
+      chip.setAttribute("rx", String((lb.height + 6) / 2));
+      chip.setAttribute("fill", color);
+      label.before(chip);
+    }
+  }
+  for (const t of texts) if (!used.has(t)) t.setAttribute("opacity", "0.42");
+}
+
+function InlineSvg({ src, alt, marks }: { src: string; alt: string; marks?: string }) {
   const [markup, setMarkup] = useState<string | null>(null);
   const prefix = `f${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
   const ref = useRef<HTMLSpanElement>(null);
   useFigureMotion(ref, markup);
+  useEffect(() => {
+    const lines = parseLineMarks(marks);
+    const svg = ref.current?.querySelector("svg");
+    if (svg && lines.length) markLines(svg, lines);
+  }, [markup, marks]);
 
   useEffect(() => {
     let alive = true;
@@ -282,7 +347,7 @@ function ImageTabs({ items }: { items: ImageItem[] }) {
               aria-label={`${it.alt || "이미지"} 확대`}
               className="block w-full cursor-zoom-in border-0 bg-transparent p-0"
             >
-              {/\.svg(\?|$)/i.test(it.src) ? <InlineSvg src={it.src} alt={it.alt} /> : <ImgSlot src={it.src} alt={it.alt} />}
+              {/\.svg(\?|$)/i.test(it.src) ? <InlineSvg src={it.src} alt={it.alt} marks={it.marks} /> : <ImgSlot src={it.src} alt={it.alt} />}
             </button>
           </div>
         ))}

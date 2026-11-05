@@ -113,16 +113,16 @@ function Branch({ nodes, depth, order }: { nodes: TreeNode[]; depth: number; ord
             <div data-anim="rise" className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 py-[3px]" style={step(order.get(n) ?? 0)}>
               <span
                 className={cx(
-                  "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-[5px] text-[13.5px] leading-[1.45]",
+                  "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-[5px] text-[14.5px] leading-[1.45]",
                   tone(n),
-                  pathy && "font-mono text-[12.5px]",
+                  pathy && "font-mono text-[13.5px]",
                   n.accent ? "font-semibold" : "font-medium",
                 )}
               >
                 <Icon label={n.label} />
                 {n.label}
               </span>
-              {n.sub ? <span className="text-[12.5px] leading-[1.45] text-ink-muted break-keep">{n.sub}</span> : null}
+              {n.sub ? <span className="text-[13.5px] leading-[1.45] text-ink-muted break-keep">{n.sub}</span> : null}
             </div>
             {n.children.length > 0 && <Branch nodes={n.children} depth={depth + 1} order={order} />}
           </li>

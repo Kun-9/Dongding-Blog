@@ -163,9 +163,14 @@ export async function PostView({
             <h1 className="m-0 font-sans text-[clamp(29px,7vw,40px)] font-semibold leading-[1.15] tracking-[-0.035em] text-ink">
               {post.meta.title}
             </h1>
-            <p className="mb-5 mt-3.5 text-[17px] leading-[1.6] tracking-[-0.005em] text-ink-muted">
-              {post.meta.summary}
-            </p>
+            {/* 요약 박스(> [!INFO] 이런 분께…)로 여는 글은 요약 문단이 같은 말을 두 번 한다. 요약은 목록·검색·OG 에만 쓴다. */}
+            {/^\s*>\s?\[!(INFO|NOTE|TIP)\]/i.test(post.body) ? (
+              <div className="mb-5" />
+            ) : (
+              <p className="mb-5 mt-3.5 text-[17px] leading-[1.6] tracking-[-0.005em] text-ink-muted">
+                {post.meta.summary}
+              </p>
+            )}
             <div className="flex flex-wrap items-center gap-3.5 border-t border-border-token pt-4">
               <Avatar size={36} />
               {/* 메타는 한 줄 폭을 기준으로 잡는다. 0 에서 시작하면 태그가 자리를 먼저 차지해 날짜·조회수가 줄마다 쪼개진다. */}

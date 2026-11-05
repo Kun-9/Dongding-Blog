@@ -30,22 +30,25 @@ export function Shell({
   caption,
   children,
   bare,
+  still,
   sig,
 }: {
   caption?: string;
   children: ReactNode;
   /** 판 없이(표처럼 자체 테두리가 있는 그림). */
   bare?: boolean;
+  /** 칸이 차례로 나타나지 않고 처음부터 보인다(표·목록처럼 한 번에 읽는 그림). 강조 칸만 숨 쉰다. */
+  still?: boolean;
   /** 그림 내용의 지문 — 바뀌면 판을 새로 그려 모션을 다시 붙인다. */
   sig: string;
 }) {
   return (
-    <MotionFigure key={sig} className="my-9">
+    <MotionFigure key={sig} className="my-9" still={still}>
       <div className={bare ? "" : "dg-panel rounded-2xl border border-border-token px-[18px] py-5 sm:px-7 sm:py-7"}>
         {children}
       </div>
       {caption ? (
-        <figcaption className="mt-[10px] font-sans text-[12.5px] leading-[1.5] tracking-[-0.005em] text-ink-muted">
+        <figcaption className="mt-[10px] font-sans text-[13.5px] leading-[1.5] tracking-[-0.005em] text-ink-muted">
           {caption}
         </figcaption>
       ) : null}
@@ -95,14 +98,14 @@ export function Label({ label, sub, m, size = "md" }: { label: string; sub?: str
       <span
         className={cx(
           "block leading-[1.4] break-keep",
-          size === "sm" ? "text-[13.5px]" : "text-[14.5px]",
+          size === "sm" ? "text-[14.5px]" : "text-[15.5px]",
           m.accent ? "font-semibold" : "font-medium",
         )}
       >
         {label}
       </span>
       {sub ? (
-        <span className={cx("mt-0.5 block text-[12.5px] leading-[1.45] break-keep", m.accent ? "opacity-75" : "text-ink-muted")}>
+        <span className={cx("mt-0.5 block text-[13.5px] leading-[1.5] break-keep", m.accent ? "opacity-80" : "text-ink-soft")}>
           {sub}
         </span>
       ) : null}

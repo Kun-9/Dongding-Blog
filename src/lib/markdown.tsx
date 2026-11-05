@@ -384,11 +384,11 @@ export function renderMarkdown(
       while (i < lines.length && IMG_LINE_RE.test(lines[i].trim())) {
         const im = lines[i].trim().match(IMG_LINE_RE)!;
         if (items.length === 0) {
-          opt = (im[3] ?? "").toLowerCase();
+          opt = (im[4] ?? "").toLowerCase();
           firstIndex = imageCounter.value;
         }
         imageCounter.value++;
-        items.push({ alt: im[1].trim(), src: im[2] });
+        items.push({ alt: im[1].trim(), src: im[2], marks: im[3] });
         i++;
       }
       const onResize = opts?.onImageResize;
@@ -407,6 +407,7 @@ export function renderMarkdown(
               key={k()}
               src={items[0].src}
               alt={items[0].alt}
+              marks={items[0].marks}
               size={asImageSize(opt)}
             />
           )

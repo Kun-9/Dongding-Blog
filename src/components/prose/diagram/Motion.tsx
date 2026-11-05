@@ -31,11 +31,11 @@ export function useFigureMotion(ref: RefObject<HTMLElement | null>, dep?: unknow
  * ponytail: 버린 판은 Motion 의 ViewTimeline 캐시에 남는다. 스튜디오에서 그림을
  * 오래 고칠 때만 쌓이고 새로고침하면 비워진다.
  */
-export function MotionFigure({ className, children }: { className?: string; children: ReactNode }) {
+export function MotionFigure({ className, still, children }: { className?: string; still?: boolean; children: ReactNode }) {
   const ref = useRef<HTMLElement>(null);
   useFigureMotion(ref);
   return (
-    <figure ref={ref} className={className}>
+    <figure ref={ref} className={className} data-still={still ? "" : undefined}>
       {children}
     </figure>
   );

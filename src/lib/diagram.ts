@@ -78,7 +78,7 @@ export type MatrixCell =
   | { kind: "yes" }
   | { kind: "no" }
   | { kind: "part" }
-  | { kind: "text"; text: string };
+  | { kind: "text"; text: string; tone?: "good" | "bad" };
 
 export interface MatrixRow extends Mark {
   item: string;
@@ -151,7 +151,7 @@ export type Diagram = { caption?: string; scene?: boolean } & (
   | { kind: "layers"; layout: "nest" | "stack"; items: Item[] }
   | { kind: "tree"; roots: TreeNode[] }
   | { kind: "stats"; items: Stat[] }
-  | { kind: "bars"; unit?: string; items: Bar[]; barScene?: BarScene }
+  | { kind: "bars"; unit?: string; items: Bar[]; barScene?: BarScene; limit?: { value: number; label?: string } }
   | { kind: "grid"; axis: boolean; rows: GridCell[][]; steps?: GridStep[] }
 );
 
@@ -204,10 +204,10 @@ function lengths(errors: string[], kind: string, labels: string[], max: number, 
   });
 }
 
-const OPTION_RE = /^(caption|layout|actors|unit|center|scene|parts|ratio|axis)\s*:\s*(.*)$/i;
+const OPTION_RE = /^(caption|layout|actors|unit|center|scene|parts|ratio|axis|limit)\s*:\s*(.*)$/i;
 
 /** 머리 줄 옵션 중 한 종류만 읽는 것. 다른 종류에서는 내용 줄로 둔다. */
-const OWN_OPTION: Record<string, DiagramKind> = { parts: "bars", ratio: "bars", axis: "grid" };
+const OWN_OPTION: Record<string, DiagramKind> = { parts: "bars", ratio: "bars", limit: "bars", axis: "grid" };
 
 const YES = new Set(["o", "O", "✓", "✔", "yes", "y", "있음", "지원"]);
 const NO = new Set(["x", "X", "✕", "✗", "no", "n", "-", "—", "없음", "미지원"]);
@@ -217,7 +217,9 @@ function matrixCell(raw: string): MatrixCell {
   if (YES.has(raw)) return { kind: "yes" };
   if (NO.has(raw)) return { kind: "no" };
   if (PART.has(raw)) return { kind: "part" };
-  return { kind: "text", text: raw };
+  // 글자 끝 `!` 는 나쁨, `+` 는 좋음 — 결과가 갈리는 칸을 색 칩으로 보인다("실행!", "막힘+"). `C++` 처럼 겹친 + 는 글자다.
+  const tone = /[^!]!$/.test(raw) ? "bad" : /[^+]\+$/.test(raw) ? "good" : undefined;
+  return tone ? { kind: "text", text: raw.slice(0, -1).trimEnd(), tone } : { kind: "text", text: raw };
 }
 
 const ARROW_RE = /^(.+?)\s*(-->|->|→|⇢)\s*(.+?)$/;
@@ -474,10 +476,18 @@ export function parseDiagram(kind: DiagramKind, source: string): ParseResult {
         }
         items.push(at({ label, value, display: display || undefined, accent: m.accent, muted: m.muted }, i));
       }
+      // 머리 `limit: 500 | 0.5초` — 기준선. 넘는 막대는 붉게 그린다.
+      let limit: { value: number; label?: string } | undefined;
+      if (opts.limit) {
+        const [num, label] = cells(opts.limit);
+        const value = Number((num ?? "").replace(/[,\s]/g, ""));
+        if (Number.isFinite(value) && value > 0) limit = { value, label: label || undefined };
+        else errors.push(`bars 의 limit 은 \`limit: 숫자 | 이름(선택)\` 꼴입니다: "${short(opts.limit, 30)}"`);
+      }
       count(errors, "bars", items.length, 2, 10);
       if (items.length && items.every((b) => b.value === 0)) errors.push("bars 값이 모두 0 입니다");
       lengths(errors, "bars", items.map((b) => b.label), 20, "짧게");
-      return done({ kind, caption, unit: opts.unit || undefined, items });
+      return done({ kind, caption, unit: opts.unit || undefined, items, limit });
     }
 
     case "grid": {

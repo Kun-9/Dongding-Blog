@@ -55,7 +55,7 @@ export function Timeline({ points }: { points: TimelinePoint[] }) {
             <span className={cx("flex flex-col gap-1", wide && "sm:mt-3 sm:items-center")}>
               <span
                 className={cx(
-                  "font-mono text-[12px] tracking-[0.01em] tabular-nums",
+                  "font-mono text-[13px] tracking-[0.01em] tabular-nums",
                   p.accent ? cx("font-semibold", ACCENT_GLYPH) : "text-ink-muted",
                 )}
               >
@@ -99,7 +99,7 @@ function Lanes({ actors, messages }: { actors: string[]; messages: Message[] }) 
     <div>
       <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${n}, minmax(0, 1fr))` }}>
         {actors.map((a, i) => (
-          <span key={i} data-anim="rise" style={step(-1)} className="dg-lift justify-self-center rounded-lg border border-border-token bg-surface px-3 py-1.5 text-center text-[13px] font-semibold break-keep text-ink">
+          <span key={i} data-anim="rise" style={step(-1)} className="dg-lift justify-self-center rounded-lg border border-border-token bg-surface px-3 py-1.5 text-center text-[14px] font-semibold break-keep text-ink">
             {a}
           </span>
         ))}
@@ -126,7 +126,7 @@ function Lanes({ actors, messages }: { actors: string[]; messages: Message[] }) 
                 <span
                   data-anim="pop"
                   className={cx(
-                    "absolute top-1/2 z-[1] max-w-[46%] -translate-x-1/2 -translate-y-1/2 rounded-lg border px-2.5 py-1.5 text-center text-[12.5px] leading-[1.35] break-keep",
+                    "absolute top-1/2 z-[1] max-w-[46%] -translate-x-1/2 -translate-y-1/2 rounded-lg border px-2.5 py-1.5 text-center text-[13.5px] leading-[1.35] break-keep",
                     m.accent
                       ? "border-[var(--callout-tip-glyph)] bg-[var(--callout-tip-bg)] font-semibold text-[var(--callout-tip-ink)]"
                       : "border-border-token bg-surface text-ink-soft",
@@ -141,7 +141,7 @@ function Lanes({ actors, messages }: { actors: string[]; messages: Message[] }) 
                 <>
                   <span
                     className={cx(
-                      "absolute bottom-[20px] line-clamp-2 px-2 text-center text-[12.5px] leading-[1.35] break-keep",
+                      "absolute bottom-[20px] line-clamp-2 px-2 text-center text-[13.5px] leading-[1.35] break-keep",
                       m.accent ? "font-semibold text-ink" : m.muted ? "text-ink-muted" : "text-ink-soft",
                     )}
                     style={{ left: `${left}%`, width: `${width}%` }}
@@ -183,7 +183,7 @@ export function Sequence({ actors, messages }: { actors: string[]; messages: Mes
           {messages.map((m, k) => (
             <li key={k} data-anim="rise" className="flex items-start gap-3" style={step(k)}>
               <Badge m={m} n={k + 1} />
-              <span className="min-w-0 text-[13.5px] leading-[1.5]">
+              <span className="min-w-0 text-[14.5px] leading-[1.5]">
                 <span className="font-semibold text-ink">{actors[m.from]}</span>
                 <span className="mx-1.5 text-ink-muted">{m.reply ? "⇢" : "→"}</span>
                 <span className="font-semibold text-ink">{actors[m.to]}</span>

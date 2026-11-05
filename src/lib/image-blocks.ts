@@ -7,6 +7,8 @@
  *       `{xs}` 120px · `{sm}` 380px · 기본 본문 폭 · `{wide}` 880px,
  *       `{240}` 처럼 px 을 직접 적어도 된다. 묶음의 열 수는 `{1}`~`{4}`.
  *       묶음 첫 줄에 `{tabs}` 를 붙이면 그리드 대신 한 자리에서 버튼으로 바꿔 보는 전·후 그림이 된다.
+ *       터미널 캡처 SVG 는 제목 자리에 볼 줄을 적는다: `![비워 둠](/a.svg "hook error=훅 실패; ran=그래도 실행됨!")`.
+ *       줄 끝이 `hook error` 인 첫 줄을 밝히고 칩을 단다(칩 끝 `!` 붉게, `+` 초록). 나머지 줄은 흐려진다.
  */
 
 /** 이름 폭 셋 + 임의 px. 열 수(`{2}`)와 겹치지 않게 px 은 하한을 둔다. */
@@ -22,11 +24,35 @@ export const MAX_PX = 1200;
 export interface ImageItem {
   src: string;
   alt: string;
+  /** 볼 줄 표시(제목 자리). parseLineMarks 로 읽는다. */
+  marks?: string;
+}
+
+export interface LineMark {
+  /** 줄 글자(앞뒤 공백 뺀 것)가 이것으로 끝나는 첫 줄. */
+  key: string;
+  label?: string;
+  tone: "warn" | "bad" | "good";
+}
+
+export function parseLineMarks(marks: string | undefined): LineMark[] {
+  if (!marks) return [];
+  return marks
+    .split(";")
+    .map((part) => {
+      const [key, ...rest] = part.split("=");
+      let label = rest.join("=").trim();
+      let tone: LineMark["tone"] = "warn";
+      if (label.endsWith("!")) [tone, label] = ["bad", label.slice(0, -1).trimEnd()];
+      else if (label.endsWith("+")) [tone, label] = ["good", label.slice(0, -1).trimEnd()];
+      return { key: key.trim(), label: label || undefined, tone };
+    })
+    .filter((m) => m.key);
 }
 
 /** 줄 하나가 통째로 이미지일 때만 승격한다 — 앞뒤에 글자가 있으면 인라인. */
 export const IMG_LINE_RE =
-  /^!\[([^\]]*)\]\(([^)\s]+)\)(?:\{([A-Za-z0-9]+)\})?$/;
+  /^!\[([^\]]*)\]\(([^)\s]+)(?:\s+"([^"]*)")?\)(?:\{([A-Za-z0-9]+)\})?$/;
 
 export function isImageLine(line: string): boolean {
   return IMG_LINE_RE.test(line.trim());

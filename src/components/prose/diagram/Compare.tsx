@@ -11,11 +11,11 @@ export function Compare({ columns, rows }: { columns: [string, string]; rows: Co
     <div className="dg-lift overflow-hidden rounded-xl border border-border-token bg-surface text-[14px] leading-[1.5]">
       <div className={cx("hidden items-center gap-x-4 border-b border-border-token bg-surface-alt/60 px-4 py-2.5 sm:grid", COLS)}>
         <span />
-        <span className="justify-self-start rounded-full border border-border-strong/50 px-2.5 py-0.5 text-[12px] font-medium text-ink-muted">
+        <span className="justify-self-start rounded-full border border-border-strong/50 px-2.5 py-0.5 text-[13px] font-medium text-ink-muted">
           {columns[0]}
         </span>
         <span />
-        <span className="justify-self-start rounded-full border border-[var(--callout-tip-glyph)] bg-[var(--callout-tip-bg)] px-2.5 py-0.5 text-[12px] font-semibold text-[var(--callout-tip-ink)]">
+        <span className="justify-self-start rounded-full border border-[var(--callout-tip-glyph)] bg-[var(--callout-tip-bg)] px-2.5 py-0.5 text-[13px] font-semibold text-[var(--callout-tip-ink)]">
           {columns[1]}
         </span>
       </div>
@@ -85,7 +85,21 @@ function Cell({ c }: { c: MatrixCell }) {
       </span>
     );
   }
-  return <span className="text-[13px] text-ink-soft break-keep">{c.text}</span>;
+  if (c.tone) {
+    return (
+      <span
+        className={cx(
+          "inline-block min-w-[3.5rem] rounded-md px-2.5 py-0.5 text-[14px] font-semibold break-keep",
+          c.tone === "bad"
+            ? "bg-danger/12 text-danger"
+            : "bg-[var(--callout-tip-bg)] text-[var(--callout-tip-ink)]",
+        )}
+      >
+        {c.text}
+      </span>
+    );
+  }
+  return <span className="text-[14px] text-ink-soft break-keep">{c.text}</span>;
 }
 
 export function Matrix({ columns, rows }: { columns: string[]; rows: MatrixRow[] }) {
@@ -93,12 +107,12 @@ export function Matrix({ columns, rows }: { columns: string[]; rows: MatrixRow[]
   // 판 안에 세로 스크롤이 생기고 휠이 판 안쪽을 내려 머리줄이 잘린다. 세로는 막는다.
   return (
     <div className="dg-lift overflow-x-auto overflow-y-hidden rounded-xl border border-border-token bg-surface">
-      <table className="w-full border-collapse text-[14px] leading-[1.45]">
+      <table className="w-full border-collapse text-[15px] leading-[1.45]">
         <thead>
           <tr className="border-b border-border-token bg-surface-alt/60">
             <th className="w-[38%] px-4 py-2.5" />
             {columns.map((c, i) => (
-              <th key={i} scope="col" className="px-3 py-2.5 text-center text-[12.5px] font-semibold text-ink-soft break-keep">
+              <th key={i} scope="col" className="px-3 py-2.5 text-center text-[13.5px] font-semibold text-ink-soft break-keep">
                 {c}
               </th>
             ))}
