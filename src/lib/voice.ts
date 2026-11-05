@@ -777,7 +777,7 @@ export function checkVoice(post: VoiceInput, kind: PostKind = "release"): VoiceR
   }
 
   // 그림 — 캡션, 캡처 자리.
-  const figures = [...post.body.matchAll(/^!\[([^\]]*)\]\(([^)\s]+)\)(?:\{[A-Za-z0-9]+\})?\s*$/gm)];
+  const figures = [...post.body.matchAll(/^!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)(?:\{[A-Za-z0-9]+\})?\s*$/gm)];
   for (const f of figures) {
     const [, alt, src] = f;
     const line = post.body.slice(0, f.index).split("\n").length;
@@ -838,7 +838,7 @@ export function checkVoice(post: VoiceInput, kind: PostKind = "release"): VoiceR
 
   const captures = figures.filter((f) => /\/todo-[^/]*$/.test(f[2]));
   // 그림 수 — 연달아 둔 이미지(묶음·{tabs})는 하나로 센다. 2026-10-13 그림이 많을수록 무엇을 말하는지 흐려진다는 지적.
-  const isImg = (l: string | undefined) => l !== undefined && /^!\[[^\]]*\]\([^)\s]+\)(?:\{[A-Za-z0-9]+\})?$/.test(l.trim());
+  const isImg = (l: string | undefined) => l !== undefined && /^!\[[^\]]*\]\([^)\s]+(?:\s+"[^"]*")?\)(?:\{[A-Za-z0-9]+\})?$/.test(l.trim());
   // 코드 펜스 안의 이미지 모양 줄은 그림이 아니다. 펜스 안 줄은 빈 문자열로 바꿔 둔다.
   let fenced = false;
   const rawLines = post.body.split("\n").map((l) => {
