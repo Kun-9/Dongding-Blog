@@ -96,4 +96,21 @@ assert.ok(hit("에이전트는 팀의 구심점 역할을 합니다.", "역할�
 assert.ok(!hit("요청을 갱신 한 번으로 반영합니다.", "의미 부풀리기"), "'반영합니다'는 통과");
 assert.ok(!hit("이 사실을 노트에 적습니다.", "문두 사실"), "낱말 '사실'은 통과");
 
+// ```svg 그림 — 결론 제목, 판 폭, 글자 넘침, 선 없는 상자(2026-11-09).
+const svgFig = (head, inner, vb = "0 0 300 120") => `\n\n\`\`\`svg\n${head}\n<svg viewBox="${vb}">${inner}</svg>\n\`\`\`\n`;
+const linked = '<rect class="box" x="0" y="40" width="80" height="40"/><line class="edge" x1="80" y1="60" x2="200" y2="60"/><rect class="box" x="200" y="40" width="80" height="40"/>';
+assert.ok(!has(svgFig("title: 중계는 들어온 한 통만 센다", linked), "svg-title-claim"), "결론 문장 제목은 통과");
+assert.ok(has(svgFig("title: 위치가 세어지는 순서", linked), "svg-title-claim"), "주제 명사구 제목");
+assert.ok(has(svgFig("", linked), "svg-no-title"), "제목 없음");
+assert.ok(has(svgFig("title: 판이 넓다", linked, "0 0 600 120"), "diagram-error"), "360 넘는 판은 wide·narrow 짝으로");
+assert.ok(has(svgFig("title: 상자만 있다", '<rect class="box" x="0" y="0" width="80" height="40"/><rect class="box" x="200" y="0" width="80" height="40"/>'), "svg-no-edge"), "선 없는 상자");
+assert.ok(has(svgFig("title: 글자가 넘친다", '<rect class="box" x="100" y="0" width="80" height="40"/><text class="mid" x="140" y="25">상자보다 긴 글자입니다</text><line class="edge" x1="0" y1="80" x2="100" y2="80"/>'), "svg-text-box"), "상자보다 긴 글자");
+assert.ok(has(svgFig("title: 색을 박았다", '<rect fill="red" class="box" x="0" y="0" width="80" height="40"/><line class="edge" x1="0" y1="80" x2="100" y2="80"/>'), "figure-dropped"), "색 속성은 지워진다");
+
+// 리뷰에서 나온 오탐(2026-11-09): 자기 transform, 괄호 덧말 제목, 한쪽 판에만 선이 없는 두 판 비교.
+assert.ok(!has(svgFig("title: 라벨이 판 안에 있다", '<text class="mid" transform="translate(150,60)" x="0" y="0">라벨</text>' + linked), "svg-text-out"), "자기 transform 은 더한다");
+assert.ok(!has(svgFig("title: 중계는 들어온 한 통만 센다(19통에서 1통)", linked), "svg-title-claim"), "끝 괄호 덧말은 떼고 본다");
+assert.ok(!has(`\n\n\`\`\`svg\ntitle: 한쪽만 이어진다\n<svg viewBox="0 0 300 120">${linked}</svg>\n<svg viewBox="0 0 300 120"><rect class="box" x="0" y="40" width="80" height="40"/><rect class="box" x="200" y="40" width="80" height="40"/></svg>\n\`\`\`\n`, "svg-no-edge"), "한쪽 판에만 선이 없으면 통과");
+assert.ok(!has(svgFig("title: use 를 닫지 않아도 그려진다", '<use href="#x">' + linked), "diagram-error"), "닫지 않은 use 가 판을 삼키지 않는다");
+
 console.log("check-voice-rules: ok");

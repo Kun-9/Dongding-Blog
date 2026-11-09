@@ -1,11 +1,18 @@
 ---
 name: blog-figures
-description: dongding 블로그 글 본문에 그림을 넣는 방법 — 그림 블록 11종(```flow·cycle·compare·matrix·timeline·sequence·layers·tree·stats·bars·grid), ```figure 디자인 키트 HTML, SVG 의 문법과 고르는 기준, 핵심 장면을 움직임 동사(옮겨 간다·복사된다·덮어쓴다·번진다·바뀐다 등)로 고르는 표, 그림 애니메이션 표준(data-anim·data-loop, Motion), 장면(`scene: on` — 화면에 붙어 스크롤 박자마다 넘어가는 그림. 그림 블록 전부와 figure, 자리 이동 data-at, 터미널 화면·diff 재현)과 숫자 굴리기. 블로그 글(특히 릴리스 글)을 쓰거나 고치다가 흐름·비교·구조·숫자를 그림으로 보여 줘야 할 때, 그림에 애니메이션·인터랙션을 넣거나 고칠 때, 또는 점검에서 diagram-error·figure-dropped·figure-no-caption 경고가 났을 때 쓴다.
+description: dongding 블로그 글 본문에 그림을 넣는 방법 — 흐름·구조를 선으로 직접 그리는 ```svg 그림(결론 제목, 휴대폰 폭 판, 배치 견본 svg-samples.md), 그림 블록 11종(```flow·cycle·compare·matrix·timeline·sequence·layers·tree·stats·bars·grid), ```figure 디자인 키트 HTML, SVG 의 문법과 고르는 기준, 핵심 장면을 움직임 동사(옮겨 간다·복사된다·덮어쓴다·번진다·바뀐다 등)로 고르는 표, 그림 애니메이션 표준(data-anim·data-loop, Motion), 장면(`scene: on` — 화면에 붙어 스크롤 박자마다 넘어가는 그림. 그림 블록 전부와 figure, 자리 이동 data-at, 터미널 화면·diff 재현)과 숫자 굴리기. 블로그 글(특히 릴리스 글)을 쓰거나 고치다가 흐름·비교·구조·숫자를 그림으로 보여 줘야 할 때, 그림에 애니메이션·인터랙션을 넣거나 고칠 때, 또는 점검에서 diagram-error·figure-dropped·figure-no-caption·svg-title-claim·svg-text-out·svg-text-box·svg-no-edge 경고가 났을 때 쓴다.
 ---
 
 # 블로그 그림 넣기
 
 ## 먼저: 그림이 글의 중심이다
+
+**그림은 이름표가 아니라 메커니즘이다(2026-11-09).** 칸에 이름을 넣고 스크롤로 칩을 옮기던 그림은 무엇이 어디로 가고, 어디서 세어지고, 어디서 막히는지를 본문 문장에 떠넘겼다. 흐름·구조 그림은 아래 "```svg — 흐름·구조 그림"으로 직접 그린다.
+
+- **제목이 결론이다:** 그림 위 `title:` 은 독자가 가져갈 답 한 문장('~다'). "~하는 순서" 같은 주제가 아니다.
+- **선이 메커니즘이다:** 칸끼리 선으로 잇고 선마다 이름(센다, 301, 403)을 단다. 결과는 선 위 표시(X, 체크, 색). 선 없이 상자만 나란하면 표나 문장으로.
+- **멈춘 한 장에 다 있다:** 스크롤 박자를 다 지나야 완성되는 그림은 만들지 않는다. 마지막 박자에 앞 박자의 길이 지워지는 장면은 svg 한 장으로 바꾼다.
+- **누가 봐도 읽힌다:** 판은 휴대폰 폭(viewBox 360 이하)으로 그려 글자가 11px 아래로 줄지 않는다. 넓은 화면에서는 두 판이 나란히 선다.
 
 - **결론 그림:** 요약 박스 바로 아래, 첫 소제목 앞에 글의 답을 보이는 그림 한 장을 둔다(장면 아님). 숫자면 `bars`+`limit:`, 결과가 갈리면 `matrix` 칩(`!`·`+`), 전후면 `compare`. 점검 intro-paragraph 는 이 한 장을 허용한다.
 - **한 번에 읽는 그림은 그대로 보인다:** compare·matrix·stats·layers·tree 는 칸이 차례로 나타나지 않는다. 순서가 내용인 flow·cycle·sequence·timeline·bars 만 차례로 나타난다.
@@ -65,20 +72,56 @@ description: dongding 블로그 글 본문에 그림을 넣는 방법 — 그림
 
 ## 넣는 방법
 
-본문(markdown)에 그림을 넣는 세 가지 방법이 있다. 앞 단계로 되면 뒤로 가지 않는다.
+본문(markdown)에 그림을 넣는 방법은 내용으로 고른다.
 
-1. **그림 블록**(11종) — 코드 펜스 언어로 종류를 고르고 내용만 줄로 쓴다. 모양·테마 색·모바일 배치·등장 애니메이션은 블로그가 정한다. 대부분 여기서 끝난다.
-2. **```figure** — 그림 블록으로 안 되는 구성(두 갈래로 나뉘는 흐름, 숫자 카드와 흐름을 한 그림에 등)만. `fig-*` 키트 클래스를 조합한 HTML.
-3. **SVG** — 위 둘로도 안 되는 모양만. 올려서 `![캡션](/posts/<slug>/<이름>.svg)` 로 넣는다. 양식은 쓰기 기준(GUIDE)의 "SVG 그림 양식".
+1. **```svg** — 흐름·구조(무엇이 어디로 가고, 어디서 세어지고, 어디서 막히나). 글마다 선으로 직접 그린다. 아래 "```svg — 흐름·구조 그림"과 견본 `svg-samples.md`.
+2. **그림 블록**(11종) — 숫자·표(bars·stats·matrix·compare·timeline·grid)와 파일 구조(tree). 코드 펜스 언어로 종류를 고르고 내용만 줄로 쓴다. flow·cycle·sequence·layers 는 선에 이름을 달 수 없어 단계 이름만으로 충분할 때만.
+3. **```figure** — 터미널·diff 같은 화면 재현과 활용 예. `fig-*` 키트 클래스를 조합한 HTML.
+4. **이미지** — 실제 캡처(blog-capture 가 뜬 터미널 SVG, 스크린샷). `![캡션](/posts/<slug>/<이름>.svg)`. 흐름·구조 그림을 이미지로 올리지 않는다.
 
-구현 위치: 파서 `src/lib/diagram.ts`, 렌더 `src/components/prose/Diagram.tsx`·`diagram/*`, figure 필터 `src/lib/html-figure.ts`, 키트·모션·장면 속성 모듈 `src/lib/figure/`(kits·anims·scene-attrs), 장면 동사 표 `src/lib/figure/verbs.ts`, 모션 런타임 `src/lib/figure-motion.ts`·`diagram/Motion.tsx`, 점검 `src/lib/voice.ts`.
+구현 위치: svg 그림 `src/lib/svg-figure.ts`(거르기·점검)·`src/lib/figure/svg.css`(클래스)·`Diagram.tsx` 의 `SvgFigure`, 파서 `src/lib/diagram.ts`, 렌더 `src/components/prose/Diagram.tsx`·`diagram/*`, figure 필터 `src/lib/html-figure.ts`, 키트·모션·장면 속성 모듈 `src/lib/figure/`(kits·anims·scene-attrs), 장면 동사 표 `src/lib/figure/verbs.ts`, 모션 런타임 `src/lib/figure-motion.ts`·`diagram/Motion.tsx`, 점검 `src/lib/voice.ts`.
 
 지금 어휘로 그릴 수 없는 그림이면 흉내 내지 말고 **blog-figure-extend** 스킬로 키트·모션·장면 속성을 더한다. 이 문서의 장면 동사·키트·모션·장면 속성 표는 모듈 목록에서 만들어진다(`<!-- figure:… -->` 자리, 손으로 고치지 않는다).
+
+## ```svg — 흐름·구조 그림
+
+그리기 전에 세 줄을 먼저 쓴다. 셋이 안 나오면 그림이 아니라 문장이다.
+
+1. **결론** — 그림을 보고 가져갈 한 문장. `title:` 이 된다('~다', 40자 안팎).
+2. **움직임** — 독자가 문장으로 조립해야 하는 움직임. 그것이 선이 된다(복사된다 → 부채꼴, 막힌다 → 관문 앞 X, 돌려준다 → 되돌아오는 화살표).
+3. **갈리는 선** — 비교면 같은 배치 두 판에서 그 선(색, 있고 없음)만 다르게.
+
+그다음 `svg-samples.md` 에서 가장 가까운 견본(퍼짐·같은 모양 두 판, 길×관문, 상태 이동, 층 통과, 주고받기)을 골라 좌표와 글자를 고친다.
+
+````
+```svg
+title: curl은 WebFetch 규칙을 거치지 않고 샌드박스에서 막힌다
+caption: aka.ms 만 허용했을 때
+legend: x=막힘
+<svg viewBox="0 0 300 150">
+  <text class="b" x="0" y="18">Bash로 curl</text>
+  <circle class="dot" cx="6" cy="44" r="3"/><line class="edge" x1="10" y1="44" x2="112" y2="44"/>
+  <rect class="soft bad" x="120" y="26" width="130" height="36" rx="8"/>
+  <text class="sm b ink mid" x="185" y="49">샌드박스 프록시</text>
+  <circle class="mark-x" cx="120" cy="44"/>
+  <text class="xs bad" x="258" y="48">403</text>
+</svg>
+```
+````
+
+- **머리 줄:** `title:`(필수, 그림 위), `caption:`(조건, 그림 아래), `legend: bad=요금에 세는 메시지; x=막힘; ok=통과; dash=일부만`(키 bad·good·accent·muted·dash·x·ok·dot).
+- **판:** `<svg viewBox="0 0 W H">` 하나가 판 하나. W 360 이하, 휴대폰에서 1배로 보이려면 320. 두 판을 넓은 화면에서 나란히 보이려면 W 300 안쪽(판이 0.92배 아래로 줄 자리면 쌓인다). 그보다 넓은 그림은 `data-only="wide"`(W 640 이하, 그림 판 안쪽 600px 이상에서만 보임) 판과 `data-only="narrow"` 판을 같이 두고, 좁은 판은 세로로 다시 그린다.
+- **요소:** g rect circle ellipse line polyline polygon path text tspan. 그 밖의 태그, `fill`·`stroke`·`style`·`font-size` 속성, `on*` 은 지워진다(figure-dropped). 색·크기는 클래스로만 칠해 다크 모드가 따라온다.
+- **클래스:** 글자 `sm`(12.5)·`xs`(12, 가장 작음)·`lg`(16 굵게)·`xl`(28, 핵심 숫자)·`b`·`mono`·`mid`·`end`·`ink`·`muted`, 모양 `box`·`soft`·`zone`·`edge`·`thin`·`dash`·`faint`·`dot`, 뜻 색 `bad`(막힘·요금)·`good`(통과)·`accent`(지금 이야기하는 것). 글자 기본은 14.
+- **표시:** 화살촉 `marker-end="url(#a)"`(a-bad·a-good·a-muted). `<circle class="mark-x" cx cy/>`·`mark-ok` 는 원과 X·체크를 함께 그린다.
+- **글자 폭:** svg 는 줄을 접지 않는다. 한글 한 자는 글자 크기만큼(14 → 14), 영문·숫자는 그 0.6. 상자 폭 = 가장 긴 줄 + 24. 길면 `<tspan x="…" dy="16">` 로 두 줄. 선 이름은 선 위가 아니라 선 위쪽·오른쪽 빈자리에.
+- **점검:** svg-no-title·svg-title-claim(결론 문장인가), svg-text-out(판 밖 글자), svg-text-box(상자보다 긴 글자), svg-no-edge(선 없는 상자), diagram-error(판 폭, wide·narrow 짝), figure-dropped. 글자 폭은 어림이라 경고가 없어도 미리보기로 한 번 본다(blog-figure-extend 의 preview·check-scenes, 390px 포함).
+- 움직임은 없다. 멈춘 한 장으로 읽혀야 한다.
 
 ## 공통 규칙
 
 - 그림은 그 내용을 설명하는 문단 **바로 다음**에, 앞뒤 빈 줄. 그림만 모은 섹션은 만들지 않는다.
-- 첫 줄 `caption: …` 이 그림 아래 캡션이 된다. 그림이 보여 주는 것을 **40자 안팎 명사구**로. 없으면 점검 경고.
+- 첫 줄 `caption: …` 이 그림 아래 캡션이 된다. 그림이 보여 주는 것을 **40자 안팎 명사구**로. 없으면 점검 경고. svg 그림은 `title:` 이 결론 문장이고 `caption:` 은 조건만.
 - 줄 끝 ` *` = 강조(지금 이야기하는 것), ` ~` = 흐리게(점선, 예정·선택). 강조는 그림마다 한두 곳만. 왜 그 칸인지가 그림과 캡션만으로 읽혀야 한다. 대등하게 나란한 칸(예제 카드 셋 등) 중 하나만 강조하지 않는다. 독자에게는 이유 없는 하이라이트로 보인다.
 - 칸 줄 바로 아래 `> 내용` = 장면의 단계 설명. 장면이 아닌 그림에서는 그려지지 않으니 쓰지 않는다.
 - 칸은 `|` 로 가른다. 첫 칸이 제목, 뒤는 짧은 설명.
@@ -90,7 +133,9 @@ description: dongding 블로그 글 본문에 그림을 넣는 방법 — 그림
 
 | 보여 줄 것 | 종류 |
 | --- | --- |
-| 한 방향으로 진행되는 단계 | `flow` |
+| 무엇이 어디로 가고 어디서 갈리나(복사·막힘·되돌아옴·거름·상태가 바뀜) | ```svg(견본: 퍼짐·길×관문·상태 이동·층 통과·주고받기) |
+| 두 방식의 차이가 선 하나에 있다 | ```svg 같은 모양 두 판 |
+| 한 방향으로 진행되는 단계(이름만으로 충분) | `flow` |
 | 되풀이되는 고리(루프) | `cycle` |
 | 이전/이후, 버전 전후 | `compare` |
 | 기능 × 대상(요금제·OS·모드)의 지원 여부, 나란한 대안(두 모델·두 방식·답에 따라 갈린 경우) | `matrix` |
@@ -630,7 +675,9 @@ caption: 확인이 필요한 명령만 사용자에게 간다
 ```
 ````
 
-### SVG — 표기한 것만 움직인다
+### 올린 SVG 이미지 — 표기한 것만 움직인다
+
+본문 ```svg 그림에는 해당하지 않는다(움직임 없음, data-anim·style 은 지워진다). 이미지로 올린 옛 SVG 그림에만 쓴다.
 
 - 모양 묶음은 `<g data-anim="rise">`, 선은 `data-anim="draw"`, 점은 `pop`, 큰 숫자 `<text>`(`<tspan>` 없이)는 `count`. 차례는 `style="--i: 1"`(없으면 문서 순서).
 - draw 는 선이 그려지면서 함께 나타나므로 `marker-end` 화살촉도 선과 같이 보인다.

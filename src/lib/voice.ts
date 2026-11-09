@@ -13,6 +13,7 @@
 import type { Issue } from "./lint";
 import { findDiagrams, findFences, isDiagramLang, parseDiagram } from "./diagram";
 import { parseFigureHtml } from "./html-figure";
+import { SVG_CLASS_DOC, SVG_LEGEND_KEYS, SVG_PANEL_MAX, SVG_WIDE_MAX, isClaim, parseSvgFigure } from "./svg-figure";
 import { parseEmbed } from "./embed";
 import { ANIMS, LOOPS } from "./figure/anims";
 import { KITS } from "./figure/kits";
@@ -39,7 +40,7 @@ export function releaseDay(iso: string): string {
 export const REQUIRED_PARTS = [
   { key: "summary-box", label: "도입 요약 박스", how: "첫머리 `> [!INFO]` 에 세 줄: `> **이런 분께** …`(누구의 일인지, 명사구), `> **겪는 일** …`(그 독자가 겪거나 놓치는 것 한 문장), `> **이렇게** …`(읽고 할 일 한 문장). 셋을 합쳐 160자 안팎이고, 독자가 첫 화면에서 읽을지 정하게 한다. 예: 이런 분께 '권한 모드를 정하지 않고 Claude Code를 쓰는 저장소' / 겪는 일 '세션이 auto mode로 시작해 rm -rf build도 묻지 않고 실행합니다.' / 이렇게 '운영 DB가 든 저장소는 .claude/settings.json에 manual을 커밋해 둡니다.' 명령·설정 이름은 이렇게 줄에만 쓴다. 버전과 실제 배포일은 넷째 줄에 `v2.1.280(2026년 9월 23일 배포)` 꼴로 붙이고 세 줄에는 넣지 않는다. 동작이 그 버전에서 시작됐으면 끝에 '부터'를 붙이고, 써 본 버전일 뿐이면(그 전부터 있던 스킬·도구) 붙이지 않는다. 다른 독자(조직 관리자 등)에게 할 말은 본문으로 미룬다. 배포일은 GitHub 릴리스 공개 시각의 한국 날짜(글감의 `released`), 글감이 없으면 공식 발표일, 발표도 GitHub 릴리스도 없으면 그 버전 번호를 올린 커밋 시각의 한국 날짜" },
   { key: "table", label: "비교 표", how: "꼭 필요한 비교 하나(전/후, 버전별). markdown 표나 ```compare·```matrix 블록. 글 전체 두 개까지" },
-  { key: "visual", label: "본문 속 그림", how: "설명하는 문단 바로 아래에 그림 블록(```flow 등 10종)·```figure 또는 단독 줄 `![캡션](경로)`. 캡처 자리(todo-)만으로는 안 되고 직접 만든 그림이 하나 이상. 글에서 이해가 막히는 지점(바뀐 동작·계산·순서·관계)에 둔다" },
+  { key: "visual", label: "본문 속 그림", how: "설명하는 문단 바로 아래에 ```svg(흐름·구조)·그림 블록(bars·matrix 등)·```figure 또는 단독 줄 `![캡션](경로)`. 캡처 자리(todo-)만으로는 안 되고 직접 만든 그림이 하나 이상. 글에서 이해가 막히는 지점(바뀐 동작·계산·순서·관계)에 둔다" },
   { key: "source", label: "출처 링크", how: "본문 문장 안 링크로. 끝에 목록으로 몰지 않는다" },
 ] as const;
 
@@ -53,7 +54,7 @@ export type PostKind = "release" | "concept";
 export const CONCEPT_PARTS = [
   { key: "summary-box", label: "도입 요약 박스", how: "첫머리 `> [!INFO]` 에 세 줄: `> **이런 분께** …`(그 개념을 어디서 마주치는 독자인지), `> **겪는 일** …`(독자가 실제로 겪는 증상이나 질문 하나를 구체적으로, 예: 스레드 둘이 같은 변수를 10만 번씩 올렸는데 200000이 나오지 않습니다), `> **이렇게** …`(한 줄 답과 할 일). 셋을 합쳐 160자 안팎. '면접에서 ~ 막히는 개발자가 많습니다' 같은 틀 문장으로 열지 않는다. 날짜·버전은 쓰지 않는다(특정 버전의 동작을 말할 때만 본문에 밝힌다)" },
   { key: "table", label: "비교 표", how: "헷갈리는 두세 개념의 차이 하나. markdown 표나 ```compare·```matrix 블록. 글 전체 두 개까지" },
-  { key: "visual", label: "본문 속 그림", how: "설명하는 문단 바로 아래에 그림 블록(```flow 등 10종)·```figure 또는 단독 줄 `![캡션](경로)`. 흐름·구조·순서를 그림으로" },
+  { key: "visual", label: "본문 속 그림", how: "설명하는 문단 바로 아래에 ```svg(흐름·구조)·그림 블록(bars·matrix 등)·```figure 또는 단독 줄 `![캡션](경로)`. 흐름·구조·순서를 그림으로" },
   { key: "source", label: "출처 링크", how: "표준·공식 문서(RFC, MDN, 언어·프레임워크 문서, 원전) 링크를 본문 문장 안에. 끝에 목록으로 몰지 않는다" },
 ] as const;
 
@@ -171,18 +172,18 @@ function proseLength(md: string): number {
 /** 그림 규칙 — 점검기가 캡션·캡처 자리를 잡는다. */
 export const VISUAL_RULES = [
   "그림은 이 블로그의 차별점이다. 처음 읽는 사람이 막힐 지점(바뀐 동작, 숫자 계산, 순서·흐름, 관계)은 문장으로 길게 풀기 전에 그림으로 먼저 보여 준다. 모든 섹션에 넣지는 않는다",
-  "그림은 최대한 단순하게, 움직임이 이해를 돕게 그린다. 칸은 이야기 순서대로 쓴다(모션이 그 순서로 나타난다). 전/후는 compare, 크기 차이는 bars 처럼 움직임이 변화를 보여 주는 종류를 고른다. 본문을 가리고 그림과 캡션만 봐도 섹션의 요점이 읽혀야 한다",
+  "그림은 이름표가 아니라 메커니즘을 보인다. 무엇이 어디로 가고, 어디서 세어지고, 어디서 막히는지를 칸 사이의 선과 선 이름으로 그린다. 칸 이름만 늘어놓은 그림, 본문과 같은 말을 되풀이하는 그림은 넣지 않는다. 본문을 가리고 그림 제목과 그림만 봐도 섹션의 요점이 읽혀야 한다",
   "그림은 그 내용을 설명하는 문단 바로 다음에 둔다(앞뒤 빈 줄). 그림 모음 섹션은 만들지 않는다",
   "그림을 어떻게 만들었는지는 본문에도 캡션에도 쓰지 않는다. '띄운 것을 줄여 옮겼습니다', 'README 예시를 옮겼습니다' 같은 문장도, 캡션 끝의 '(v2.1.292 화면을 줄여 다시 그림)', '(로컬에서 실행)' 같은 괄호도 없앤다. 캡션은 그림이 보여 주는 것만 쓰고, 그림 설명을 본문에서 되풀이하지 않는다. 본문에는 돌려서 알게 된 사실만 결과로 쓴다",
-  "그림을 고르는 순서: ① 그림 블록(아래 10종) → ② 그림 블록으로 안 되는 구성만 ```figure(디자인 키트 HTML) → ③ 그래도 안 되는 모양만 SVG. 앞 단계로 되면 뒤로 가지 않는다",
-  "그림 블록은 내용에 맞는 종류로: 단계는 flow, 반복은 cycle, 전/후는 compare, 기능×대상은 matrix, 버전 흐름은 timeline, 주고받는 순서는 sequence, 포함·우선순위는 layers, 파일·계층은 tree, 핵심 숫자는 stats, 수치 비교는 bars",
+  "그림을 고르는 기준: 흐름·구조(무엇이 어디로 가고 어디서 갈리나)는 ```svg 로 직접 그린다(아래 'svg 그림 양식'). 숫자·표는 그림 블록(bars·stats·matrix·compare·timeline·grid). 터미널·diff 같은 화면 재현은 ```figure. flow·cycle·sequence·layers·tree 블록은 칸 사이 선에 이름을 달 수 없어, 단계 이름만으로 충분할 때만 쓴다",
+  "그림 블록은 내용에 맞는 종류로: 전/후는 compare, 기능×대상은 matrix, 버전 흐름은 timeline, 핵심 숫자는 stats, 수치 비교는 bars, 파일 구조는 tree. 갈림·되돌아옴·막힘이 있는 흐름은 svg",
   "그림 하나에 생각 하나. 칸의 글자는 짧게(제목 몇 단어 + 짧은 설명). 문장은 본문이 한다",
   "강조(`*`)는 그림마다 지금 이야기하는 한두 곳만. 다 강조하면 아무것도 안 보인다",
-  "그림 블록·figure 의 캡션은 첫 줄 `caption: …`, 이미지는 alt 자리에. 그림이 보여 주는 것을 40자 안팎 명사구로",
+  "svg 그림은 `title:` 이 결론 문장(~다)이고 `caption:` 은 조건(누가·무엇을 할 때)만. 그림 블록·figure 의 캡션은 첫 줄 `caption: …`, 이미지는 alt 자리에. 그림이 보여 주는 것을 40자 안팎 명사구로",
   "모션은 블로그가 정한다. 표처럼 한 번에 읽는 그림(compare·matrix·stats·layers·tree)은 처음부터 다 보이고 강조 칸만 숨 쉰다. 순서가 내용인 그림(flow·cycle·sequence·timeline·bars)은 칸이 화면 위에서 65% 선을 넘으면 차례로 나타나고, figure 는 키트 기본 모션이 있다. figure·SVG 에서 바꾸거나 더할 때만 `data-anim`·`data-loop` 을 의미가 있는 곳에 단다. 모션이 없어도 읽히게 그린다",
-  "결론 그림 한 장을 요약 박스 바로 아래, 첫 소제목 앞에 둔다. 독자가 첫 화면에서 글의 답(바뀌는 숫자·전후·고르는 기준)을 그림으로 본다. 숫자면 bars(넘으면 안 되는 선은 `limit: 100 | 무료 한도`), 결과가 갈리면 matrix(칸 끝 `!` 붉게·`+` 초록), 전후면 compare. 장면은 안 된다. 그림은 지우면 어느 문장이 막히는지 답할 수 있을 때만 둔다. 글당 서너 개 안쪽(다섯 개를 넘으면 점검이 참고로 알린다). 한 번에 다 보여야 하는 정보(표·목록·우선순위·숫자 두셋)는 정적 표·번호 목록·문장으로 둔다",
+  "결론 그림 한 장을 요약 박스 바로 아래, 첫 소제목 앞에 둔다. 독자가 첫 화면에서 글의 답(바뀌는 숫자·전후·고르는 기준)을 그림으로 본다. 숫자면 bars(넘으면 안 되는 선은 `limit: 100 | 무료 한도`), 결과가 갈리면 matrix(칸 끝 `!` 붉게·`+` 초록), 전후면 compare, 어디서 갈리는지면 svg. 장면은 안 된다. 그림은 지우면 어느 문장이 막히는지 답할 수 있을 때만 둔다. 글당 서너 개 안쪽(다섯 개를 넘으면 점검이 참고로 알린다). 한 번에 다 보여야 하는 정보(표·목록·우선순위·숫자 두셋)는 정적 표·번호 목록·문장으로 둔다",
   "같은 요청·설정의 전·후 화면은 이미지 묶음 첫 줄에 `{tabs}` 를 붙여 한 자리에서 버튼으로 바꿔 보게 한다(작동하는 HTML 이면 ```embed 에 src 두 줄). 이미지의 alt 가 버튼 이름이니 8자 안팎으로 짧게(\"설정 없음\", \"manual 설정\"). 높이는 큰 화면에 맞춰 고정되고 잘리지 않는다. 터미널 캡처 SVG 는 제목 자리에 볼 줄을 적어 그 줄만 밝힌다: `![비워 둠](/posts/<slug>/a.svg \"hook error=훅 실패; ran=그래도 실행됨!\")`. 줄 끝 글자로 찾고(앞에서 첫 줄), 칩 끝 `!` 는 붉게 `+` 는 초록, 나머지 줄은 흐려진다. 전·후 캡처에는 꼭 단다. 독자가 두 화면에서 달라진 줄을 직접 찾지 않게 한다",
-  "장면(`scene: on`)은 순서가 곧 내용일 때만 쓴다(값·토큰이 옮겨 가거나 단계마다 상태가 바뀌는 과정). 그림이 화면에 붙어 스크롤 박자마다 다음 단계로 넘어가고, 단계마다 `> ` 설명이 바뀐다. 무엇을 그릴지는 그림 종류가 아니라 내용에서 일어나는 움직임으로 고른다(아래 '핵심 장면 고르기' 표: 옮겨 간다·복사된다·덮어쓴다·번진다·바뀐다·늘고 준다·시점이 온다). 터미널 화면 장면은 직접 돌린 결과·활용 예를 보이는 증거 자리라 글의 유일한 장면이 되지 않게 한다(점검의 scene-evidence-only). 한 글에 하나, 3박자까지(점검의 scene-long). 장면이 없는 글도 된다. 장면이 아닌 그림의 `> ` 줄은 그려지지 않으니 쓰지 않는다. 배포일·출처·계산 내역 같은 보충은 본문 문장이나 캡션에 쓴다",
+  "멈춘 한 장으로 다 보이는 그림이 먼저다. 마지막 박자에 앞 박자의 길이 지워지는 장면은 svg 한 장으로 바꾼다. 장면(`scene: on`)은 순서가 곧 내용일 때만 쓴다(값·토큰이 옮겨 가거나 단계마다 상태가 바뀌는 과정). 그림이 화면에 붙어 스크롤 박자마다 다음 단계로 넘어가고, 단계마다 `> ` 설명이 바뀐다. 무엇을 그릴지는 그림 종류가 아니라 내용에서 일어나는 움직임으로 고른다(아래 '핵심 장면 고르기' 표: 옮겨 간다·복사된다·덮어쓴다·번진다·바뀐다·늘고 준다·시점이 온다). 터미널 화면 장면은 직접 돌린 결과·활용 예를 보이는 증거 자리라 글의 유일한 장면이 되지 않게 한다(점검의 scene-evidence-only). 한 글에 하나, 3박자까지(점검의 scene-long). 장면이 없는 글도 된다. 장면이 아닌 그림의 `> ` 줄은 그려지지 않으니 쓰지 않는다. 배포일·출처·계산 내역 같은 보충은 본문 문장이나 캡션에 쓴다",
   "실제 화면은 사람 몫으로 남기지 않는다. blog-capture 스킬대로 ① 직접 뜬다: `node .claude/skills/blog-capture/capture.mjs --run \"claude\" --keys /model --keys Enter --from \"Select model\" --to \"Esc to cancel\" --out /tmp/<이름>.svg` 한 줄로 SVG 를 만들어 올리고, 본문에는 'v2.1.292에서 열어 보니'처럼 버전과 함께 밝힌다 ② 띄울 수 없으면(끝 코드 3·4) 자료 조사: 공식 문서·릴리스·이슈의 같은 화면이나 출력 예시를 코드 블록으로 옮기고 출처를 단다 ③ 그것도 없으면 화면의 구조·숫자를 그림 블록·figure 로 다시 그린다",
   "셋 다 안 될 때만 그 자리에 `![캡션](/posts/<slug>/todo-<이름>.png)` 를 남기고 못 뜬 이유를 노트에 적는다. 본문에 '캡처 필요' 자리로 보이고, 남아 있으면 발행이 막힌다. 점검은 경로에 `/todo-` 가 있으면 캡처 대기로 보므로, 실제 캡처는 todo- 없는 이름으로 올리고 경로를 바꾼다",
   "터미널 화면에 JSON·긴 토큰을 한 줄로 두지 않는다. 공백 없는 긴 줄은 좁은 화면에서 토큰 중간에서 끊긴다. 실제 출력을 들여쓰기 형태(`JSON.stringify(x, null, 2)`)로 다시 받아 줄마다 div 로 나누고, 문자열은 `fig-t-ok`, 숫자는 `fig-t-bad` 로 코드 블록처럼 색을 입힌다",
@@ -190,39 +191,46 @@ export const VISUAL_RULES = [
 ] as const;
 
 /**
- * SVG 그림 양식. 본문에 인라인으로 그려지므로 CSS 변수가 그대로 먹는다.
- * 변수마다 라이트 색을 대체값으로 둬서, 확대 보기처럼 <img> 로 뜰 때도
- * 읽히게 한다.
+ * svg 그림 양식(lib/svg-figure). 흐름·구조 그림은 글마다 ```svg 로 그린다. 2026-11-09 재설계 —
+ * 칸 이름만 늘어놓고 스크롤로 칩을 옮기던 그림은 무엇이 어디로 가는지를 문장에 떠넘겼다.
  */
-export const SVG_STYLE = `- 캔버스: \`viewBox="0 0 720 H"\` (H 는 내용만큼, 보통 240~420). width·height 속성은 넣지 않는다. 배경은 투명
-- 글꼴: 루트에 \`font-family="inherit"\`. 본문 14px(500), 보조 12px, 강조 15px(600). 라벨은 12자 안쪽
-- 색은 변수로만, 대체값을 함께:
-  - 글자 \`var(--ink, #1c1c1c)\` · 보조 글자 \`var(--ink-muted, #5f5f5d)\`
-  - 상자 \`fill="var(--surface-alt, #f1ede2)"\` · 선 \`var(--border-strong, rgba(28,28,28,.4))\`
-  - 강조(지금 이야기하는 것) \`var(--callout-tip-glyph, #5d7a46)\` 와 바탕 \`var(--callout-tip-bg, #ecf1e8)\`
-  - 두 번째 강조 \`var(--callout-info-glyph, #5a8590)\` / 경고 \`var(--callout-warning-glyph, #9a7a23)\`
-- 모양: 상자 \`rx="10"\`, 선 1.5px, 화살표는 \`<marker>\` 하나를 정의해 재사용. 여백 24px 이상, 노드는 6~8개 이하
-- 종류: 흐름(왼→오, 번호 배지), 전/후 비교(두 열, 바뀐 칸만 강조색), 버전 타임라인(가로선 위 점), 겹친 상자(계층)
-- 그림 하나에 생각 하나. 설명은 캡션과 본문이 한다 — 그림 안에 문장을 쓰지 않는다
-- \`<script>\`, \`on*\` 속성, \`<foreignObject>\`, 외부 링크는 넣지 않는다(올릴 때 거절된다)
-- 모션: 표기한 것만 움직인다. 묶음 \`<g data-anim="rise">\`, 선 \`data-anim="draw"\`, 점 \`pop\`, 큰 숫자 \`<text>\`(tspan 없이) \`count\`. 순서는 \`style="--i: 1"\`(없으면 문서 순서). 되풀이 경로(점선)는 \`data-loop="orbit"\`, 지금 이야기하는 도형 하나는 \`data-loop="pulse"\`. \`transform\` 속성이 있는 요소는 rise·pop 대신 나타나기만 하므로 움직일 묶음은 좌표로 놓는다
+export const SVG_STYLE = `흐름·구조 그림(무엇이 어디로 가고, 어디서 세어지고, 어디서 막히나)은 \`\`\`svg 블록에 직접 그린다. 선이 메커니즘이다.
+
+그리기 전에 세 줄을 정한다.
+1. 결론 — 그림을 보고 가져갈 한 문장. \`title:\` 이 되고 그림 위에 크게 뜬다. '~다'로 끝내고 40자 안팎(점검 svg-title-claim). "Supabase는 받은 사본까지 세고, 중계는 들어온 한 통만 센다"
+2. 독자가 문장으로 조립해야 하는 움직임 — 그것이 선이 된다. 복사된다 → 부채꼴, 막힌다 → 길이 관문 앞에서 X, 돌려준다 → 되돌아오는 화살표
+3. 두 안이 갈리는 선 하나 — 비교면 같은 배치의 두 판에서 그 선(색·있고 없음)만 다르게
+
+배치 견본(blog-figures 스킬 svg-samples.md 에 원본): 퍼짐 · 길×관문 · 같은 모양 두 판 · 상태 이동 · 층 통과 · 주고받기
+
+문법
+- 머리 줄: \`title: 결론 문장\`(필수), \`caption: 조건\`(그림 아래, 선택), \`legend: bad=요금에 세는 메시지; x=막힘; ok=통과; dash=일부만\`(키: ${SVG_LEGEND_KEYS.join("·")})
+- \`<svg viewBox="0 0 W H">\` 하나가 판 하나. W 는 ${SVG_PANEL_MAX} 이하(휴대폰 폭에서 1배 가까이). 두 판을 넓은 화면에서 나란히 보이려면 W 300 안쪽. 그보다 넓은 그림은 \`data-only="wide"\`(W ${SVG_WIDE_MAX} 이하) 판과 \`data-only="narrow"\` 판을 같이 둔다. 좁은 판은 줄을 세로로 쌓아 다시 그린다
+- 요소: g rect circle ellipse line polyline polygon path text tspan. 색·글자 크기는 class 로만 칠한다(fill·stroke·style·font-size 속성은 지워진다). 테마 변수라 다크 모드가 따라온다
+- 클래스: ${Object.entries(SVG_CLASS_DOC).map(([k, v]) => `\`${k}\` ${v}`).join(" · ")}. 글자 기본은 14
+- 화살촉 \`marker-end="url(#a)"\`(a-bad·a-good·a-muted). 막힘·통과는 \`<circle class="mark-x" cx="…" cy="…"/>\`·\`mark-ok\` 가 표시까지 그린다
+- 선마다 이름을 단다(센다, 301, 403, 사본 19통). 선 위가 아니라 선 위쪽·오른쪽 빈자리에
+- svg 는 줄을 접지 않는다. 상자 폭 = 가장 긴 줄 + 24. 한글 한 자는 글자 크기만큼(14 → 14), 영문·숫자는 그 0.6. 길면 \`<tspan x="…" dy="16">\` 로 두 줄. 점검이 판·상자를 넘는 글자를 잡는다(svg-text-out·svg-text-box)
+- 상자만 나란히 두지 않는다. 잇는 선이 없으면 표나 문장으로(svg-no-edge)
+- 색(bad·good·accent)은 뜻이 있을 때만 쓰고 legend 로 뜻을 밝힌다. 강조는 한두 곳
+- 움직임 없이 멈춘 한 장으로 다 읽혀야 한다
 
 \`\`\`svg
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 200" font-family="inherit">
-  <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
-      <path d="M0,0 L10,5 L0,10 z" fill="var(--ink-muted, #5f5f5d)"/>
-    </marker>
-  </defs>
-  <g data-anim="rise">
-    <rect x="24" y="70" width="180" height="60" rx="10" fill="var(--surface-alt, #f1ede2)" stroke="var(--border-strong, rgba(28,28,28,.4))" stroke-width="1.5"/>
-    <text x="114" y="105" text-anchor="middle" font-size="14" font-weight="500" fill="var(--ink, #1c1c1c)">tool.call</text>
-  </g>
-  <line data-anim="draw" x1="204" y1="100" x2="270" y2="100" stroke="var(--ink-muted, #5f5f5d)" stroke-width="1.5" marker-end="url(#arrow)"/>
-  <g data-anim="rise">
-    <rect data-loop="pulse" x="272" y="70" width="180" height="60" rx="10" fill="var(--callout-tip-bg, #ecf1e8)" stroke="var(--callout-tip-glyph, #5d7a46)" stroke-width="1.5"/>
-    <text x="362" y="105" text-anchor="middle" font-size="14" font-weight="600" fill="var(--ink, #1c1c1c)">사용자 mod</text>
-  </g>
+title: curl은 WebFetch 규칙을 거치지 않고 샌드박스에서 막힌다
+legend: x=막힘
+<svg viewBox="0 0 300 150">
+  <text class="b" x="0" y="18">WebFetch로</text>
+  <circle class="dot" cx="6" cy="44" r="3"/><line class="edge" x1="10" y1="44" x2="112" y2="44"/>
+  <rect class="soft bad" x="120" y="26" width="130" height="36" rx="8"/>
+  <text class="sm b ink mid" x="185" y="49">WebFetch 규칙</text>
+  <circle class="mark-x" cx="120" cy="44"/>
+  <text class="b" x="0" y="96">Bash로 curl</text>
+  <circle class="dot" cx="6" cy="122" r="3"/><line class="edge" x1="10" y1="122" x2="112" y2="122"/>
+  <text class="xs" x="16" y="142">규칙을 거치지 않음</text>
+  <rect class="soft bad" x="120" y="104" width="130" height="36" rx="8"/>
+  <text class="sm b ink mid" x="185" y="127">샌드박스 프록시</text>
+  <circle class="mark-x" cx="120" cy="122"/>
+  <text class="xs bad" x="258" y="126">403</text>
 </svg>
 \`\`\``;
 
@@ -437,7 +445,7 @@ ${DIAGRAM_SYNTAX}
 ### figure 블록(디자인 키트 HTML)
 ${FIGURE_KIT}
 
-### SVG 그림 양식
+### svg 그림 양식(흐름·구조)
 ${SVG_STYLE}
 
 ## 피할 표현
@@ -511,6 +519,8 @@ export function figureShape(body: string): string[] {
       const h = fig.html;
       const k = /data-at=/.test(h) ? "move" : /fig-t-add|fig-t-del/.test(h) ? "diff" : h.includes("fig-term") ? "term" : /fig-grid-[234]/.test(h) ? "cards" : "figure";
       out.push(k + (fig.scene ? "*" : ""));
+    } else if (f.lang === "svg") {
+      out.push("svg");
     }
   }
   return out;
@@ -823,6 +833,28 @@ export function checkVoice(post: VoiceInput, kind: PostKind = "release"): VoiceR
     }
   }
 
+  // ```svg 그림 — 그릴 수 없음, 지워진 것, 결론 제목, 글자 넘침, 선 없는 상자. 2026-11-09 그림 재설계.
+  const svgFigures = findFences(post.body).filter((f) => f.lang === "svg" && !f.file);
+  for (const f of svgFigures) {
+    const fig = parseSvgFigure(f.source);
+    const line = f.line;
+    if (fig.errors.length) {
+      issues.push({ rule: "diagram-error", severity: "warning", line, message: `svg 그림을 그릴 수 없습니다(코드로 보입니다): ${fig.errors.join(" / ")}` });
+      continue;
+    }
+    if (fig.dropped.length) {
+      issues.push({ rule: "figure-dropped", severity: "warning", line, message: `svg 그림에서 지워진 것: ${fig.dropped.slice(0, 8).join(", ")}. 색·글자 크기는 정해진 클래스로, 화살촉은 url(#a) 로 씁니다` });
+    }
+    if (!fig.title) {
+      issues.push({ rule: "svg-no-title", severity: "warning", line, message: "svg 그림에 `title:` 이 없습니다. 그림을 보고 가져갈 결론을 '~다'로 끝나는 한 문장으로 씁니다" });
+    } else if (!isClaim(fig.title)) {
+      issues.push({ rule: "svg-title-claim", severity: "warning", line, message: `svg 그림 제목이 결론 문장이 아닙니다: "${excerpt(fig.title)}". 주제("~하는 순서") 말고 독자가 가져갈 답을 '~다'로 끝나는 문장으로` });
+    } else if (fig.title.length > 48) {
+      issues.push({ rule: "svg-title-claim", severity: "warning", line, message: `svg 그림 제목이 깁니다(${fig.title.length}자). 결론 하나만 40자 안팎으로` });
+    }
+    for (const w of fig.warnings) issues.push({ rule: w.rule, severity: "warning", line, message: w.message });
+  }
+
   // 핵심 장면 — 장면이 터미널 화면(증거 자리)뿐이면 잡는다. 결과만 보이고 움직임은 문장에 남는다.
   const scenes = [
     ...drawn.filter((d) => d.result.diagram?.scene).map((d) => ({ line: d.line, evidence: false })),
@@ -852,7 +884,7 @@ export function checkVoice(post: VoiceInput, kind: PostKind = "release"): VoiceR
   const imageBlocks = rawLines.filter((l, i) => isImg(l) && !isImg(rawLines[i - 1])).length;
   // ```embed 는 실제로 작동하는 결과물이다. 그림 하나로 세고, 도구 글에서는 src 하나를 실제 화면 한 장으로 친다.
   const embeds = findFences(post.body).filter((f) => f.lang === "embed" && !f.file).map((f) => parseEmbed(f.source).embed).filter((e) => e !== null);
-  const visuals = drawn.length + htmlFigures.length + imageBlocks + embeds.length;
+  const visuals = drawn.length + htmlFigures.length + svgFigures.length + imageBlocks + embeds.length;
   if (visuals > MAX_VISUALS) {
     issues.push({
       rule: "too-many-figures",
@@ -931,7 +963,7 @@ export function checkVoice(post: VoiceInput, kind: PostKind = "release"): VoiceR
       for (let j = line; j < ls.length && !/^(```|~~~)/.test(ls[j].trim()); j++) if (/^scene:\s*on/i.test(ls[j].trim())) return true;
       return false;
     };
-    const heroAt = rest.findIndex((b) => b.kind === "fence" && (isDiagramLang(b.lang) || b.lang === "figure") && !isScene(b.line));
+    const heroAt = rest.findIndex((b) => b.kind === "fence" && (isDiagramLang(b.lang) || b.lang === "figure" || b.lang === "svg") && !isScene(b.line));
     const between = rest.filter((_, k) => k !== heroAt);
     if (between.length) {
       issues.push({
@@ -947,7 +979,7 @@ export function checkVoice(post: VoiceInput, kind: PostKind = "release"): VoiceR
     const first = bl.slice(firstH2 + 1, nextH2 < 0 ? bl.length : nextH2);
     const actionable = first.some(
       (b) =>
-        (b.kind === "fence" && (isDiagramLang(b.lang) ? ["compare", "matrix", "stats"].includes(b.lang ?? "") : b.lang !== "figure")) ||
+        (b.kind === "fence" && (isDiagramLang(b.lang) ? ["compare", "matrix", "stats"].includes(b.lang ?? "") : b.lang !== "figure" && b.lang !== "svg")) ||
         b.kind === "table" ||
         b.kind === "image" ||
         (b.kind === "list" && /^\d/.test(b.text)),
@@ -1048,7 +1080,7 @@ export function checkVoice(post: VoiceInput, kind: PostKind = "release"): VoiceR
     }
   }
   for (const f of findFences(splitFolds(post.body).main)) {
-    if (isDiagramLang(f.lang) || f.lang === "figure" || f.lang === "embed") continue;
+    if (isDiagramLang(f.lang) || f.lang === "figure" || f.lang === "svg" || f.lang === "embed") continue;
     const n = f.source.replace(/\n$/, "").split("\n").length;
     if (n > CODE_MAX_LINES) {
       issues.push({

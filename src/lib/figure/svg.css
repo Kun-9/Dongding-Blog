@@ -1,0 +1,89 @@
+/*
+ * ```svg 그림 — lib/svg-figure.ts 의 클래스. 글자 크기는 SVG_TEXT_SIZE 와 같은 값이다.
+ * 판은 휴대폰 폭(viewBox 360 이하)으로 그려, 넓은 본문에서는 둘씩 나란히, 좁으면 세로로 쌓는다.
+ * 색은 테마 변수만 쓴다. 라이트·다크를 같이 본다.
+ */
+.svgf { container-type: inline-size; }
+.svgf-title {
+  margin: 0 0 18px;
+  font-size: 16.5px;
+  font-weight: 700;
+  line-height: 1.45;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  text-wrap: balance;
+}
+.svgf-panels {
+  display: grid;
+  /* 판이 0.92배 아래로 줄어야 할 만큼 좁으면 나란히 두지 않고 쌓는다(--pw = 판 폭 × 0.92, SvgFigure).
+     글자 12 가 11px 아래로 내려가지 않는다. 나란히 보이려면 판을 300 안쪽으로 그린다 */
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--pw, 300px)), 1fr));
+  gap: 28px 32px;
+  align-items: start;
+}
+.svgf-panel { min-width: 0; width: 100%; margin-inline: auto; }
+.svgf-panel > svg { display: block; width: 100%; height: auto; overflow: visible; }
+.svgf-panel[data-only="wide"] { display: none; grid-column: 1 / -1; }
+@container (min-width: 600px) {
+  .svgf-panels[data-wide] > [data-only="narrow"] { display: none; }
+  .svgf-panels[data-wide] > [data-only="wide"] { display: block; }
+}
+
+.svgf-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin-top: 18px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--ink-muted);
+}
+.svgf-legend > span { display: inline-flex; align-items: center; gap: 7px; }
+.svgf-legend svg { width: 24px; height: 14px; flex: none; overflow: visible; }
+
+/* 글자 */
+.svgf svg text { font-family: var(--font-sans); font-size: 14px; fill: var(--ink); }
+.svgf svg .sm { font-size: 12.5px; fill: var(--ink-muted); }
+.svgf svg .xs { font-size: 12px; fill: var(--ink-muted); }
+.svgf svg .lg { font-size: 16px; font-weight: 700; }
+.svgf svg .xl { font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.svgf svg .b { font-weight: 700; }
+.svgf svg .mono { font-family: var(--font-jetbrains-mono), ui-monospace, Menlo, monospace; }
+.svgf svg .mid { text-anchor: middle; }
+.svgf svg .end { text-anchor: end; }
+.svgf svg text.ink, .svgf svg tspan.ink { fill: var(--ink); }
+.svgf svg text.muted, .svgf svg tspan.muted { fill: var(--ink-muted); }
+.svgf svg text.bad, .svgf svg tspan.bad { fill: var(--danger); }
+.svgf svg text.good, .svgf svg tspan.good { fill: var(--callout-tip-glyph); }
+.svgf svg text.accent, .svgf svg tspan.accent { fill: var(--callout-info-glyph); }
+
+/* 모양 */
+.svgf svg .box { fill: var(--surface); stroke: var(--border-strong); stroke-width: 1.25; }
+.svgf svg .soft { fill: var(--surface-alt); stroke: var(--border-strong); stroke-width: 1.25; }
+.svgf svg .zone { fill: color-mix(in oklab, var(--ink) 5%, transparent); stroke: none; }
+.svgf svg .edge { fill: none; stroke: var(--ink-muted); stroke-width: 1.5; }
+.svgf svg .dot { fill: var(--ink-muted); stroke: none; }
+.svgf svg .thin { stroke-width: 1; }
+.svgf svg .dash { stroke-dasharray: 4 3; }
+.svgf svg .faint { opacity: 0.45; }
+.svgf svg .edge.muted { stroke: var(--border-strong); }
+
+.svgf svg :is(.box, .soft, .zone).bad { stroke: var(--danger); stroke-width: 1.5; fill: color-mix(in oklab, var(--danger) 10%, var(--surface)); }
+.svgf svg :is(.box, .soft, .zone).good { stroke: var(--callout-tip-glyph); stroke-width: 1.5; fill: color-mix(in oklab, var(--callout-tip-glyph) 12%, var(--surface)); }
+.svgf svg :is(.box, .soft, .zone).accent { stroke: var(--callout-info-glyph); stroke-width: 1.5; fill: color-mix(in oklab, var(--callout-info-glyph) 12%, var(--surface)); }
+.svgf svg .edge.bad { stroke: var(--danger); }
+.svgf svg .edge.good { stroke: var(--callout-tip-glyph); }
+.svgf svg .edge.accent { stroke: var(--callout-info-glyph); }
+.svgf svg .dot.bad { fill: var(--danger); }
+.svgf svg .dot.good { fill: var(--callout-tip-glyph); }
+.svgf svg .dot.accent { fill: var(--callout-info-glyph); }
+
+/* 막힘·통과 표시와 화살촉 */
+.svgf svg .mark-x circle { fill: var(--danger); }
+.svgf svg .mark-ok circle { fill: var(--callout-tip-glyph); }
+.svgf svg :is(.mark-x, .mark-ok) path { fill: none; stroke: var(--surface); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.svgf-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
+.svgf-defs .a path { fill: var(--ink-muted); }
+.svgf-defs .a-bad path { fill: var(--danger); }
+.svgf-defs .a-good path { fill: var(--callout-tip-glyph); }
+.svgf-defs .a-muted path { fill: var(--border-strong); }

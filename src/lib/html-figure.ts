@@ -60,11 +60,12 @@ export interface FigureHtml {
 }
 
 const ENTITY = /&(?![a-zA-Z][a-zA-Z0-9]{1,31};|#\d{1,7};|#x[0-9a-fA-F]{1,6};)/g;
-const escText = (s: string) => s.replace(ENTITY, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-const escAttr = (s: string) => escText(s).replace(/"/g, "&quot;");
+export const escText = (s: string) => s.replace(ENTITY, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+export const escAttr = (s: string) => escText(s).replace(/"/g, "&quot;");
 
-const TOKEN = /<!--[\s\S]*?-->|<\/?([a-zA-Z][a-zA-Z0-9-]*)((?:\s+[^\s"'>/=]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'=<>`]+))?)*)\s*\/?>/g;
-const ATTR = /([^\s"'>/=]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g;
+/** 태그·주석 토큰과 속성 — ```svg 그림(lib/svg-figure)도 같은 토큰으로 읽는다. 속성 이름에 `<` 를 빼야 `<b <b <b…` 에서 되짚기가 제곱으로 늘지 않는다. */
+export const TOKEN = /<!--[\s\S]*?-->|<\/?([a-zA-Z][a-zA-Z0-9-]*)((?:\s+[^\s"'<>/=]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'=<>`]+))?)*)\s*\/?>/g;
+export const ATTR = /([^\s"'>/=]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g;
 
 function cleanStyle(value: string, dropped: Set<string>): string {
   const kept: string[] = [];

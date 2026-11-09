@@ -8,8 +8,10 @@
  *
  * 그림 자체에는 훅이 없어서 서버·클라이언트(스튜디오 미리보기) 어디서나 그려진다.
  */
+import type { CSSProperties } from "react";
 import type { Diagram as DiagramData } from "@/lib/diagram";
 import { keepHyphens, type FigureHtml } from "@/lib/html-figure";
+import type { LegendKey, SvgFigure as SvgFigureData } from "@/lib/svg-figure";
 import { Compare, Matrix } from "./diagram/Compare";
 import { Cycle, Flow } from "./diagram/Flow";
 import { Bars, Stats } from "./diagram/Numbers";
@@ -90,6 +92,84 @@ export function HtmlFigure({ figure }: { figure: FigureHtml }) {
   return (
     <Shell caption={figure.caption} sig={sigOf(figure.html)}>
       <div className="fig-html" dangerouslySetInnerHTML={{ __html: html }} />
+    </Shell>
+  );
+}
+
+/** 범례 글리프 — 선 색·점선·표시. svg.css 의 같은 클래스로 칠한다. */
+function LegendGlyph({ k }: { k: LegendKey }) {
+  if (k === "x" || k === "ok")
+    return (
+      <svg viewBox="-12 -7 24 14" aria-hidden="true">
+        <g className={k === "x" ? "mark-x" : "mark-ok"}>
+          <circle cx="0" cy="0" r="6.5" />
+          <path d={k === "x" ? "M-2.6 -2.6L2.6 2.6M2.6 -2.6L-2.6 2.6" : "M-3 0.2L-1 2.2L3 -2"} />
+        </g>
+      </svg>
+    );
+  if (k === "dash")
+    return (
+      <svg viewBox="0 0 24 14" aria-hidden="true">
+        <rect className="soft dash" x="2" y="2" width="20" height="10" rx="3" />
+      </svg>
+    );
+  if (k === "dot")
+    return (
+      <svg viewBox="0 0 24 14" aria-hidden="true">
+        <circle className="dot" cx="12" cy="7" r="4" />
+      </svg>
+    );
+  return (
+    <svg viewBox="0 0 24 14" aria-hidden="true">
+      <line className={`edge ${k}`} x1="1" y1="7" x2="23" y2="7" />
+    </svg>
+  );
+}
+
+/**
+ * ```svg — 이미 거른 판들이다(parseSvgFigure). 화살촉 id 는 그림마다 지문으로 가른다: 다른 그림이 접힌 칸
+ * 안에 숨어 있으면 그쪽 정의를 집은 화살촉이 사라진다. 판 폭의 1.15배까지만 키워 글자가 커지지 않게 한다.
+ */
+export function SvgFigure({ figure }: { figure: SvgFigureData }) {
+  const sig = sigOf(figure.panels.map((p) => p.html).join(""));
+  const id = `svgf-${sig.replace(/-/g, "m")}`;
+  const wide = figure.panels.some((p) => p.only === "wide");
+  const pw = Math.round(Math.max(...figure.panels.filter((p) => p.only !== "wide").map((p) => p.width)) * 0.92);
+  return (
+    <Shell caption={figure.caption} still sig={sig}>
+      <div className="svgf">
+        {figure.title ? <p className="svgf-title">{figure.title}</p> : null}
+        <div className="svgf-panels" data-wide={wide ? "" : undefined} style={{ "--pw": `${pw}px` } as CSSProperties}>
+          {figure.panels.map((p, i) => (
+            <div
+              key={i}
+              className="svgf-panel"
+              data-only={p.only}
+              style={{ maxWidth: Math.round(p.width * 1.15) }}
+              dangerouslySetInnerHTML={{ __html: p.html.replace(/(marker-(?:start|mid|end)="url\(#)@/g, `$1${id}-`) }}
+            />
+          ))}
+        </div>
+        {figure.legend.length ? (
+          <div className="svgf-legend">
+            {figure.legend.map((l, i) => (
+              <span key={i}>
+                <LegendGlyph k={l.key} />
+                {l.label}
+              </span>
+            ))}
+          </div>
+        ) : null}
+        <svg className="svgf-defs" aria-hidden="true" focusable="false">
+          <defs>
+            {(["a", "a-bad", "a-good", "a-muted"] as const).map((m) => (
+              <marker key={m} id={`${id}-${m}`} className={m} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M0 0L10 5L0 10z" />
+              </marker>
+            ))}
+          </defs>
+        </svg>
+      </div>
     </Shell>
   );
 }

@@ -26,9 +26,10 @@ import {
 } from "@/lib/link-cards";
 import { Callout, type CalloutKind } from "@/components/prose/Callout";
 import { CodeBlock } from "@/components/prose/CodeBlock";
-import { Diagram, HtmlFigure } from "@/components/prose/Diagram";
+import { Diagram, HtmlFigure, SvgFigure } from "@/components/prose/Diagram";
 import { isAsciiTree, isDiagramLang, parseDiagram } from "@/lib/diagram";
 import { parseFigureHtml } from "@/lib/html-figure";
+import { parseSvgFigure } from "@/lib/svg-figure";
 import { EditableImage } from "@/components/prose/EditableImage";
 import { Embed } from "@/components/prose/Embed";
 import { parseEmbed } from "@/lib/embed";
@@ -480,6 +481,14 @@ export function renderMarkdown(
         const figure = parseFigureHtml(code.join("\n"));
         if (figure.html.trim()) {
           out.push(<HtmlFigure key={k()} figure={figure} />);
+          continue;
+        }
+      }
+      // ```svg → 글마다 그린 흐름·구조 그림(lib/svg-figure). 그릴 수 없으면(errors) 코드로 보인다.
+      if (lang === "svg" && !filename) {
+        const svg = parseSvgFigure(code.join("\n"));
+        if (!svg.errors.length && svg.panels.length) {
+          out.push(<SvgFigure key={k()} figure={svg} />);
           continue;
         }
       }
