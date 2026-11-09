@@ -1149,7 +1149,7 @@ export function checkVoice(post: VoiceInput, kind: PostKind = "release"): VoiceR
     // 접힌 칸 안의 표도 친다(버전·배포판 표는 대개 일부 독자용이다).
     table: [post.body, ...folds.map((f) => f.body)].some((b) => /^\s*\|.*\|\s*\n\s*\|\s*:?-{3,}/m.test(b)) || drawn.some((d) => d.kind === "compare" || d.kind === "matrix"),
     // 캡처 자리(todo-)는 그림으로 치지 않는다.
-    visual: drawn.length > 0 || htmlFigures.length > 0 || embeds.length > 0 || figures.some((f) => !/\/todo-[^/]*$/.test(f[2])),
+    visual: drawn.length > 0 || htmlFigures.length > 0 || svgFigures.length > 0 || embeds.length > 0 || figures.some((f) => !/\/todo-[^/]*$/.test(f[2])),
     // 개념 글은 표준·공식 문서 주소가 제각각이라 링크가 있으면 된다.
     source:
       kind === "concept"

@@ -113,4 +113,6 @@ assert.ok(!has(svgFig("title: 중계는 들어온 한 통만 센다(19통에서 
 assert.ok(!has(`\n\n\`\`\`svg\ntitle: 한쪽만 이어진다\n<svg viewBox="0 0 300 120">${linked}</svg>\n<svg viewBox="0 0 300 120"><rect class="box" x="0" y="40" width="80" height="40"/><rect class="box" x="200" y="40" width="80" height="40"/></svg>\n\`\`\`\n`, "svg-no-edge"), "한쪽 판에만 선이 없으면 통과");
 assert.ok(!has(svgFig("title: use 를 닫지 않아도 그려진다", '<use href="#x">' + linked), "diagram-error"), "닫지 않은 use 가 판을 삼키지 않는다");
 
+assert.ok(!rules(svgFig("title: 그림이 svg 하나뿐이다", linked)).some((r) => /visual/.test(r)), "svg 그림도 본문 속 그림으로 센다");
+
 console.log("check-voice-rules: ok");
