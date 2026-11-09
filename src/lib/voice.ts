@@ -737,8 +737,8 @@ export function checkVoice(post: VoiceInput, kind: PostKind = "release"): VoiceR
     });
   }
   // 본문 산문의 굵게만 센다. 그림 블록 안(장면 단계 설명의 굵게는 형광펜)과 인용·요약 박스·접힌 칸 줄은 세지 않는다.
-  const prose = post.body.replace(/^(```|~~~)[\s\S]*?^\1\s*$/gm, "").replace(/^>.*$/gm, "");
-  const bolds = (prose.match(/\*\*[^*\n]+\*\*/g) ?? []).length;
+  const boldProse = post.body.replace(/^(```|~~~)[\s\S]*?^\1\s*$/gm, "").replace(/^>.*$/gm, "");
+  const bolds = (boldProse.match(/\*\*[^*\n]+\*\*/g) ?? []).length;
   const sections = Math.max(1, (post.body.match(/^##\s/gm) ?? []).length);
   if (bolds > sections * 2) {
     issues.push({
