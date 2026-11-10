@@ -27,7 +27,7 @@ description: Use when a dongding 블로그 글에 필요한 그림·애니메이
 | 장면 속성 | `scene-attrs/<이름>.ts`(값 검사·단계 점검·적용) + 상태 CSS 는 `states.css` | `scene-attrs/index.ts` 의 `SCENE_ATTRS` | `scaffold.mjs scene-attr <이름>` |
 | 장면 상태(`data-on` 값) | `scene-attrs/on.ts` 의 `STATES` + `states.css` 의 `.sc-html .is-<상태>` | — | 손으로 |
 | 그림 블록 종류 | `lib/diagram.ts`(파서·`sceneCells`) + `components/prose/diagram/*.tsx` + `Diagram.tsx` | `DIAGRAM_LANGS` | 손으로. 드물다 |
-| svg 그림 클래스·범례 | `lib/svg-figure.ts` 의 `SVG_CLASS_DOC`(뜻)·`SVG_LEGEND_KEYS` + `figure/svg.css`(칠하기) | 쓰기 기준(SVG_STYLE)이 목록을 직접 읽는다. 스킬 blog-figures 의 svg 절은 손으로 | 손으로. 새 견본 모양은 클래스가 아니라 `blog-figures/svg-samples.md` 에 더한다 |
+| svg 그림 클래스·범례 | `lib/svg-figure.ts` 의 `SVG_CLASS_DOC`(뜻)·`SVG_LEGEND_KEYS` + `figure/svg.css`(칠하기) | 쓰기 기준(SVG_STYLE)이 목록을 직접 읽는다. 스킬 blog-svg 의 클래스 줄은 손으로 | 손으로. 새 견본 모양은 클래스가 아니라 `blog-svg/samples.md` 에 더한다 |
 | 장면 동사(핵심 장면 고르기 표) | `figure/verbs.ts` 의 한 줄(동사·그림·이런 내용일 때·쓰는 법) | `SCENE_VERBS` | 손으로. 새 어휘를 더하면 그 어휘가 그리는 움직임 동사를 같이 더한다 |
 
 스크립트는 저장소(워크트리) 뿌리에서 `node .claude/skills/blog-figure-extend/<스크립트>` 로 부른다. `.ts` 는 `node_modules/.bin/jiti` 로.

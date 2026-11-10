@@ -41,6 +41,7 @@ export const SVG_CLASS_DOC: Record<string, string> = {
   mono: "고정폭(코드·설정 키)",
   mid: "가운데 맞춤",
   end: "오른쪽 맞춤",
+  q: "남의 글을 그대로 옮긴 예문(말투 점검 svg-text-slop 에서 뺀다)",
   ink: "본문색",
   muted: "보조색(선이면 옅은 선)",
   box: "상자: 바탕색 + 테두리",
@@ -100,7 +101,9 @@ export interface SvgFigure {
   /** 그릴 수 없는 이유. 있으면 그림 대신 코드로 보인다. */
   errors: string[];
   /** 그려지지만 읽기 어려운 자리. 점검이 경고로 알린다. */
-  warnings: { rule: "svg-text-out" | "svg-text-box" | "svg-no-edge"; message: string }[];
+  warnings: { rule: "svg-text-out" | "svg-text-box" | "svg-no-edge" | "svg-text-tight" | "svg-line-text"; message: string }[];
+  /** 판 안에 보이는 글자 줄. 점검이 말투(stock-phrase)를 본다. */
+  texts: string[];
 }
 
 /* ── 점검용 노드 ─────────────────────────────────────────────────────── */
@@ -173,7 +176,13 @@ function lineY(nodes: Node[], i: number): number | null {
   return y;
 }
 
-function panelChecks(nodes: Node[], w: number, h: number, warnings: SvgFigure["warnings"]): { boxes: number; lines: number } {
+function panelChecks(nodes: Node[], w: number, h: number, warnings: SvgFigure["warnings"], texts: string[]): { boxes: number; lines: number } {
+  const spans: { left: number; right: number; top: number; bottom: number; short: string }[] = [];
+  const rectNodes = nodes
+    .map((n, i) => ({ n, o: offsetOf(nodes, i) }))
+    .filter(({ n, o }) => n.tag === "rect" && !n.cls.has("zone") && o)
+    .map(({ n, o }) => ({ x: (num(n.attrs.x) ?? 0) + o!.dx, y: (num(n.attrs.y) ?? 0) + o!.dy, w: num(n.attrs.width) ?? 0, h: num(n.attrs.height) ?? 0 }))
+    .filter((r) => r.w > 0 && r.h > 0);
   const rects = nodes
     .map((n, i) => ({ n, i }))
     .filter(({ n }) => n.tag === "rect")
@@ -213,18 +222,55 @@ function panelChecks(nodes: Node[], w: number, h: number, warnings: SvgFigure["w
     const left = anchor === "middle" ? x - tw / 2 : anchor === "end" ? x - tw : x;
     const right = left + tw;
     const short = shown.length > 24 ? `${shown.slice(0, 24)}…` : shown;
+    if (!cls.has("q")) texts.push(shown);
     if (left < -1 || right > w + 1 || base - size * 0.8 < -1 || base > h + 1) {
       warnings.push({ rule: "svg-text-out", message: `글자가 판(${w}×${h}) 밖으로 나갑니다: "${short}". 판을 키우거나 줄을 나눕니다` });
       return;
     }
-    // 글자 자리를 감싼 가장 작은 상자보다 글자가 길면 테두리에 걸린다.
+    const span = { left, right, top: base - size * 0.78, bottom: base + size * 0.22, short };
+    spans.push(span);
+    // 상자 바깥 글자가 남의 상자 테두리에 닿으면 상자 이름처럼 읽힌다. 글자를 품은 상자와 띠(zone)는 빼고 본다.
+    const near = rectNodes.find(
+      (r) => !(x >= r.x && x <= r.x + r.w && base - size / 3 >= r.y && base - size / 3 <= r.y + r.h) && span.bottom > r.y && span.top < r.y + r.h && left < r.x + r.w + 4 && right > r.x - 4,
+    );
+    if (near) warnings.push({ rule: "svg-text-tight", message: `글자가 상자 테두리에 붙습니다: "${short}". 상자에서 8 이상 띄웁니다` });
+    // 글자 자리를 감싼 가장 작은 상자보다 글자가 길거나 테두리에 붙으면 읽기 답답하다(안쪽 여백 6 미만).
     const midY = base - size / 3;
     const box = rects
       .filter((r) => x >= r.x && x <= r.x + r.w && midY >= r.y && midY <= r.y + r.h)
       .sort((a, b) => a.w * a.h - b.w * b.h)[0];
-    if (box && (left < box.x + 3 || right > box.x + box.w - 3)) {
-      warnings.push({ rule: "svg-text-box", message: `글자가 상자(폭 ${box.w})보다 깁니다: "${short}"(약 ${Math.round(tw)}). 상자를 넓히거나 줄을 나눕니다` });
+    if (box && (left < box.x + 6 || right > box.x + box.w - 6)) {
+      warnings.push({ rule: "svg-text-box", message: `글자가 상자(폭 ${box.w}) 테두리에 붙거나 넘칩니다: "${short}"(약 ${Math.round(tw)}). 상자 폭은 가장 긴 줄 + 24 이상으로` });
     }
+  });
+
+  // 글자끼리 붙으면 한 덩어리로 읽힌다. 같은 줄은 가로 6, 위아래 줄은 세로 2 를 띄운다(글자 폭은 어림이라 넉넉히 본다).
+  for (let a = 0; a < spans.length; a++) {
+    for (let b = a + 1; b < spans.length; b++) {
+      const s = spans[a];
+      const t = spans[b];
+      const xGap = Math.max(s.left, t.left) - Math.min(s.right, t.right);
+      const yGap = Math.max(s.top, t.top) - Math.min(s.bottom, t.bottom);
+      if ((yGap < 0 && xGap < 6) || (xGap < -2 && yGap < 2)) {
+        warnings.push({ rule: "svg-text-tight", message: `글자가 서로 붙습니다: "${s.short}" / "${t.short}". 줄 사이·글자 사이를 띄웁니다` });
+      }
+    }
+  }
+  // 선이 글자 한가운데를 지나면 글자도 선도 안 읽힌다. 선 이름은 선에서 6 떨어진 빈자리에 둔다.
+  nodes.forEach((n, i) => {
+    if (n.tag !== "line") return;
+    const o = offsetOf(nodes, i);
+    const [x1, y1, x2, y2] = [n.attrs.x1, n.attrs.y1, n.attrs.x2, n.attrs.y2].map(num);
+    if (!o || x1 === null || y1 === null || x2 === null || y2 === null) return;
+    const hit = spans.find((s) => {
+      for (let k = 0; k <= 24; k++) {
+        const px = x1 + o.dx + ((x2 - x1) * k) / 24;
+        const py = y1 + o.dy + ((y2 - y1) * k) / 24;
+        if (px > s.left + 2 && px < s.right - 2 && py > s.top + 2 && py < s.bottom - 1) return true;
+      }
+      return false;
+    });
+    if (hit) warnings.push({ rule: "svg-line-text", message: `선이 글자를 지나갑니다: "${hit.short}". 글자를 선 옆 빈자리로 옮깁니다` });
   });
 
   // 선 없는 상자는 그림 전체로 본다(parseSvgFigure) — 두 판 비교에서 한쪽 판에만 선이 없는 것은 뜻이 있다.
@@ -316,10 +362,11 @@ export function parseSvgFigure(source: string): SvgFigure {
   const dropped = new Set<string>();
   const errors = [...head.errors];
   const warnings: SvgFigure["warnings"] = [];
+  const texts: string[] = [];
   const panels: SvgPanel[] = [];
   const input = head.rest;
   if (input.length > MAX_SVG_FIGURE) {
-    return { ...head, panels: [], dropped: [], errors: [`길이 ${input.length}자(${MAX_SVG_FIGURE}자까지)`], warnings: [] };
+    return { ...head, panels: [], dropped: [], errors: [`길이 ${input.length}자(${MAX_SVG_FIGURE}자까지)`], warnings: [], texts: [] };
   }
 
   let panel: { out: string[]; stack: string[]; nodes: Node[]; open: number[]; w: number; h: number; only?: "wide" | "narrow" } | null = null;
@@ -332,7 +379,7 @@ export function parseSvgFigure(source: string): SvgFigure {
     if (!panel) return;
     while (panel.stack.length) panel.out.push(`</${panel.stack.pop()}>`);
     panel.out.push("</svg>");
-    const c = panelChecks(panel.nodes, panel.w, panel.h, warnings);
+    const c = panelChecks(panel.nodes, panel.w, panel.h, warnings, texts);
     boxes = Math.max(boxes, c.boxes);
     lines += c.lines;
     panels.push({ html: panel.out.join(""), width: panel.w, height: panel.h, only: panel.only });
@@ -485,7 +532,7 @@ export function parseSvgFigure(source: string): SvgFigure {
   if (wide && !narrow) errors.push('data-only="wide" 판에는 휴대폰에서 대신 보일 data-only="narrow" 판이 있어야 합니다');
   if (narrow && !wide) errors.push('data-only="narrow" 판은 data-only="wide" 판과 짝으로 씁니다');
 
-  return { title: head.title, caption: head.caption, legend: head.legend, panels, dropped: [...dropped], errors, warnings };
+  return { title: head.title, caption: head.caption, legend: head.legend, panels, dropped: [...dropped], errors, warnings, texts };
 }
 
 /** 결론 문장인가 — 평서문 끝(…다)으로 끝나야 한다. "~하는 순서" 같은 주제 명사구를 잡는다. */

@@ -196,12 +196,18 @@ export const VISUAL_RULES = [
  */
 export const SVG_STYLE = `흐름·구조 그림(무엇이 어디로 가고, 어디서 세어지고, 어디서 막히나)은 \`\`\`svg 블록에 직접 그린다. 선이 메커니즘이다.
 
-그리기 전에 세 줄을 정한다.
+그리기 전에 네 줄을 정한다.
 1. 결론 — 그림을 보고 가져갈 한 문장. \`title:\` 이 되고 그림 위에 크게 뜬다. '~다'로 끝내고 40자 안팎(점검 svg-title-claim). "Supabase는 받은 사본까지 세고, 중계는 들어온 한 통만 센다"
 2. 독자가 문장으로 조립해야 하는 움직임 — 그것이 선이 된다. 복사된다 → 부채꼴, 막힌다 → 길이 관문 앞에서 X, 돌려준다 → 되돌아오는 화살표
-3. 두 안이 갈리는 선 하나 — 비교면 같은 배치의 두 판에서 그 선(색·있고 없음)만 다르게
+3. 갈리는 곳 — 어디서 막히거나 세어지나. 비교면 같은 배치의 두 판에서 그 선(색·있고 없음)만 다르게
+4. 결과 — 그 결과로 무엇이 얼마인가(20통, 403, 5MB에서 끊김). 그림 안에 숫자나 응답으로 넣는다
 
-배치 견본(blog-figures 스킬 svg-samples.md 에 원본): 퍼짐 · 길×관문 · 같은 모양 두 판 · 상태 이동 · 층 통과 · 주고받기
+배치 견본(blog-svg 스킬 samples.md 에 원본): 퍼짐 · 길×관문 · 같은 모양 두 판 · 상태 이동 · 층 통과 · 주고받기
+
+그림만 보고 이해되게(본문을 가리고 제목·그림·캡션만 봐도 제목이 왜 참인지 짚인다)
+- 상자 이름은 본문의 고유 이름, 선마다 오가는 것의 이름, 갈리는 곳에 표시와 이유 한 마디, 결과 숫자를 그림 안에. 글자를 덜어 낼 때는 설명 문장만 덜고 사실(숫자·설정 키·조건)은 둘째 줄로 남긴다
+- 간격(viewBox 단위): 상자 안쪽 좌우 12(상자 폭 = 가장 긴 줄 + 24), 상자 사이 가로 56·세로 64, 선 이름은 선에서 6~8, 줄 간격 14→20·12.5→18·12→17, 덩어리 사이 28. 점검이 글자 붙음(svg-text-tight)·선이 글자를 지남(svg-line-text)·상자 테두리에 붙음(svg-text-box)을 잡는다
+- 그림 글자도 글이다. 제목·판 이름·선 이름·캡션에 본문과 같은 생성 말투 규칙을 건다(이분 대비, 콜론 공개, 과장, 번역투, em 대시 없이. 점검 svg-text-slop). 제목·판 이름·캡션이 같은 말을 되풀이하지 않는다. 남의 글을 옮긴 예문 줄은 class="q"
 
 문법
 - 머리 줄: \`title: 결론 문장\`(필수), \`caption: 조건\`(그림 아래, 선택), \`legend: bad=요금에 세는 메시지; x=막힘; ok=통과; dash=일부만\`(키: ${SVG_LEGEND_KEYS.join("·")})
@@ -210,7 +216,7 @@ export const SVG_STYLE = `흐름·구조 그림(무엇이 어디로 가고, 어�
 - 클래스: ${Object.entries(SVG_CLASS_DOC).map(([k, v]) => `\`${k}\` ${v}`).join(" · ")}. 글자 기본은 14
 - 화살촉 \`marker-end="url(#a)"\`(a-bad·a-good·a-muted). 막힘·통과는 \`<circle class="mark-x" cx="…" cy="…"/>\`·\`mark-ok\` 가 표시까지 그린다
 - 선마다 이름을 단다(센다, 301, 403, 사본 19통). 선 위가 아니라 선 위쪽·오른쪽 빈자리에
-- svg 는 줄을 접지 않는다. 상자 폭 = 가장 긴 줄 + 24. 한글 한 자는 글자 크기만큼(14 → 14), 영문·숫자는 그 0.6. 길면 \`<tspan x="…" dy="16">\` 로 두 줄. 점검이 판·상자를 넘는 글자를 잡는다(svg-text-out·svg-text-box)
+- svg 는 줄을 접지 않는다. 한글 한 자는 글자 크기만큼(14 → 14), 영문·숫자는 그 0.6. 길면 \`<tspan x="…" dy="18">\` 로 두 줄. 점검이 판 밖 글자를 잡는다(svg-text-out)
 - 상자만 나란히 두지 않는다. 잇는 선이 없으면 표나 문장으로(svg-no-edge)
 - 색(bad·good·accent)은 뜻이 있을 때만 쓰고 legend 로 뜻을 밝힌다. 강조는 한두 곳
 - 움직임 없이 멈춘 한 장으로 다 읽혀야 한다
@@ -853,6 +859,13 @@ export function checkVoice(post: VoiceInput, kind: PostKind = "release"): VoiceR
       issues.push({ rule: "svg-title-claim", severity: "warning", line, message: `svg 그림 제목이 깁니다(${fig.title.length}자). 결론 하나만 40자 안팎으로` });
     }
     for (const w of fig.warnings) issues.push({ rule: w.rule, severity: "warning", line, message: w.message });
+    // 그림 글자도 글이다. 제목·캡션·판 글자에 본문과 같은 생성 말투 규칙(no-ai-slop 에서 옮긴 것 포함)을 건다.
+    for (const text of [fig.title, fig.caption, ...fig.texts]) {
+      if (!text) continue;
+      const slop = AVOID.find((a) => a.pattern.test(text));
+      if (slop) issues.push({ rule: "svg-text-slop", severity: "warning", line, message: `svg 그림 글자에 "${slop.label}" — ${slop.hint}: "${excerpt(text)}"` });
+      else if (/—/.test(text)) issues.push({ rule: "svg-text-slop", severity: "warning", line, message: `svg 그림 글자에 em 대시가 있습니다: "${excerpt(text)}". 쉼표나 두 마디로 나눕니다` });
+    }
   }
 
   // 핵심 장면 — 장면이 터미널 화면(증거 자리)뿐이면 잡는다. 결과만 보이고 움직임은 문장에 남는다.

@@ -1,6 +1,6 @@
 # svg 배치 견본
 
-```svg 그림을 그릴 때 여기서 가장 가까운 모양을 골라 좌표·글자를 고쳐 쓴다. 다섯 개 모두 점검 경고 0, 데스크톱·휴대폰(390px)·다크에서 확인했다(2026-11-09). 견본을 고르는 기준은 독자가 문장으로 조립해야 하는 움직임이다.
+```svg 그림을 그릴 때 여기서 가장 가까운 모양을 골라 좌표·글자를 고쳐 쓴다. 다섯 개 모두 blog-svg 의 기준(그림만으로 읽힘, 간격 수치, 그림 글자 말투)으로 점검 경고 0, 데스크톱·휴대폰(390px)·다크에서 확인했다(2026-11-10). 견본을 고르는 기준은 독자가 문장으로 조립해야 하는 움직임이다.
 
 | 견본 | 움직임 | 이런 내용 |
 | --- | --- | --- |
@@ -14,51 +14,53 @@
 
 ## 퍼짐 · 같은 모양 두 판
 
-두 판의 배치는 같고 부채꼴 선의 색만 다르다. 사람 수의 제곱으로 느는 이유가 부채꼴 모양 그대로 보인다. 부채꼴 좌표는 중심 (150,120), 반지름 92, ±50° 에 19개를 고르게 놓았다.
+두 판의 배치는 같고 부채꼴 선의 색만 다르다. 사람 수의 제곱으로 느는 이유가 부채꼴 모양 그대로 보인다. 부채꼴 좌표는 중심 (150,120), 반지름 92, ±50° 에 19개를 고르게 놓고 묶음째 `translate(0,8)` 로 내렸다. 판 이름 아래 설명 줄은 제목과 같은 말이라 두지 않는다.
 
 ```svg
 title: Supabase는 받은 사본까지 세고, 중계는 들어온 한 통만 센다
 caption: 같은 칸 20명 중 지수가 위치 한 통을 보낼 때
 legend: bad=요금에 세는 메시지; muted=세지 않는 메시지
-<svg viewBox="0 0 300 288">
+<svg viewBox="0 0 300 304">
   <text class="lg" x="0" y="18">Supabase Realtime</text>
-  <text class="sm" x="0" y="40">보낸 1통에 받은 사람 수를 더해 센다</text>
+  <g transform="translate(0,8)">
   <g class="edge bad thin"><line x1="150" y1="120" x2="205.3" y2="54.1"/><line x1="150" y1="120" x2="211.4" y2="59.8"/><line x1="150" y1="120" x2="216.9" y2="66"/><line x1="150" y1="120" x2="221.9" y2="72.7"/><line x1="150" y1="120" x2="226.1" y2="79.9"/><line x1="150" y1="120" x2="229.6" y2="87.5"/><line x1="150" y1="120" x2="232.4" y2="95.3"/><line x1="150" y1="120" x2="234.4" y2="103.4"/><line x1="150" y1="120" x2="235.6" y2="111.7"/><line x1="150" y1="120" x2="236" y2="120"/><line x1="150" y1="120" x2="235.6" y2="128.3"/><line x1="150" y1="120" x2="234.4" y2="136.6"/><line x1="150" y1="120" x2="232.4" y2="144.7"/><line x1="150" y1="120" x2="229.6" y2="152.5"/><line x1="150" y1="120" x2="226.1" y2="160.1"/><line x1="150" y1="120" x2="221.9" y2="167.3"/><line x1="150" y1="120" x2="216.9" y2="174"/><line x1="150" y1="120" x2="211.4" y2="180.2"/><line x1="150" y1="120" x2="205.3" y2="185.9"/></g>
   <g class="dot"><circle cx="209.1" cy="49.5" r="3.6"/><circle cx="215.7" cy="55.6" r="3.6"/><circle cx="221.6" cy="62.2" r="3.6"/><circle cx="226.9" cy="69.4" r="3.6"/><circle cx="231.4" cy="77.1" r="3.6"/><circle cx="235.2" cy="85.2" r="3.6"/><circle cx="238.1" cy="93.6" r="3.6"/><circle cx="240.3" cy="102.3" r="3.6"/><circle cx="241.6" cy="111.1" r="3.6"/><circle cx="242" cy="120" r="3.6"/><circle cx="241.6" cy="128.9" r="3.6"/><circle cx="240.3" cy="137.7" r="3.6"/><circle cx="238.1" cy="146.4" r="3.6"/><circle cx="235.2" cy="154.8" r="3.6"/><circle cx="231.4" cy="162.9" r="3.6"/><circle cx="226.9" cy="170.6" r="3.6"/><circle cx="221.6" cy="177.8" r="3.6"/><circle cx="215.7" cy="184.4" r="3.6"/><circle cx="209.1" cy="190.5" r="3.6"/></g>
   <text class="sm" x="254" y="116">같은 칸</text>
   <text class="sm" x="254" y="134">19명</text>
   <line class="edge bad" x1="32" y1="120" x2="84" y2="120" marker-end="url(#a-bad)"/>
-  <text class="xs mid" x="58" y="110">위치 1통</text>
+  <text class="xs mid" x="58" y="106">위치 1통</text>
   <circle class="box" cx="18" cy="120" r="13"/>
   <text class="sm mid" x="18" y="153">지수</text>
   <rect class="box" x="86" y="98" width="64" height="44" rx="8"/>
   <text class="b mid" x="118" y="125">채널</text>
-  <text class="xs bad" x="120" y="200">사본 19통</text>
-  <line class="edge muted thin" x1="0" y1="222" x2="300" y2="222"/>
-  <text class="xl bad" x="0" y="266">20통</text>
-  <text class="xs" x="70" y="244">위치 한 통이 세어지는 수</text>
-  <text class="sm ink" x="70" y="263">20명이 초당 한 번씩이면 400통</text>
-  <text class="xs" x="70" y="282">무료 한도는 초당 100통</text>
+  <text class="xs bad" x="120" y="206">사본 19통도 센다</text>
+  </g>
+  <line class="edge muted thin" x1="0" y1="234" x2="300" y2="234"/>
+  <text class="xl bad" x="0" y="282">20통</text>
+  <text class="xs" x="76" y="258">위치 한 통이 세어지는 수</text>
+  <text class="sm ink" x="76" y="278">20명이 초당 한 번씩이면 400통</text>
+  <text class="xs" x="76" y="298">무료 한도는 초당 100통</text>
 </svg>
-<svg viewBox="0 0 300 288">
+<svg viewBox="0 0 300 304">
   <text class="lg" x="0" y="18">Durable Object 중계</text>
-  <text class="sm" x="0" y="40">들어온 메시지만 센다</text>
+  <g transform="translate(0,8)">
   <g class="edge muted thin"><line x1="150" y1="120" x2="205.3" y2="54.1"/><line x1="150" y1="120" x2="211.4" y2="59.8"/><line x1="150" y1="120" x2="216.9" y2="66"/><line x1="150" y1="120" x2="221.9" y2="72.7"/><line x1="150" y1="120" x2="226.1" y2="79.9"/><line x1="150" y1="120" x2="229.6" y2="87.5"/><line x1="150" y1="120" x2="232.4" y2="95.3"/><line x1="150" y1="120" x2="234.4" y2="103.4"/><line x1="150" y1="120" x2="235.6" y2="111.7"/><line x1="150" y1="120" x2="236" y2="120"/><line x1="150" y1="120" x2="235.6" y2="128.3"/><line x1="150" y1="120" x2="234.4" y2="136.6"/><line x1="150" y1="120" x2="232.4" y2="144.7"/><line x1="150" y1="120" x2="229.6" y2="152.5"/><line x1="150" y1="120" x2="226.1" y2="160.1"/><line x1="150" y1="120" x2="221.9" y2="167.3"/><line x1="150" y1="120" x2="216.9" y2="174"/><line x1="150" y1="120" x2="211.4" y2="180.2"/><line x1="150" y1="120" x2="205.3" y2="185.9"/></g>
   <g class="dot"><circle cx="209.1" cy="49.5" r="3.6"/><circle cx="215.7" cy="55.6" r="3.6"/><circle cx="221.6" cy="62.2" r="3.6"/><circle cx="226.9" cy="69.4" r="3.6"/><circle cx="231.4" cy="77.1" r="3.6"/><circle cx="235.2" cy="85.2" r="3.6"/><circle cx="238.1" cy="93.6" r="3.6"/><circle cx="240.3" cy="102.3" r="3.6"/><circle cx="241.6" cy="111.1" r="3.6"/><circle cx="242" cy="120" r="3.6"/><circle cx="241.6" cy="128.9" r="3.6"/><circle cx="240.3" cy="137.7" r="3.6"/><circle cx="238.1" cy="146.4" r="3.6"/><circle cx="235.2" cy="154.8" r="3.6"/><circle cx="231.4" cy="162.9" r="3.6"/><circle cx="226.9" cy="170.6" r="3.6"/><circle cx="221.6" cy="177.8" r="3.6"/><circle cx="215.7" cy="184.4" r="3.6"/><circle cx="209.1" cy="190.5" r="3.6"/></g>
   <text class="sm" x="254" y="116">같은 칸</text>
   <text class="sm" x="254" y="134">19명</text>
   <line class="edge bad" x1="32" y1="120" x2="84" y2="120" marker-end="url(#a-bad)"/>
-  <text class="xs mid" x="58" y="110">위치 1통</text>
+  <text class="xs mid" x="58" y="106">위치 1통</text>
   <circle class="box" cx="18" cy="120" r="13"/>
   <text class="sm mid" x="18" y="153">지수</text>
   <rect class="box" x="86" y="98" width="64" height="44" rx="8"/>
   <text class="b mid" x="118" y="125">중계</text>
-  <text class="xs" x="120" y="200">사본 19통, 무료</text>
-  <line class="edge muted thin" x1="0" y1="222" x2="300" y2="222"/>
-  <text class="xl good" x="0" y="266">1통</text>
-  <text class="xs" x="70" y="244">위치 한 통이 세어지는 수</text>
-  <text class="sm ink" x="70" y="263">20명이 초당 한 번씩이면 20통</text>
-  <text class="xs" x="70" y="282">나가는 사본은 세지 않는다</text>
+  <text class="xs" x="120" y="206">사본 19통은 무료</text>
+  </g>
+  <line class="edge muted thin" x1="0" y1="234" x2="300" y2="234"/>
+  <text class="xl good" x="0" y="282">1통</text>
+  <text class="xs" x="76" y="258">위치 한 통이 세어지는 수</text>
+  <text class="sm ink" x="76" y="278">20명이 초당 한 번씩이면 20통</text>
+  <text class="xs" x="76" y="298">나가는 사본은 세지 않는다</text>
 </svg>
 ```
 
@@ -83,37 +85,37 @@ legend: x=막힘; ok=통과; dash=일부만 잡는 규칙
   <path class="edge muted thin dash" d="M260 180V196H448V212"/>
   <text class="xs" x="458" y="204">같은 허용 목록</text>
   <circle class="dot" cx="130" cy="64" r="3"/><line class="edge" x1="134" y1="64" x2="172" y2="64"/>
-  <circle class="dot" cx="130" cy="100" r="3"/><line class="edge" x1="134" y1="100" x2="178" y2="100" marker-end="url(#a)"/>
+  <circle class="dot" cx="130" cy="100" r="3"/><line class="edge" x1="134" y1="100" x2="172" y2="100" marker-end="url(#a)"/>
   <line class="edge" x1="288" y1="100" x2="508" y2="100" marker-end="url(#a)"/>
-  <line class="edge" x1="510" y1="130" x2="282" y2="130" marker-end="url(#a)"/>
+  <line class="edge" x1="510" y1="130" x2="288" y2="130" marker-end="url(#a)"/>
   <circle class="dot" cx="130" cy="160" r="3"/><line class="edge" x1="134" y1="160" x2="172" y2="160"/>
-  <circle class="dot" cx="130" cy="234" r="3"/><line class="edge" x1="134" y1="234" x2="178" y2="234" marker-end="url(#a)"/>
-  <line class="edge" x1="282" y1="234" x2="382" y2="234"/>
+  <circle class="dot" cx="130" cy="234" r="3"/><line class="edge" x1="134" y1="234" x2="172" y2="234" marker-end="url(#a)"/>
+  <line class="edge" x1="288" y1="234" x2="382" y2="234"/>
   <circle class="dot" cx="130" cy="300" r="3"/><line class="edge" x1="134" y1="300" x2="172" y2="300"/>
-  <text class="xs good mid" x="399" y="92">목록에 있어 통과</text>
+  <text class="xs good mid" x="399" y="92">목록에 있으니 통과</text>
   <text class="xs mid" x="399" y="123">301, 대상 주소만 돌려줌</text>
-  <text class="xs mono mid" x="334" y="226">/usr/bin/curl</text>
-  <rect class="soft bad" x="180" y="40" width="100" height="140" rx="8"/>
+  <text class="xs mono mid" x="339" y="226">/usr/bin/curl</text>
+  <rect class="soft bad" x="174" y="40" width="112" height="140" rx="8"/>
   <text class="sm b ink mid" x="230" y="128">WebFetch 규칙</text>
   <text class="xs mid" x="230" y="146">허용: aka.ms</text>
   <rect class="box" x="510" y="86" width="84" height="56" rx="8"/>
   <text class="mono mid" x="552" y="119">aka.ms</text>
-  <rect class="soft dash" x="180" y="212" width="100" height="44" rx="8"/>
+  <rect class="soft dash" x="174" y="212" width="112" height="44" rx="8"/>
   <text class="sm mono ink mid" x="230" y="231">Bash(curl *)</text>
   <text class="xs mid" x="230" y="248">거절 규칙</text>
   <rect class="soft bad" x="390" y="212" width="116" height="44" rx="8"/>
   <text class="sm b ink mid" x="448" y="231">샌드박스 프록시</text>
   <text class="xs mid" x="448" y="248">목록 밖은 403</text>
   <text class="xs mono mid" x="448" y="274">strictAllowlist: true</text>
-  <rect class="soft bad" x="180" y="278" width="100" height="44" rx="8"/>
+  <rect class="soft bad" x="174" y="278" width="112" height="44" rx="8"/>
   <text class="sm b ink mid" x="230" y="297">밖에서 실행</text>
   <text class="xs mid" x="230" y="314">꺼 둠</text>
   <text class="xs mono" x="292" y="304">allowUnsandboxedCommands: false</text>
-  <circle class="mark-x" cx="180" cy="64"/>
-  <circle class="mark-x" cx="180" cy="160"/>
+  <circle class="mark-x" cx="174" cy="64"/>
+  <circle class="mark-x" cx="174" cy="160"/>
   <circle class="mark-x" cx="390" cy="234"/>
-  <circle class="mark-x" cx="180" cy="300"/>
-  <circle class="mark-ok" cx="280" cy="100"/>
+  <circle class="mark-x" cx="174" cy="300"/>
+  <circle class="mark-ok" cx="286" cy="100"/>
 </svg>
 <svg viewBox="0 0 360 460" data-only="narrow">
   <text class="b" x="0" y="16">WebFetch로 바로</text>
@@ -167,21 +169,21 @@ title: 폐기된 토큰이 다시 오면 새 토큰까지 함께 끊긴다
 caption: 리프레시 토큰을 한 번 쓸 때마다 바꿔 주는 회전
 legend: bad=탈취로 보고 끊는 길
 <svg viewBox="0 0 300 236">
-  <rect class="box" x="0" y="20" width="120" height="48" rx="8"/>
-  <text class="b mid" x="60" y="41">토큰 A</text>
-  <text class="xs mid" x="60" y="59">살아 있음</text>
-  <rect class="soft" x="180" y="20" width="120" height="48" rx="8"/>
-  <text class="b mid" x="240" y="41">토큰 A</text>
-  <text class="xs mid" x="240" y="59">폐기됨</text>
-  <line class="edge" x1="120" y1="44" x2="178" y2="44" marker-end="url(#a)"/>
+  <rect class="box" x="0" y="20" width="104" height="48" rx="8"/>
+  <text class="b mid" x="52" y="41">토큰 A</text>
+  <text class="xs mid" x="52" y="59">살아 있음</text>
+  <rect class="soft" x="196" y="20" width="104" height="48" rx="8"/>
+  <text class="b mid" x="248" y="41">토큰 A</text>
+  <text class="xs mid" x="248" y="59">폐기됨</text>
+  <line class="edge" x1="104" y1="44" x2="194" y2="44" marker-end="url(#a)"/>
   <text class="xs mid" x="150" y="36">한 번 쓰면</text>
-  <path class="edge" d="M150 44V96H60V118" marker-end="url(#a)"/>
+  <path class="edge" d="M150 44V96H52V118" marker-end="url(#a)"/>
   <text class="xs" x="158" y="92">새로 발급</text>
-  <rect class="box good" x="0" y="120" width="120" height="48" rx="8"/>
-  <text class="b mid" x="60" y="141">토큰 B</text>
-  <text class="xs mid" x="60" y="159">살아 있음</text>
-  <line class="edge bad" x1="240" y1="68" x2="240" y2="178" marker-end="url(#a-bad)"/>
-  <text class="xs bad end" x="232" y="126">A가 다시 오면</text>
+  <rect class="box good" x="0" y="120" width="104" height="48" rx="8"/>
+  <text class="b mid" x="52" y="141">토큰 B</text>
+  <text class="xs mid" x="52" y="159">살아 있음</text>
+  <line class="edge bad" x1="248" y1="68" x2="248" y2="178" marker-end="url(#a-bad)"/>
+  <text class="xs bad end" x="240" y="126">A가 다시 오면</text>
   <rect class="soft bad" x="160" y="180" width="140" height="48" rx="8"/>
   <text class="sm b ink mid" x="230" y="201">A와 B 모두</text>
   <text class="xs bad mid" x="230" y="219">끊김, 다시 로그인</text>

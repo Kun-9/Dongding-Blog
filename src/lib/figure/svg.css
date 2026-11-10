@@ -4,14 +4,20 @@
  * 색은 테마 변수만 쓴다. 라이트·다크를 같이 본다.
  */
 .svgf { container-type: inline-size; }
+/* svg 그림 판은 다른 그림 판보다 둘레를 넓게 둔다(2026-11-10 "여백이 부족하다"). Shell 의 패딩 유틸리티를 덮는다 */
+.dg-panel:has(> .svgf) { padding: 26px 22px; }
+@media (min-width: 640px) { .dg-panel:has(> .svgf) { padding: 40px 44px; } }
 .svgf-title {
-  margin: 0 0 18px;
+  margin: 0 0 24px;
   font-size: 16.5px;
   font-weight: 700;
   line-height: 1.45;
   letter-spacing: -0.01em;
   color: var(--ink);
   text-wrap: balance;
+  /* 한글 제목이 "넘 / 을" 처럼 낱말 가운데서 끊기지 않게 한다. 긴 식별자는 그래도 접힌다 */
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 .svgf-panels {
   display: grid;
@@ -33,7 +39,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 6px 18px;
-  margin-top: 18px;
+  margin-top: 24px;
   font-size: 13px;
   line-height: 1.4;
   color: var(--ink-muted);

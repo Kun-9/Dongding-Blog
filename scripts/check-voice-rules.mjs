@@ -115,4 +115,14 @@ assert.ok(!has(svgFig("title: use 를 닫지 않아도 그려진다", '<use href
 
 assert.ok(!rules(svgFig("title: 그림이 svg 하나뿐이다", linked)).some((r) => /visual/.test(r)), "svg 그림도 본문 속 그림으로 센다");
 
+// 그림 간격·말투(2026-11-10) — 글자끼리 붙음, 선이 글자를 지남, 상자 안쪽 여백, 그림 글자의 생성 말투.
+assert.ok(has(svgFig("title: 글자가 붙는다", linked + '<text x="90" y="30">위 줄</text><text x="90" y="38">아래 줄</text>'), "svg-text-tight"), "위아래 줄이 겹친다");
+assert.ok(!has(svgFig("title: 줄 사이가 넉넉하다", linked + '<text x="90" y="20">위 줄</text><text x="90" y="40">아래 줄</text>'), "svg-text-tight"), "줄 간격 20 은 통과");
+assert.ok(has(svgFig("title: 선이 글자를 지난다", linked + '<text class="mid" x="140" y="65">요청</text>'), "svg-line-text"), "선 한가운데 글자");
+assert.ok(!has(svgFig("title: 선 이름이 선 위에 있다", linked + '<text class="mid" x="140" y="50">요청</text>'), "svg-line-text"), "선 위 빈자리의 선 이름은 통과");
+assert.ok(has(svgFig("title: 상자에 붙는다", '<rect class="box" x="0" y="40" width="60" height="40"/><text class="mid" x="30" y="65">에이전트</text><line class="edge" x1="60" y1="60" x2="200" y2="60"/>'), "svg-text-box"), "안쪽 여백 6 미만");
+assert.ok(has(svgFig("title: 중계는 한 통만 센다", linked + '<text x="0" y="110">핵심은 비용이다</text>'), "svg-text-slop"), "판 글자의 상투구");
+assert.ok(has(svgFig("title: 중계는 한 통만 센다\ncaption: 사본 — 무료", linked), "svg-text-slop"), "캡션의 em 대시");
+assert.ok(!has(svgFig("title: 예문을 옮긴다", linked + '<text class="q" x="0" y="110">핵심은 비용이다</text>'), "svg-text-slop"), "q 클래스 예문은 뺀다");
+
 console.log("check-voice-rules: ok");
