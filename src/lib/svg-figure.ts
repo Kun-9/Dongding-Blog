@@ -183,6 +183,12 @@ function panelChecks(nodes: Node[], w: number, h: number, warnings: SvgFigure["w
     .filter(({ n, o }) => n.tag === "rect" && !n.cls.has("zone") && o)
     .map(({ n, o }) => ({ x: (num(n.attrs.x) ?? 0) + o!.dx, y: (num(n.attrs.y) ?? 0) + o!.dy, w: num(n.attrs.width) ?? 0, h: num(n.attrs.height) ?? 0 }))
     .filter((r) => r.w > 0 && r.h > 0);
+  // 점·사람·표시도 글자에 붙으면 안 된다. 표시(mark-x·mark-ok)는 반지름 8 로 그린다(markGlyph).
+  const circles = nodes
+    .map((n, i) => ({ n, o: offsetOf(nodes, i) }))
+    .filter(({ n, o }) => n.tag === "circle" && o)
+    .map(({ n, o }) => ({ cx: (num(n.attrs.cx) ?? 0) + o!.dx, cy: (num(n.attrs.cy) ?? 0) + o!.dy, r: n.cls.has("mark-x") || n.cls.has("mark-ok") ? 8 : (num(n.attrs.r) ?? 0) }))
+    .filter((c) => c.r > 0);
   const rects = nodes
     .map((n, i) => ({ n, i }))
     .filter(({ n }) => n.tag === "rect")
@@ -231,9 +237,16 @@ function panelChecks(nodes: Node[], w: number, h: number, warnings: SvgFigure["w
     spans.push(span);
     // 상자 바깥 글자가 남의 상자 테두리에 닿으면 상자 이름처럼 읽힌다. 글자를 품은 상자와 띠(zone)는 빼고 본다.
     const near = rectNodes.find(
-      (r) => !(x >= r.x && x <= r.x + r.w && base - size / 3 >= r.y && base - size / 3 <= r.y + r.h) && span.bottom > r.y && span.top < r.y + r.h && left < r.x + r.w + 4 && right > r.x - 4,
+      (r) => !(x >= r.x && x <= r.x + r.w && base - size / 3 >= r.y && base - size / 3 <= r.y + r.h) && span.bottom > r.y - 4 && span.top < r.y + r.h + 4 && left < r.x + r.w + 4 && right > r.x - 4,
     );
-    if (near) warnings.push({ rule: "svg-text-tight", message: `글자가 상자 테두리에 붙습니다: "${short}". 상자에서 8 이상 띄웁니다` });
+    // 원은 중심에서 글자 자리까지의 실제 거리로 잰다(네모로 재면 모서리 빈자리까지 붙었다고 본다).
+    const dot = circles.find((c) => {
+      if (Math.hypot(x - c.cx, base - size / 3 - c.cy) <= c.r) return false;
+      const px = Math.min(Math.max(c.cx, span.left), span.right);
+      const py = Math.min(Math.max(c.cy, span.top), span.bottom);
+      return Math.hypot(px - c.cx, py - c.cy) - c.r < 4;
+    });
+    if (near || dot) warnings.push({ rule: "svg-text-tight", message: `글자가 상자·점·표시에 붙습니다: "${short}". 8 이상 띄웁니다` });
     // 글자 자리를 감싼 가장 작은 상자보다 글자가 길거나 테두리에 붙으면 읽기 답답하다(안쪽 여백 6 미만).
     const midY = base - size / 3;
     const box = rects
@@ -266,11 +279,11 @@ function panelChecks(nodes: Node[], w: number, h: number, warnings: SvgFigure["w
       for (let k = 0; k <= 24; k++) {
         const px = x1 + o.dx + ((x2 - x1) * k) / 24;
         const py = y1 + o.dy + ((y2 - y1) * k) / 24;
-        if (px > s.left + 2 && px < s.right - 2 && py > s.top + 2 && py < s.bottom - 1) return true;
+        if (px > s.left - 3 && px < s.right + 3 && py > s.top - 3 && py < s.bottom + 3) return true;
       }
       return false;
     });
-    if (hit) warnings.push({ rule: "svg-line-text", message: `선이 글자를 지나갑니다: "${hit.short}". 글자를 선 옆 빈자리로 옮깁니다` });
+    if (hit) warnings.push({ rule: "svg-line-text", message: `선이 글자를 지나거나 3 안쪽으로 붙습니다: "${hit.short}". 선 이름은 선에서 6~8 떨어진 빈자리에 둡니다` });
   });
 
   // 선 없는 상자는 그림 전체로 본다(parseSvgFigure) — 두 판 비교에서 한쪽 판에만 선이 없는 것은 뜻이 있다.

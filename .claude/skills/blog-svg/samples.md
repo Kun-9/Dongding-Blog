@@ -14,10 +14,10 @@
 
 ## 퍼짐 · 같은 모양 두 판
 
-두 판의 배치는 같고 부채꼴 선의 색만 다르다. 사람 수의 제곱으로 느는 이유가 부채꼴 모양 그대로 보인다. 부채꼴 좌표는 중심 (150,120), 반지름 92, ±50° 에 19개를 고르게 놓고 묶음째 `translate(0,8)` 로 내렸다. 판 이름 아래 설명 줄은 제목과 같은 말이라 두지 않는다.
+두 판의 배치는 같고 부채꼴 선의 색만 다르다. 사람 수의 제곱으로 느는 이유가 부채꼴 모양 그대로 보인다. 부채꼴 좌표는 중심 (150,120), 반지름 92, ±50° 에 19개를 고르게 놓고 묶음째 `translate(0,8)` 로 내렸다. 판 이름 아래 설명 줄은 제목과 같은 말이라 두지 않는다. 두 판의 사본 라벨은 같은 글자(사본 19통)로 두고 차이는 선 색으로만 보인다.
 
 ```svg
-title: Supabase는 받은 사본까지 세고, 중계는 들어온 한 통만 센다
+title: 위치 1통이 Supabase에서는 20통으로, 중계에서는 1통으로 세어진다
 caption: 같은 칸 20명 중 지수가 위치 한 통을 보낼 때
 legend: bad=요금에 세는 메시지; muted=세지 않는 메시지
 <svg viewBox="0 0 300 304">
@@ -33,12 +33,12 @@ legend: bad=요금에 세는 메시지; muted=세지 않는 메시지
   <text class="sm mid" x="18" y="153">지수</text>
   <rect class="box" x="86" y="98" width="64" height="44" rx="8"/>
   <text class="b mid" x="118" y="125">채널</text>
-  <text class="xs bad" x="120" y="206">사본 19통도 센다</text>
+  <text class="xs bad" x="120" y="206">사본 19통</text>
   </g>
   <line class="edge muted thin" x1="0" y1="234" x2="300" y2="234"/>
   <text class="xl bad" x="0" y="282">20통</text>
-  <text class="xs" x="76" y="258">위치 한 통이 세어지는 수</text>
-  <text class="sm ink" x="76" y="278">20명이 초당 한 번씩이면 400통</text>
+  <text class="xs" x="76" y="258">위치 1통당 요금에 세는 메시지</text>
+  <text class="sm ink" x="76" y="278">20명이 초당 한 번씩 보내면 400통</text>
   <text class="xs" x="76" y="298">무료 한도는 초당 100통</text>
 </svg>
 <svg viewBox="0 0 300 304">
@@ -54,13 +54,12 @@ legend: bad=요금에 세는 메시지; muted=세지 않는 메시지
   <text class="sm mid" x="18" y="153">지수</text>
   <rect class="box" x="86" y="98" width="64" height="44" rx="8"/>
   <text class="b mid" x="118" y="125">중계</text>
-  <text class="xs" x="120" y="206">사본 19통은 무료</text>
+  <text class="xs" x="120" y="206">사본 19통</text>
   </g>
   <line class="edge muted thin" x1="0" y1="234" x2="300" y2="234"/>
   <text class="xl good" x="0" y="282">1통</text>
-  <text class="xs" x="76" y="258">위치 한 통이 세어지는 수</text>
-  <text class="sm ink" x="76" y="278">20명이 초당 한 번씩이면 20통</text>
-  <text class="xs" x="76" y="298">나가는 사본은 세지 않는다</text>
+  <text class="xs" x="76" y="258">위치 1통당 요금에 세는 메시지</text>
+  <text class="sm ink" x="76" y="278">20명이 초당 한 번씩 보내면 20통</text>
 </svg>
 ```
 
@@ -75,26 +74,26 @@ legend: x=막힘; ok=통과; dash=일부만 잡는 규칙
 <svg viewBox="0 0 600 340" data-only="wide">
   <text class="xs end" x="120" y="22">Claude가 고른 길</text>
   <text class="xs mid" x="230" y="22">첫 관문</text>
-  <text class="xs mid" x="448" y="22">둘째 관문</text>
+  <text class="xs mid" x="470" y="22">둘째 관문</text>
   <text class="xs mid" x="552" y="22">바깥</text>
   <text class="end" x="120" y="69">WebFetch로 바로</text>
   <text class="end" x="120" y="105">단축 주소로</text>
   <text class="end" x="120" y="165">대상 주소로 다시</text>
   <text class="end" x="120" y="239">Bash로 curl</text>
   <text class="end" x="120" y="305">샌드박스 밖에서</text>
-  <path class="edge muted thin dash" d="M260 180V196H448V212"/>
-  <text class="xs" x="458" y="204">같은 허용 목록</text>
+  <path class="edge muted thin dash" d="M260 180V196H470V212"/>
+  <text class="xs" x="480" y="204">같은 허용 목록</text>
   <circle class="dot" cx="130" cy="64" r="3"/><line class="edge" x1="134" y1="64" x2="172" y2="64"/>
   <circle class="dot" cx="130" cy="100" r="3"/><line class="edge" x1="134" y1="100" x2="172" y2="100" marker-end="url(#a)"/>
   <line class="edge" x1="288" y1="100" x2="508" y2="100" marker-end="url(#a)"/>
   <line class="edge" x1="510" y1="130" x2="288" y2="130" marker-end="url(#a)"/>
   <circle class="dot" cx="130" cy="160" r="3"/><line class="edge" x1="134" y1="160" x2="172" y2="160"/>
   <circle class="dot" cx="130" cy="234" r="3"/><line class="edge" x1="134" y1="234" x2="172" y2="234" marker-end="url(#a)"/>
-  <line class="edge" x1="288" y1="234" x2="382" y2="234"/>
+  <line class="edge" x1="288" y1="234" x2="396" y2="234"/>
   <circle class="dot" cx="130" cy="300" r="3"/><line class="edge" x1="134" y1="300" x2="172" y2="300"/>
   <text class="xs good mid" x="399" y="92">목록에 있으니 통과</text>
   <text class="xs mid" x="399" y="123">301, 대상 주소만 돌려줌</text>
-  <text class="xs mono mid" x="339" y="226">/usr/bin/curl</text>
+  <text class="xs mono mid" x="345" y="222">/usr/bin/curl</text>
   <rect class="soft bad" x="174" y="40" width="112" height="140" rx="8"/>
   <text class="sm b ink mid" x="230" y="128">WebFetch 규칙</text>
   <text class="xs mid" x="230" y="146">허용: aka.ms</text>
@@ -103,17 +102,17 @@ legend: x=막힘; ok=통과; dash=일부만 잡는 규칙
   <rect class="soft dash" x="174" y="212" width="112" height="44" rx="8"/>
   <text class="sm mono ink mid" x="230" y="231">Bash(curl *)</text>
   <text class="xs mid" x="230" y="248">거절 규칙</text>
-  <rect class="soft bad" x="390" y="212" width="116" height="44" rx="8"/>
-  <text class="sm b ink mid" x="448" y="231">샌드박스 프록시</text>
-  <text class="xs mid" x="448" y="248">목록 밖은 403</text>
-  <text class="xs mono mid" x="448" y="274">strictAllowlist: true</text>
+  <rect class="soft bad" x="404" y="212" width="132" height="44" rx="8"/>
+  <text class="sm b ink mid" x="470" y="231">샌드박스 프록시</text>
+  <text class="xs mid" x="470" y="248">목록 밖은 403</text>
+  <text class="xs mono mid" x="470" y="274">strictAllowlist: true</text>
   <rect class="soft bad" x="174" y="278" width="112" height="44" rx="8"/>
   <text class="sm b ink mid" x="230" y="297">밖에서 실행</text>
   <text class="xs mid" x="230" y="314">꺼 둠</text>
   <text class="xs mono" x="292" y="304">allowUnsandboxedCommands: false</text>
   <circle class="mark-x" cx="174" cy="64"/>
   <circle class="mark-x" cx="174" cy="160"/>
-  <circle class="mark-x" cx="390" cy="234"/>
+  <circle class="mark-x" cx="404" cy="234"/>
   <circle class="mark-x" cx="174" cy="300"/>
   <circle class="mark-ok" cx="286" cy="100"/>
 </svg>
@@ -141,7 +140,7 @@ legend: x=막힘; ok=통과; dash=일부만 잡는 규칙
   <circle class="mark-x" cx="100" cy="230"/>
 
   <text class="b" x="0" y="278">Bash로 curl</text>
-  <text class="xs mono mid" x="190" y="286">/usr/bin/curl</text>
+  <text class="xs mono mid" x="190" y="282">/usr/bin/curl</text>
   <circle class="dot" cx="6" cy="310" r="3"/><line class="edge" x1="10" y1="310" x2="38" y2="310" marker-end="url(#a)"/>
   <rect class="soft dash" x="40" y="292" width="110" height="36" rx="8"/>
   <text class="xs mono ink mid" x="95" y="314">Bash(curl *)</text>
@@ -249,7 +248,7 @@ legend: x=막힘
   <line class="edge" x1="150" y1="164" x2="42" y2="164" marker-end="url(#a)"/>
   <text class="xs mid" x="95" y="157">대상 주소만</text>
   <line class="edge" x1="40" y1="200" x2="140" y2="200"/>
-  <text class="xs mid" x="95" y="193">대상 주소로 다시</text>
+  <text class="xs mid" x="92" y="193">대상 주소로 다시</text>
   <circle class="mark-x" cx="150" cy="200"/>
   <text class="xs bad" x="164" y="204">규칙에서 막힘</text>
 </svg>

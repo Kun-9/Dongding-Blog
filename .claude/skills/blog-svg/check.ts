@@ -5,7 +5,7 @@
  */
 import { readFileSync } from "node:fs";
 import { isClaim, parseSvgFigure } from "../../../src/lib/svg-figure";
-import { AVOID } from "../../../src/lib/phrases";
+import { AVOID, FIGURE_AVOID } from "../../../src/lib/phrases";
 
 let bad = 0;
 for (const file of process.argv.slice(2)) {
@@ -20,7 +20,7 @@ for (const file of process.argv.slice(2)) {
     out.push(...f.warnings.map((w) => `${w.rule}: ${w.message}`));
     for (const t of [f.title, f.caption, ...f.texts]) {
       if (!t) continue;
-      const a = AVOID.find((x) => x.pattern.test(t));
+      const a = [...AVOID, ...FIGURE_AVOID].find((x) => x.pattern.test(t));
       if (a) out.push(`svg-text-slop: "${a.label}" — ${a.hint}: "${t}"`);
       else if (/—/.test(t)) out.push(`svg-text-slop: em 대시: "${t}"`);
     }

@@ -19,7 +19,7 @@ import { ANIMS, LOOPS } from "./figure/anims";
 import { KITS } from "./figure/kits";
 import { SCENE_ATTRS } from "./figure/scene-attrs";
 import { SCENE_VERBS } from "./figure/verbs";
-import { AVOID, excerpt, lintPhrases, proseLines } from "./phrases";
+import { AVOID, FIGURE_AVOID, excerpt, lintPhrases, proseLines } from "./phrases";
 import { cardSlug, linksTo } from "./link-cards";
 import { splitFolds } from "./folds";
 
@@ -206,8 +206,8 @@ export const SVG_STYLE = `흐름·구조 그림(무엇이 어디로 가고, 어�
 
 그림만 보고 이해되게(본문을 가리고 제목·그림·캡션만 봐도 제목이 왜 참인지 짚인다)
 - 상자 이름은 본문의 고유 이름, 선마다 오가는 것의 이름, 갈리는 곳에 표시와 이유 한 마디, 결과 숫자를 그림 안에. 글자를 덜어 낼 때는 설명 문장만 덜고 사실(숫자·설정 키·조건)은 둘째 줄로 남긴다
-- 간격(viewBox 단위): 상자 안쪽 좌우 12(상자 폭 = 가장 긴 줄 + 24), 상자 사이 가로 56·세로 64, 선 이름은 선에서 6~8, 줄 간격 14→20·12.5→18·12→17, 덩어리 사이 28. 점검이 글자 붙음(svg-text-tight)·선이 글자를 지남(svg-line-text)·상자 테두리에 붙음(svg-text-box)을 잡는다
-- 그림 글자도 글이다. 제목·판 이름·선 이름·캡션에 본문과 같은 생성 말투 규칙을 건다(이분 대비, 콜론 공개, 과장, 번역투, em 대시 없이. 점검 svg-text-slop). 제목·판 이름·캡션이 같은 말을 되풀이하지 않는다. 남의 글을 옮긴 예문 줄은 class="q"
+- 간격(viewBox 단위): 상자 안쪽 좌우 12(상자 폭 = 가장 긴 줄 + 24), 상자 사이 가로 56·세로 64, 선 이름은 선에서 6~8, 줄 간격 14→20·12.5→18·12→17, 덩어리 사이 28, 글자와 점·표시·선 사이 8. 점검이 글자 붙음(svg-text-tight)·선이 글자를 지남(svg-line-text)·상자 테두리에 붙음(svg-text-box)을 잡는다
+- 그림 글자도 글이다. 제목·판 이름·선 이름·캡션에 본문과 같은 생성 말투 규칙을 건다(이분 대비, 콜론 공개, 과장, 번역투, em 대시 없이. 점검 svg-text-slop). 라벨을 질문으로 쓰지 않는다(누가 보냈나 → 세션 쿠키로 사용자 확인). 조사로 대비를 만들지 않는다(사본 19통도 센다 / 사본 19통은 무료 → 둘 다 사본 19통, 차이는 색). 제목은 추상어(경계, 다른 검사) 대신 장치 이름과 숫자로. 제목·판 이름·캡션이 같은 말을 되풀이하지 않는다. 남의 글을 옮긴 예문 줄은 class="q"
 
 문법
 - 머리 줄: \`title: 결론 문장\`(필수), \`caption: 조건\`(그림 아래, 선택), \`legend: bad=요금에 세는 메시지; x=막힘; ok=통과; dash=일부만\`(키: ${SVG_LEGEND_KEYS.join("·")})
@@ -862,7 +862,7 @@ export function checkVoice(post: VoiceInput, kind: PostKind = "release"): VoiceR
     // 그림 글자도 글이다. 제목·캡션·판 글자에 본문과 같은 생성 말투 규칙(no-ai-slop 에서 옮긴 것 포함)을 건다.
     for (const text of [fig.title, fig.caption, ...fig.texts]) {
       if (!text) continue;
-      const slop = AVOID.find((a) => a.pattern.test(text));
+      const slop = [...AVOID, ...FIGURE_AVOID].find((a) => a.pattern.test(text));
       if (slop) issues.push({ rule: "svg-text-slop", severity: "warning", line, message: `svg 그림 글자에 "${slop.label}" — ${slop.hint}: "${excerpt(text)}"` });
       else if (/—/.test(text)) issues.push({ rule: "svg-text-slop", severity: "warning", line, message: `svg 그림 글자에 em 대시가 있습니다: "${excerpt(text)}". 쉼표나 두 마디로 나눕니다` });
     }

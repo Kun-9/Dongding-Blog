@@ -124,5 +124,9 @@ assert.ok(has(svgFig("title: 상자에 붙는다", '<rect class="box" x="0" y="4
 assert.ok(has(svgFig("title: 중계는 한 통만 센다", linked + '<text x="0" y="110">핵심은 비용이다</text>'), "svg-text-slop"), "판 글자의 상투구");
 assert.ok(has(svgFig("title: 중계는 한 통만 센다\ncaption: 사본 — 무료", linked), "svg-text-slop"), "캡션의 em 대시");
 assert.ok(!has(svgFig("title: 예문을 옮긴다", linked + '<text class="q" x="0" y="110">핵심은 비용이다</text>'), "svg-text-slop"), "q 클래스 예문은 뺀다");
+assert.ok(has(svgFig("title: 경계에서 검사한다", linked + '<text x="0" y="110">누가 보냈나</text>'), "svg-text-slop"), "질문형 라벨");
+assert.ok(has(svgFig("title: 중계는 한 통만 센다", linked + '<text x="0" y="110">사본 19통은 무료</text>'), "svg-text-slop"), "조사로 만든 대비 토막");
+assert.ok(!has(svgFig("title: 중계는 한 통만 센다", linked + '<text x="0" y="110">경로는 /me/avatar 하나</text>'), "svg-text-slop"), "'하나'로 끝나는 사실 라벨은 통과");
+assert.ok(has(svgFig("title: 점에 붙는다", linked + '<circle class="dot" cx="40" cy="96" r="4"/><text x="20" y="112">사본 19통</text>'), "svg-text-tight"), "점 바로 아래 라벨");
 
 console.log("check-voice-rules: ok");

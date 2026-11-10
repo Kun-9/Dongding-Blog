@@ -100,6 +100,15 @@ const LINKED = /\[[^\]]+\]|https?:\/\//;
 const INTRO_LINES = 8;
 
 /** 산문 줄만 남긴다. 코드 펜스·표·HTML 주석·이미지 줄은 문체 검사 대상이 아니다. */
+/**
+ * 그림 글자에만 거는 말투(2026-11-10 "문구가 너무 AI 스럽다"). 본문 문장에는 걸지 않는다.
+ * 라벨을 질문으로 쓰거나 조사로 대비를 만들면 사실 대신 연출이 남는다.
+ */
+export const FIGURE_AVOID: { pattern: RegExp; label: string; hint: string }[] = [
+  { pattern: /(않나|맞나|인가|는가|을까|았나|었나|했나|냈나|되나|나요|\?)$/, label: "질문형 라벨", hint: "무엇을 검사·처리하는지 그대로 쓰세요(누가 보냈나 → 세션 쿠키로 사용자 확인)" },
+  { pattern: /^\S+ \S+(도|은|는) (센다|무료|공짜|그대로|통과|막힘)$/, label: "조사로 만든 대비 토막", hint: "차이는 색·범례로 보이고 글자는 사실만 쓰세요(사본 19통도 센다 → 사본 19통)" },
+];
+
 export function proseLines(body: string): { n: number; text: string }[] {
   const out: { n: number; text: string }[] = [];
   let fenced = false;
