@@ -766,7 +766,15 @@ async function refuseListen(req: Request): Promise<Response | null> {
 async function guarded(req: Request): Promise<Response> {
   const refused = await refuseListen(req);
   if (refused) return refused;
-  if (await identify(req)) return handler(req);
+  if (await identify(req)) {
+    const res = await handler(req);
+    // SDK 는 SSE 응답을 먼저 돌려주고 도구는 그 본문을 흘리면서 돈다. Next 는 route handler 가
+    // Response 를 돌려주는 순간 쌓인 revalidatePath 를 한 번만 비우므로, 도구 안의 revalidate 는
+    // 큐에만 남고 버려졌다(update_post 뒤에도 글 페이지가 다음 배포까지 옛 본문, 2026-11-09).
+    // 본문을 다 읽고 돌려줘 도구가 끝난 뒤에 비워지게 한다. listen 은 위에서 거절해 끝나지 않는 POST 는 없다.
+    if (req.method !== "POST" || !res.body) return res;
+    return new Response(await res.arrayBuffer(), { status: res.status, headers: res.headers });
+  }
 
   const resource = `${getPublicOrigin(req)}/.well-known/oauth-protected-resource`;
   return Response.json(
