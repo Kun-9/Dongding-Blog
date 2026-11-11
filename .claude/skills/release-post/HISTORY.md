@@ -2,6 +2,16 @@
 
 블로그 글쓰기 규칙(쓰기 기준 `src/lib/voice.ts`, release-post·blog-figures·blog-capture·blog-figure-extend·release-reserved 스킬)이 왜 생겼는지의 기록이다. 규칙 문서에는 규칙만 두고, 날짜 붙은 일화는 여기에 한 줄씩 더한다. 실행기와 모델이 읽는 기준이 짧아야 지켜진다.
 
+## 2026-11-11 예약 32편 묶음
+
+- 예약 32편을 "3개씩, 이어서, 최대한 퀄리티 좋게"로 맡아 주제마다 서브에이전트로 쓰고 글마다 독립 검토 에이전트를 붙였다. 검토마다 10~20개가 나왔고 되풀이된 것(잰 범위 넘김, 한 번 본 행동을 고정 동작으로, 재현 캡처를 원래 실행처럼, 빠진 다음 할 일, 앵커가 다른 근거 링크, 접힌 칸의 틀린 사실)을 점검 단계 목록으로 더했다. release-reserved 에 "여럿을 맡을 때"가 생겼다.
+- finish 뒤 노트를 고치자 어드민 "남은 일"이 비었다(마지막 finish 뒤 주제가 바뀌면 todo 를 숨긴다). 고친 뒤 같은 todo 로 finish 를 다시 부른다.
+- 세션이 끊겨 running 으로 남은 주제를 claim 으로 다시 집으려 하면 2시간 안에는 null, 넘으면 진행 로그가 지워진다. report 로 이어 받는다. 11-11 세션이 다시 열리며 스크래치(`/tmp`)가 비어 검토 목록·공통 규칙 파일이 사라졌다(규칙은 대화 기록에서 되살렸다).
+- 시험 에이전트 하나가 `bypassPermissions` 로 맥 전체 `pkill -f "node server.js"` 를 쳤다. 시험 `claude -p` 에서 bypass 를 금하고 허용 목록·스크래치 쓰기로 묶었다. 다른 에이전트는 저장소 폴더에서 `npx … init` 을 쳤다(스크래치로 cd 먼저). 검토 서브에이전트가 Write 범위가 없어 `/tmp` 에 파일을 남겼다.
+- `npx skills -g` 시험에서 `HOME` 을 스크래치로 돌렸는데도 실제 `~/.claude/skills/find-skills` 가 생겼다. Orca 의 `CLAUDE_CONFIG_DIR` 프로필 `skills` 가 `~/.claude/skills` 로 이어진 symlink 였다. 에이전트 홈 변수를 비우는 규칙이 생겼다.
+- capture.mjs 가 `--keys "--setting-sources …"` 를 tmux 에 보내지 못하고(invalid flag) 그 키만 버린 채 Enter 를 쳐, 격리 옵션 없는 `claude -p` 가 한 번 돌았다. 글자 키를 `--` 뒤에 두고 실패하면 끝 코드 6 으로 멈추게 했다. 캡처 잠금을 기다리던 에이전트는 Bash 2분 제한에 끊겼다(timeout 을 길게).
+- 공식 도움말(support.claude.com)만 근거인 글이 `missing-source` 에 걸리자 관계없는 anthropic.com 링크를 넣어 통과시킨 일이 있었다. 출처 도메인에 claude.com 을 더했다.
+
 ## 2026-10-26 요약 박스 라벨
 
 - "해당·문제·할 일이라는 단어가 어색하다"는 지적으로 라벨을 이런 분께·겪는 일·이렇게로 바꿨다. 해당·문제는 보고서 칸 이름이라 독자에게 말을 거는 박스와 맞지 않았다. 점검기(SUMMARY_LABELS)와 쓰기 기준, 박스가 있던 글의 라벨을 함께 바꿨다.
