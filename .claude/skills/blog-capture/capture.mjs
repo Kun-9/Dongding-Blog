@@ -21,7 +21,7 @@
  * --no-emoji 는 화면의 이모지를 지운다. --wait 가 시간 안에 안 뜨면 마지막 화면을 <--keep 또는 --out>.ansi 로 남긴다.
  *
  * 끝 코드: 0 성공 · 1 사용법 · 2 개인 정보가 보임 · 3 띄우지 못함(설치·로그인)
- *          4 tmux 없음 · 5 --from/--to 를 화면에서 못 찾음
+ *          4 tmux 없음 · 5 --from/--to 를 화면에서 못 찾음 · 6 --keys 를 보내지 못함
  */
 import { spawnSync } from "node:child_process";
 import { cpSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
@@ -169,8 +169,13 @@ function shoot() {
         }
         continue;
       }
-      if (KEY.test(k) || k === "Esc") tmux("send-keys", "-t", session, k === "Esc" ? "Escape" : k);
-      else tmux("send-keys", "-t", session, "-l", k);
+      // 글자는 -- 뒤에 둔다. "--setting-sources …" 처럼 - 로 시작하면 tmux 가 플래그로 읽어 그 키만 버리고(invalid flag),
+      // 뒤의 Enter 가 앞부분만 친 명령을 실행했다(2026-11-11, 격리 옵션 없이 claude -p 가 돌았다). 실패하면 바로 멈춘다.
+      const sent =
+        KEY.test(k) || k === "Esc"
+          ? tmux("send-keys", "-t", session, k === "Esc" ? "Escape" : k)
+          : tmux("send-keys", "-t", session, "-l", "--", k);
+      if (sent.status !== 0) throw new Fail(6, `키를 보내지 못했다(${JSON.stringify(k)}): ${(sent.stderr ?? "").trim()}`);
       sleep(400);
     }
     return settle(session, 1500);
