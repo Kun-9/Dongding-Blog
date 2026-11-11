@@ -64,7 +64,8 @@ export const CONCEPT_PARTS = [
  */
 export const RELEASE_SOURCE_HOSTS = [
   "github.com",
-  "code.claude.com",
+  // claude.com 은 code·support·platform 하위 도메인까지 받는다(Claude Code 문서·도움말·콘솔 문서)
+  "claude.com",
   "anthropic.com",
   "openai.com",
   "chatgpt.com",
