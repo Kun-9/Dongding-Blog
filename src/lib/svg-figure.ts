@@ -60,7 +60,7 @@ export const SVG_CLASS_DOC: Record<string, string> = {
 };
 export const SVG_CLASSES = new Set(Object.keys(SVG_CLASS_DOC));
 
-/** 범례 키 — `legend: bad=요금에 세는 메시지; x=막힘`. */
+/** 범례 키 — `legend: bad=요금이 붙는 메시지; x=막힘`. */
 export const SVG_LEGEND_KEYS = ["bad", "good", "accent", "muted", "dash", "x", "ok", "dot"] as const;
 export type LegendKey = (typeof SVG_LEGEND_KEYS)[number];
 

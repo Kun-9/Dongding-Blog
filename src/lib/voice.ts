@@ -212,7 +212,7 @@ export const SVG_STYLE = `흐름·구조 그림(무엇이 어디로 가고, 어�
 - 그림 글자도 글이다. 제목·판 이름·선 이름·캡션에 본문과 같은 생성 말투 규칙을 건다(이분 대비, 콜론 공개, 과장, 번역투, em 대시 없이. 점검 svg-text-slop). 라벨을 질문으로 쓰지 않는다(누가 보냈나 → 세션 쿠키로 사용자 확인). 조사로 대비를 만들지 않는다(사본 19통도 센다 / 사본 19통은 무료 → 둘 다 사본 19통, 차이는 색). 제목은 추상어(경계, 다른 검사) 대신 장치 이름과 숫자로. 제목·판 이름·캡션이 같은 말을 되풀이하지 않는다. 남의 글을 옮긴 예문 줄은 class="q"
 
 문법
-- 머리 줄: \`title: 결론 문장\`(필수), \`caption: 조건\`(그림 아래, 선택), \`legend: bad=요금에 세는 메시지; x=막힘; ok=통과; dash=일부만\`(키: ${SVG_LEGEND_KEYS.join("·")})
+- 머리 줄: \`title: 결론 문장\`(필수), \`caption: 조건\`(그림 아래, 선택), \`legend: bad=요금이 붙는 메시지; x=막힘; ok=통과; dash=일부만\`(키: ${SVG_LEGEND_KEYS.join("·")})
 - \`<svg viewBox="0 0 W H">\` 하나가 판 하나. W 는 ${SVG_PANEL_MAX} 이하(휴대폰 폭에서 1배 가까이). 두 판을 넓은 화면에서 나란히 보이려면 W 300 안쪽. 그보다 넓은 그림은 \`data-only="wide"\`(W ${SVG_WIDE_MAX} 이하) 판과 \`data-only="narrow"\` 판을 같이 둔다. 좁은 판은 줄을 세로로 쌓아 다시 그린다
 - 요소: g rect circle ellipse line polyline polygon path text tspan. 색·글자 크기는 class 로만 칠한다(fill·stroke·style·font-size 속성은 지워진다). 테마 변수라 다크 모드가 따라온다
 - 클래스: ${Object.entries(SVG_CLASS_DOC).map(([k, v]) => `\`${k}\` ${v}`).join(" · ")}. 글자 기본은 14

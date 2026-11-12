@@ -17,9 +17,9 @@
 두 판의 배치는 같고 부채꼴 선의 색만 다르다. 사람 수의 제곱으로 느는 이유가 부채꼴 모양 그대로 보인다. 부채꼴 좌표는 중심 (150,120), 반지름 92, ±50° 에 19개를 고르게 놓고 묶음째 `translate(0,8)` 로 내렸다. 판 이름 아래 설명 줄은 제목과 같은 말이라 두지 않는다. 두 판의 사본 라벨은 같은 글자(사본 19통)로 두고 차이는 선 색으로만 보인다.
 
 ```svg
-title: 위치 1통이 Supabase에서는 20통으로, 중계에서는 1통으로 세어진다
+title: 위치 1통을 Supabase는 20통으로, 중계는 1통으로 친다
 caption: 같은 칸 20명 중 지수가 위치 한 통을 보낼 때
-legend: bad=요금에 세는 메시지; muted=세지 않는 메시지
+legend: bad=요금이 붙는 메시지; muted=요금이 붙지 않는 메시지
 <svg viewBox="0 0 300 304">
   <text class="lg" x="0" y="18">Supabase Realtime</text>
   <g transform="translate(0,8)">
@@ -37,7 +37,7 @@ legend: bad=요금에 세는 메시지; muted=세지 않는 메시지
   </g>
   <line class="edge muted thin" x1="0" y1="234" x2="300" y2="234"/>
   <text class="xl bad" x="0" y="282">20통</text>
-  <text class="xs" x="76" y="258">위치 1통당 요금에 세는 메시지</text>
+  <text class="xs" x="76" y="258">위치 1통당 요금이 붙는 메시지</text>
   <text class="sm ink" x="76" y="278">20명이 초당 한 번씩 보내면 400통</text>
   <text class="xs" x="76" y="298">무료 한도는 초당 100통</text>
 </svg>
@@ -58,7 +58,7 @@ legend: bad=요금에 세는 메시지; muted=세지 않는 메시지
   </g>
   <line class="edge muted thin" x1="0" y1="234" x2="300" y2="234"/>
   <text class="xl good" x="0" y="282">1통</text>
-  <text class="xs" x="76" y="258">위치 1통당 요금에 세는 메시지</text>
+  <text class="xs" x="76" y="258">위치 1통당 요금이 붙는 메시지</text>
   <text class="sm ink" x="76" y="278">20명이 초당 한 번씩 보내면 20통</text>
 </svg>
 ```
