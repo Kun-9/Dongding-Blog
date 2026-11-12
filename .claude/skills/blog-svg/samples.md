@@ -86,13 +86,13 @@ legend: x=막힘; ok=통과; dash=일부만 잡는 규칙
   <circle class="dot" cx="130" cy="64" r="3"/><line class="edge" x1="134" y1="64" x2="172" y2="64"/>
   <circle class="dot" cx="130" cy="100" r="3"/><line class="edge" x1="134" y1="100" x2="172" y2="100" marker-end="url(#a)"/>
   <line class="edge" x1="288" y1="100" x2="508" y2="100" marker-end="url(#a)"/>
-  <line class="edge" x1="510" y1="130" x2="288" y2="130" marker-end="url(#a)"/>
+  <line class="edge" x1="510" y1="136" x2="288" y2="136" marker-end="url(#a)"/>
   <circle class="dot" cx="130" cy="160" r="3"/><line class="edge" x1="134" y1="160" x2="172" y2="160"/>
   <circle class="dot" cx="130" cy="234" r="3"/><line class="edge" x1="134" y1="234" x2="172" y2="234" marker-end="url(#a)"/>
   <line class="edge" x1="288" y1="234" x2="396" y2="234"/>
   <circle class="dot" cx="130" cy="300" r="3"/><line class="edge" x1="134" y1="300" x2="172" y2="300"/>
-  <text class="xs good mid" x="399" y="92">목록에 있으니 통과</text>
-  <text class="xs mid" x="399" y="123">301, 대상 주소만 돌려줌</text>
+  <text class="xs good mid" x="399" y="88">목록에 있으니 통과</text>
+  <text class="xs mid" x="399" y="156">301, 대상 주소만 돌려줌</text>
   <text class="xs mono mid" x="345" y="222">/usr/bin/curl</text>
   <rect class="soft bad" x="174" y="40" width="112" height="140" rx="8"/>
   <text class="sm b ink mid" x="230" y="128">WebFetch 규칙</text>
@@ -175,9 +175,9 @@ legend: bad=탈취로 보고 끊는 길
   <text class="b mid" x="248" y="41">토큰 A</text>
   <text class="xs mid" x="248" y="59">폐기됨</text>
   <line class="edge" x1="104" y1="44" x2="194" y2="44" marker-end="url(#a)"/>
-  <text class="xs mid" x="150" y="36">한 번 쓰면</text>
+  <text class="xs mid" x="150" y="32">한 번 쓰면</text>
   <path class="edge" d="M150 44V96H52V118" marker-end="url(#a)"/>
-  <text class="xs" x="158" y="92">새로 발급</text>
+  <text class="xs" x="160" y="92">새로 발급</text>
   <rect class="box good" x="0" y="120" width="104" height="48" rx="8"/>
   <text class="b mid" x="52" y="141">토큰 B</text>
   <text class="xs mid" x="52" y="159">살아 있음</text>
@@ -225,31 +225,31 @@ caption: anon 키로 내 일기 목록을 읽을 때
 
 ## 주고받기
 
-참여자는 머리 상자와 점선 생명선, 메시지는 이름 붙은 화살표. 끊기는 자리에 mark-x 와 이유.
+참여자는 머리 상자와 점선 생명선, 메시지는 이름 붙은 화살표. 끊기는 자리에 mark-x 와 이유. 메시지 줄은 56 간격, 이름은 선 y − 12 에, 생명선이 나가는 머리 상자는 높이 40(한 줄)·56(두 줄).
 
 ```svg
 title: WebFetch는 다른 호스트로 가는 301을 따라가지 않는다
 caption: aka.ms 만 허용하고 단축 주소를 열게 했을 때
 legend: x=막힘
-<svg viewBox="0 0 300 224">
-  <rect class="box" x="4" y="0" width="72" height="26" rx="6"/>
-  <text class="sm b ink mid" x="40" y="18">Claude</text>
-  <rect class="box" x="110" y="0" width="80" height="26" rx="6"/>
-  <text class="sm b ink mid" x="150" y="18">WebFetch</text>
-  <rect class="box" x="224" y="0" width="72" height="26" rx="6"/>
-  <text class="sm mono ink mid" x="260" y="18">aka.ms</text>
-  <g class="edge muted thin dash"><line x1="40" y1="26" x2="40" y2="216"/><line x1="150" y1="26" x2="150" y2="216"/><line x1="260" y1="26" x2="260" y2="216"/></g>
-  <line class="edge" x1="40" y1="56" x2="148" y2="56" marker-end="url(#a)"/>
-  <text class="xs mono mid" x="95" y="49">aka.ms/vscode</text>
-  <line class="edge" x1="150" y1="92" x2="258" y2="92" marker-end="url(#a)"/>
-  <text class="xs mid" x="205" y="85">GET</text>
-  <line class="edge" x1="260" y1="128" x2="152" y2="128" marker-end="url(#a)"/>
-  <text class="xs mid" x="205" y="121">301 다른 호스트</text>
-  <line class="edge" x1="150" y1="164" x2="42" y2="164" marker-end="url(#a)"/>
-  <text class="xs mid" x="95" y="157">대상 주소만</text>
-  <line class="edge" x1="40" y1="200" x2="140" y2="200"/>
-  <text class="xs mid" x="92" y="193">대상 주소로 다시</text>
-  <circle class="mark-x" cx="150" cy="200"/>
-  <text class="xs bad" x="164" y="204">규칙에서 막힘</text>
+<svg viewBox="0 0 300 324">
+  <rect class="box" x="4" y="0" width="72" height="40" rx="6"/>
+  <text class="sm b ink mid" x="40" y="25">Claude</text>
+  <rect class="box" x="106" y="0" width="88" height="40" rx="6"/>
+  <text class="sm b ink mid" x="150" y="25">WebFetch</text>
+  <rect class="box" x="224" y="0" width="72" height="40" rx="6"/>
+  <text class="sm mono ink mid" x="260" y="25">aka.ms</text>
+  <g class="edge muted thin dash"><line x1="40" y1="40" x2="40" y2="316"/><line x1="150" y1="40" x2="150" y2="316"/><line x1="260" y1="40" x2="260" y2="316"/></g>
+  <line class="edge" x1="40" y1="80" x2="148" y2="80" marker-end="url(#a)"/>
+  <text class="xs mono mid" x="95" y="68">aka.ms/vscode</text>
+  <line class="edge" x1="150" y1="136" x2="258" y2="136" marker-end="url(#a)"/>
+  <text class="xs mid" x="205" y="124">GET</text>
+  <line class="edge" x1="260" y1="192" x2="152" y2="192" marker-end="url(#a)"/>
+  <text class="xs mid" x="205" y="180">301 다른 호스트</text>
+  <line class="edge" x1="150" y1="248" x2="42" y2="248" marker-end="url(#a)"/>
+  <text class="xs mid" x="95" y="236">대상 주소만</text>
+  <line class="edge" x1="40" y1="304" x2="140" y2="304"/>
+  <text class="xs mid" x="92" y="292">대상 주소로 다시</text>
+  <circle class="mark-x" cx="150" cy="304"/>
+  <text class="xs bad" x="164" y="308">규칙에서 막힘</text>
 </svg>
 ```

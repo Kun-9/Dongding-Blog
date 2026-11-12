@@ -269,7 +269,8 @@ function panelChecks(nodes: Node[], w: number, h: number, warnings: SvgFigure["w
       }
     }
   }
-  // 선이 글자 한가운데를 지나면 글자도 선도 안 읽힌다. 선 이름은 선에서 6 떨어진 빈자리에 둔다.
+  // 선이 글자 한가운데를 지나거나 글자 끝에 붙으면 글자도 선도 안 읽힌다. 선 이름은 글자 끝이 선에서 10 떨어진 빈자리에 두고,
+  // 6 안쪽이면 알린다(옛 기준 6~8 은 baseline 기준이라 글자 끝이 선에서 5 남짓이었다. 2026-11-12 사용자 지적).
   nodes.forEach((n, i) => {
     if (n.tag !== "line") return;
     const o = offsetOf(nodes, i);
@@ -279,11 +280,11 @@ function panelChecks(nodes: Node[], w: number, h: number, warnings: SvgFigure["w
       for (let k = 0; k <= 24; k++) {
         const px = x1 + o.dx + ((x2 - x1) * k) / 24;
         const py = y1 + o.dy + ((y2 - y1) * k) / 24;
-        if (px > s.left - 3 && px < s.right + 3 && py > s.top - 3 && py < s.bottom + 3) return true;
+        if (px > s.left - 6 && px < s.right + 6 && py > s.top - 6 && py < s.bottom + 6) return true;
       }
       return false;
     });
-    if (hit) warnings.push({ rule: "svg-line-text", message: `선이 글자를 지나거나 3 안쪽으로 붙습니다: "${hit.short}". 선 이름은 선에서 6~8 떨어진 빈자리에 둡니다` });
+    if (hit) warnings.push({ rule: "svg-line-text", message: `선이 글자를 지나거나 6 안쪽으로 붙습니다: "${hit.short}". 선 이름은 글자 끝이 선에서 10 떨어지게 둡니다(xs·sm 가로선 위 baseline = 선 y − 12, 아래 = 선 y + 20)` });
   });
 
   // 선 없는 상자는 그림 전체로 본다(parseSvgFigure) — 두 판 비교에서 한쪽 판에만 선이 없는 것은 뜻이 있다.
